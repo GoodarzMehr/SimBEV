@@ -55,6 +55,9 @@ class SensorManager:
         self.lidar_list = []
         self.semantic_camera_list = []
 
+        self.camera_name_list = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
+                                 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
+
     def add_camera(self, camera):
         self.camera_list.append(camera)
 
@@ -63,10 +66,6 @@ class SensorManager:
 
     def add_semantic_camera(self, semantic_camera):
         self.semantic_camera_list.append(semantic_camera)
-
-    def prepare_camera(self):
-        self.camera_name_list = ['Front Left Camera', 'Front Camera', 'Front Right Camera',
-                                 'Back Left Camera', 'Back Camera', 'Back Right Camera']
     
     def create_lidar_visualizer(self):
         for lidar in self.lidar_list:
@@ -82,14 +81,15 @@ class SensorManager:
         for lidar in self.lidar_list:
             lidar.render()
     
-    def get_ground_truth(self):
-        drivable_area_mask = np.logical_or(self.semantic_camera_list[0].image[:, :, 2] == 128,
-                                           self.semantic_camera_list[0].image[:, :, 2] == 0,
-                                           self.semantic_camera_list[0].image[:, :, 2] == 157)
-        walkway_mask = self.semantic_camera_list[0].image[:, :, 2] == 244
-        lane_line_mask = self.semantic_camera_list[0].image[:, :, 2] == 157
+    def save(self, scene, frame):
+        for camera, camera_name in zip(self.camera_list, self.camera_name_list):
+            camera.save(camera_name, scene, frame)
 
-        self.ground_truth = np.array([drivable_area_mask, walkway_mask, lane_line_mask])
+        for lidar in self.lidar_list:
+            lidar.save(scene, frame)
+
+        for semantic_camera in self.semantic_camera_list:
+            semantic_camera.save(scene, frame)
     
     def destroy(self):
         for camera in self.camera_list:

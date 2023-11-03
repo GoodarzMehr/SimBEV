@@ -29,6 +29,7 @@ the ground truth.
 
 import os
 import time
+import carla
 import random
 import signal
 import psutil
@@ -36,10 +37,10 @@ import logging
 import traceback
 import subprocess
 
-import carla
+from sensors import *
 
 from sensor_manager import SensorManager
-from sensors import *
+
 
 BASE_CORE_CONFIG = {
     'map':              'Town06_Opt', # CARLA town name.
@@ -353,7 +354,7 @@ def setup_scenario(client, world, traffic_manager):
 
     weather.cloudiness = random.uniform(0.0, 100.0)
     weather.precipitation = random.betavariate(0.5, 0.5) * weather.cloudiness if weather.cloudiness > 40.0 else 0.0
-    weather.precipitation_deposits = random.uniform(weather.precipitation, 100.0)
+    weather.precipitation_deposits = weather.precipitation + random.betavariate(1.2, 3.6) * (100.0 - weather.precipitation)
     
     weather.wind_intensity = random.uniform(0.0, 100.0)
 
@@ -475,13 +476,13 @@ def main():
         setup_scenario(client, world, traffic_manager)
 
         sensor_manager = spawn_ego(world, traffic_manager)
-        
-        # sensor_manager.prepare_camera()
-        # sensor_manager.create_lidar_visualizer()
 
-        for _ in range(200):
+        sensor_manager.create_lidar_visualizer()
+
+        for i in range(100):
             world.tick()
-            # sensor_manager.render()
+            # sensor_manager.save(0, i)
+            sensor_manager.render()
 
         sensor_manager.destroy()
         

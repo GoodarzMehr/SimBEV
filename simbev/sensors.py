@@ -38,28 +38,6 @@ VIRIDIS = np.array(cm.get_cmap('viridis').colors)
 VID_RANGE = np.linspace(0.0, 1.0, VIRIDIS.shape[0])
 
 
-class CustomTimer:
-    '''
-    Timer class that uses a performance counter if available, otherwise time
-    in seconds.
-
-    Attributes:
-        timer: timer.
-
-    Methods:
-        time: return time.
-    '''
-    
-    def __init__(self):
-        try:
-            self.timer = time.perf_counter
-        except AttributeError:
-            self.timer = time.time
-
-    def time(self):
-        return self.timer()
-
-
 class RGBCamera:
     '''
     RGB camera class that manages the creation and data acquisition of RGB
@@ -100,7 +78,7 @@ class RGBCamera:
 
         self.rgb_camera = self.world.spawn_actor(rgb_camera_bp, transform, attach_to=attached)
 
-        self.rgb_camera.listen(self.save_rgb_image)
+        self.rgb_camera.listen(self.process_rgb_image)
 
     def process_rgb_image(self, image):
         image.convert(carla.ColorConverter.Raw)
@@ -108,18 +86,14 @@ class RGBCamera:
         array = np.frombuffer(image.raw_data, dtype=np.uint8)
         array = np.reshape(array, (image.height, image.width, 4))
 
-        # Remove alpha channel and turn BGR to RGB.
-        array = array[:, :, :3]
-        self.image = array[:, :, ::-1]
+        # Remove alpha channel.
+        self.image = array[:, :, :3]
 
-    def save_rgb_image(self, image):
-        camera_name = random.randint(0, 100000)
-        image.save_to_disk('/dataset/carla/Image-' + str(camera_name) + '-' + str(image.frame) + '.jpg')
+    def save(self, camera_name, scene, frame):
+        cv2.imwrite(f'/dataset/carla/sweeps/{camera_name}/SimBEV-scene-{scene}-frame-{frame}-{camera_name}.jpg',
+                    self.image)
     
     def render(self, window_name='RGB Image'):
-        # Switch back to BGR for rendering.
-        self.image = self.image[:, :, ::-1]
-        
         cv2.imshow(window_name, cv2.resize(self.image, (self.width // 4, self.height // 4)))
         cv2.waitKey(1)
     
@@ -182,6 +156,18 @@ class SemanticCamera:
     def render(self, window_name='Segmented BEV Image'):
         cv2.imshow(window_name, self.image)
         cv2.waitKey(1)
+    
+    def save(self, scene, frame):
+        road_mask = np.logical_or(self.image[:, :, 2] == 128, self.image[:, :, 2] == 157)
+        car_mask = self.image[:, :, 0] == 142
+        truck_mask = np.logical_and(self.image[:, :, 0] == 70, self.image[:, :, 1] == 0)
+        motorcyle_mask = np.logical_or(self.image[:, :, 2] == 255, self.image[:, :, 0] == 230)
+        pedestrian_mask = self.image[:, :, 1] == 20
+
+        ground_truth = np.array([road_mask, car_mask, truck_mask, motorcyle_mask, pedestrian_mask])
+
+        with open(f'/dataset/carla/ground-truth/SimBEV-scene-{scene}-frame-{frame}-GT.bin', 'wb') as f:
+            np.save(f, ground_truth)
     
     def destroy(self):
         self.semantic_camera.destroy()
@@ -277,6 +263,10 @@ class Lidar:
         self.frame += 1
         
         time.sleep(0.005)
+    
+    def save(self, scene, frame):
+        with open(f'/dataset/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene}-frame-{frame}-LIDAR_TOP.pcd.bin', 'wb') as f:
+            np.save(f, self.points)
     
     def destroy(self):
         self.lidar.destroy()
