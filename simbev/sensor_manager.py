@@ -67,10 +67,6 @@ class SensorManager:
     def add_semantic_camera(self, semantic_camera):
         self.semantic_camera_list.append(semantic_camera)
     
-    def create_lidar_visualizer(self):
-        for lidar in self.lidar_list:
-            lidar.create_visualizer()
-    
     def render(self):
         for camera, window_name in zip(self.camera_list, self.camera_name_list):
             camera.render(window_name)

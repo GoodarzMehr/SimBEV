@@ -477,8 +477,6 @@ def main():
 
         sensor_manager = spawn_ego(world, traffic_manager)
 
-        sensor_manager.create_lidar_visualizer()
-
         for i in range(100):
             world.tick()
             # sensor_manager.save(0, i)
