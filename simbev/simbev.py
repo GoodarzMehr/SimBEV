@@ -29,7 +29,9 @@ the ground truth.
 
 import os
 import time
+import json
 import carla
+import pickle
 import random
 import signal
 import psutil
@@ -53,6 +55,32 @@ BASE_CORE_CONFIG = {
     'quality_level':    'Epic',       # Simulation quality level. Can be 'Low', 'High', or 'Epic'.
     'retries_on_error': 3,            # Number of tries to connect to the server.
 }
+
+CAM2EGO_T = [[0.1, 0.5, 1.6],
+             [0.3, 0.0, 1.6],
+             [0.1, -0.5, 1.6],
+             [-0.4, 0.5, 1.6],
+             [-1.3, 0.0, 1.6],
+             [-0.4, -0.5, 1.6]]
+CAM2EGO_R = [[0.6743797, -0.6743797, 0.2126311, -0.2126311],
+             [0.5, -0.5, 0.5, -0.5],
+             [0.2126311, -0.2126311, 0.6743797, -0.6743797],
+             [0.6963642, -0.6963642, -0.1227878, 0.1227878],
+             [0.5, -0.5, -0.5, 0.5],
+             [0.1227878, -0.1227878, -0.6963642, 0.6963642]]
+
+LI2EGO_T = [-0.4, 0.0, 2.2]
+LI2EGO_R = [1.0, 0.0, 0.0, 0.0]
+
+CAM2LI_T = CAM2EGO_T - LI2EGO_T * np.ones((6, 3))
+CAM2LI_R = CAM2EGO_R
+
+CAM_I = [[953.4029, 0.0, 800.0],
+         [0.0, 953.4029, 450.0],
+         [0.0, 0.0, 1.0]]
+
+CAM_NAME = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
+            'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
 
 
 def is_used(port):
@@ -182,6 +210,27 @@ def connect_client(server_port=2000):
             time.sleep(10.0)
 
     raise Exception('Cannot connect to CARLA server.')
+
+def create_metadata():
+
+    metadata = {}
+
+    metadata['location'] = BASE_CORE_CONFIG['map']
+
+    metadata['camera_intrinsics'] = CAM_I
+
+    metadata['LIDAR_TOP'] = {'sensor2lidar_translation': [0.0, 0.0, 0.0],
+                             'sensor2lidar_rotation': [1.0, 0.0, 0.0, 0.0],
+                             'sensor2ego_translation': LI2EGO_T,
+                             'sensor2ego_rotation': LI2EGO_R}
+    
+    for i in range(6):
+        metadata[CAM_NAME[i]] = {'sensor2lidar_translation': CAM2LI_T[i].tolist(),
+                                 'sensor2lidar_rotation': CAM2LI_R[i],
+                                 'sensor2ego_translation': CAM2EGO_T[i],
+                                 'sensor2ego_rotation': CAM2EGO_R[i]}
+        
+    return metadata
 
 def spawn_npcs(n_vehicles, n_walkers, client, world):
     '''
@@ -426,7 +475,7 @@ def spawn_ego(world, traffic_manager):
     traffic_manager.update_vehicle_lights(vehicle, True)
 
     # Instanciate the sensor manager.
-    sensor_manager = SensorManager()
+    sensor_manager = SensorManager(vehicle)
 
     # Create RGB cameras.
     RGBCamera(world, sensor_manager, carla.Transform(carla.Location(x=0.1, y=-0.5, z=1.6), carla.Rotation(yaw=-55.0)),
@@ -468,24 +517,56 @@ def main():
         server_port = init_server()
 
         time.sleep(10.0)
+
+        metadata = create_metadata()
+
+        data = []
+
+        for scene in range(200):
+
+            if scene < 140:
+                split = 'train'
+            elif scene < 170:
+                split = 'val'
+            else:
+                split = 'test'
+
+            client, world, traffic_manager = connect_client(server_port)
+
+            time.sleep(1.0)
+
+            setup_scenario(client, world, traffic_manager)
+
+            sensor_manager = spawn_ego(world, traffic_manager)
+
+            for i in range(100):
+                world.tick()
+                # sensor_manager.render()
+            
+            for i in range(800):
+                world.tick()
+                sensor_manager.save(scene, i)
+                # sensor_manager.render()
+            
+            data += sensor_manager.data
+            
+            sensor_manager.destroy()
+
+            client.apply_batch([carla.command.DestroyActor(x) for x in world.get_actors()])
+
+            if scene == 139 or scene == 169 or scene == 199:
+                info = {'metadata': metadata, 'data': data}
+                
+                with open(f'/dataset/carla/carla_infos_{split}.json', 'w') as f:
+                    json.dump(info, f, indent=4)
+
+                with open(f'/dataset/carla/carla_infos_{split}.pkl', 'wb') as f:
+                    pickle.dump(info, f, protocol=pickle.HIGHEST_PROTOCOL)
+            
+                data = []
+            
+            time.sleep(1.0)
         
-        client, world, traffic_manager = connect_client(server_port)
-
-        time.sleep(1.0)
-
-        setup_scenario(client, world, traffic_manager)
-
-        sensor_manager = spawn_ego(world, traffic_manager)
-
-        for i in range(100):
-            world.tick()
-            # sensor_manager.save(0, i)
-            sensor_manager.render()
-
-        sensor_manager.destroy()
-        
-        time.sleep(1.0)
-
         kill_all_servers()
     
     except Exception:
@@ -496,119 +577,3 @@ def main():
 if __name__ == '__main__':
 
     main()
-
-
-# class CarlaCore:
-#     """
-#     Class responsible of handling all the different CARLA functionalities, such as server-client connecting,
-#     actor spawning and getting the sensors data.
-#     """
-#     def __init__(self, config={}):
-#         """Initialize the server and client"""
-#         self.client = None
-#         self.world = None
-#         self.map = None
-#         self.hero = None
-#         self.config = join_dicts(BASE_CORE_CONFIG, config)
-#         self.sensor_interface = SensorInterface()
-
-#         self.init_server()
-#         self.connect_client()
-
-#     def reset_hero(self, hero_config):
-#         """This function resets / spawns the hero vehicle and its sensors"""
-
-#         # Part 1: destroy all sensors (if necessary)
-#         self.sensor_interface.destroy()
-
-#         self.world.tick()
-
-#         # Part 2: Spawn the ego vehicle
-#         user_spawn_points = hero_config["spawn_points"]
-#         if user_spawn_points:
-#             spawn_points = []
-#             for transform in user_spawn_points:
-
-#                 transform = [float(x) for x in transform.split(",")]
-#                 if len(transform) == 3:
-#                     location = carla.Location(
-#                         transform[0], transform[1], transform[2]
-#                     )
-#                     waypoint = self.map.get_waypoint(location)
-#                     waypoint = waypoint.previous(random.uniform(0, 5))[0]
-#                     transform = carla.Transform(
-#                         location, waypoint.transform.rotation
-#                     )
-#                 else:
-#                     assert len(transform) == 6
-#                     transform = carla.Transform(
-#                         carla.Location(transform[0], transform[1], transform[2]),
-#                         carla.Rotation(transform[4], transform[5], transform[3])
-#                     )
-#                 spawn_points.append(transform)
-#         else:
-#             spawn_points = self.map.get_spawn_points()
-
-#         self.hero_blueprints = self.world.get_blueprint_library().find(hero_config['blueprint'])
-#         self.hero_blueprints.set_attribute("role_name", "hero")
-
-#         # If already spawned, destroy it
-#         if self.hero is not None:
-#             self.hero.destroy()
-#             self.hero = None
-
-#         random.shuffle(spawn_points, random.random)
-#         for i in range(0,len(spawn_points)):
-#             next_spawn_point = spawn_points[i % len(spawn_points)]
-#             self.hero = self.world.try_spawn_actor(self.hero_blueprints, next_spawn_point)
-#             if self.hero is not None:
-#                 print("Hero spawned!")
-#                 break
-#             else:
-#                 print("Could not spawn hero, changing spawn point")
-
-#         if self.hero is None:
-#             print("We ran out of spawn points")
-#             return
-
-#         self.world.tick()
-
-#         # Part 3: Spawn the new sensors
-#         for name, attributes in hero_config["sensors"].items():
-#             sensor = SensorFactory.spawn(name, attributes, self.sensor_interface, self.hero)
-
-#         # Not needed anymore. This tick will happen when calling CarlaCore.tick()
-#         # self.world.tick()
-
-#         return self.hero
-
-#     def tick(self, control):
-#         """Performs one tick of the simulation, moving all actors, and getting the sensor data"""
-
-#         # Move hero vehicle
-#         if control is not None:
-#             self.apply_hero_control(control)
-
-#         # Tick once the simulation
-#         self.world.tick()
-
-#         # Move the spectator
-#         if self.config["enable_rendering"]:
-#             self.set_spectator_camera_view()
-
-#         # Return the new sensor data
-#         return self.get_sensor_data()
-
-#     def apply_hero_control(self, control):
-#         """Applies the control calcualted at the experiment to the hero"""
-#         self.hero.apply_control(control)
-
-#     def get_sensor_data(self):
-#         """Returns the data sent by the different sensors at this tick"""
-#         sensor_data = self.sensor_interface.get_data()
-#         # print("---------")
-#         # world_frame = self.world.get_snapshot().frame
-#         # print("World frame: {}".format(world_frame))
-#         # for name, data in sensor_data.items():
-#         #     print("{}: {}".format(name, data[0]))
-#         return sensor_data

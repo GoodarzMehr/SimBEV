@@ -236,7 +236,7 @@ class Lidar:
     def _create_visualizer(self, window_name='Lidar Point Cloud', width=1024, height=1024):
         self.visualizer = o3d.visualization.Visualizer()
 
-        self.visualizer.create_window(window_name=window_name, width=width, height=height, left=256, top=256)
+        self.visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
         self.visualizer.get_render_option().point_size = 1.0
         self.visualizer.get_render_option().background_color = [0.05, 0.05, 0.05]
         self.visualizer.get_render_option().show_coordinate_frame = True
