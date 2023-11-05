@@ -517,13 +517,12 @@ def main():
         server_port = init_server()
 
         time.sleep(10.0)
-
+        
         metadata = create_metadata()
 
         data = []
 
         for scene in range(200):
-
             if scene < 140:
                 split = 'train'
             elif scene < 170:
@@ -565,7 +564,7 @@ def main():
             
                 data = []
             
-            time.sleep(1.0)
+            time.sleep(10.0)
         
         kill_all_servers()
     

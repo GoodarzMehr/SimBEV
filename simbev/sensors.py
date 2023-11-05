@@ -162,10 +162,9 @@ class SemanticCamera:
         road_mask = np.logical_or(self.image[:, :, 2] == 128, self.image[:, :, 2] == 157)
         car_mask = self.image[:, :, 0] == 142
         truck_mask = np.logical_and(self.image[:, :, 0] == 70, self.image[:, :, 1] == 0)
-        motorcyle_mask = np.logical_or(self.image[:, :, 2] == 255, self.image[:, :, 0] == 230)
         pedestrian_mask = self.image[:, :, 1] == 20
 
-        ground_truth = np.array([road_mask, car_mask, truck_mask, motorcyle_mask, pedestrian_mask])
+        ground_truth = np.array([road_mask, car_mask, truck_mask, pedestrian_mask])
 
         with open(f'/dataset/carla/ground-truth/SimBEV-scene-{scene}-frame-{frame}-GT.bin', 'wb') as f:
             np.save(f, ground_truth)
