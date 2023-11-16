@@ -84,7 +84,7 @@ RUN set -xue && apt-key del 7fa2af80 \
 && apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
 && apt-get update \
 && apt-get install -y build-essential cmake debhelper git wget xdg-user-dirs xserver-xorg libvulkan1 libsdl2-2.0-0 \
-libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc \
+libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc gdb \
 libglib2.0-0 libgtk2.0-dev libnvidia-gl-470 libnvidia-common-470 libvulkan-dev vulkan-utils python-is-python3
 
 RUN pip install numpy matplotlib opencv-python open3d

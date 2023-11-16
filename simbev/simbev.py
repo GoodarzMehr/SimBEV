@@ -31,7 +31,6 @@ import os
 import time
 import json
 import carla
-import pickle
 import random
 import signal
 import psutil
@@ -47,7 +46,7 @@ from sensor_manager import SensorManager
 BASE_CORE_CONFIG = {
     'map':              'Town06_Opt', # CARLA town name.
     'host':             'localhost',  # Client host.
-    'timeout':          10.0,         # Client timeout.
+    'timeout':          20.0,         # Client timeout.
     'timestep':         0.05,         # Simulation time step.
     'resolution_x':     1920,         # Spectator camera width.
     'resolution_y':     1080,         # Spectator camera height.
@@ -353,9 +352,7 @@ def spawn_npcs(n_vehicles, n_walkers, client, world):
 
     print('Walker controllers spawned.')
 
-    actors = world.get_actors(vehicles_id_list + walkers_id_list + controllers_id_list)
-
-    return actors
+    return vehicles_id_list, walkers_id_list, controllers_id_list
 
 def setup_scenario(client, world, traffic_manager):
     '''
@@ -439,13 +436,17 @@ def setup_scenario(client, world, traffic_manager):
     n_vehicles = random.randint(0, 360)
     n_walkers = random.randint(0, 80)
 
-    actors = spawn_npcs(n_vehicles, n_walkers, client, world)
+    vehicle_ids, walker_ids, controller_ids = spawn_npcs(n_vehicles, n_walkers, client, world)
+
+    actors = world.get_actors()
 
     for actor in actors:
         if isinstance(actor, carla.Vehicle):
             traffic_manager.update_vehicle_lights(actor, True)
 
     print('NPCs spawned.')
+
+    return vehicle_ids, walker_ids, controller_ids
 
 def spawn_ego(world, traffic_manager):
     '''
@@ -510,7 +511,7 @@ def spawn_ego(world, traffic_manager):
     spectator.set_transform(carla.Transform(vehicle.get_transform().location + carla.Location(z=128),
                                             carla.Rotation(pitch=-90)))
     
-    return sensor_manager
+    return sensor_manager, vehicle
 
 def main():
     try:
@@ -522,21 +523,27 @@ def main():
 
         data = []
 
-        for scene in range(200):
-            if scene < 140:
+        client, world, traffic_manager = connect_client(server_port)
+
+        time.sleep(1.0)
+        
+        for scene in range(100):
+            print(f'Scene {scene}...')
+            
+            if scene < 70:
                 split = 'train'
-            elif scene < 170:
+            elif scene < 85:
                 split = 'val'
             else:
                 split = 'test'
 
-            client, world, traffic_manager = connect_client(server_port)
+            vehicle_ids, walker_ids, controller_ids = setup_scenario(client, world, traffic_manager)
 
-            time.sleep(1.0)
+            vehicles = world.get_actors(vehicle_ids)
+            walkers = world.get_actors(walker_ids)
+            controllers = world.get_actors(controller_ids)
 
-            setup_scenario(client, world, traffic_manager)
-
-            sensor_manager = spawn_ego(world, traffic_manager)
+            sensor_manager, vehicle = spawn_ego(world, traffic_manager)
 
             for i in range(100):
                 world.tick()
@@ -549,18 +556,48 @@ def main():
             
             data += sensor_manager.data
             
+            print('Destroying sensor manager...')
+
             sensor_manager.destroy()
 
-            client.apply_batch([carla.command.DestroyActor(x) for x in world.get_actors()])
+            print('Sensor manager destroyed.')
+            
+            print('Destroying vehicle...')
 
-            if scene == 139 or scene == 169 or scene == 199:
+            vehicle.destroy()
+
+            print('Vehicle destroyed.')
+
+            print('Stopping controllers...')
+
+            for controller in controllers:
+                controller.stop()
+
+            print('Controllers stopped.')
+
+            print('Destroying vehicles...')
+            
+            client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
+
+            print('Vehicles destroyed.')
+
+            print('Destroying walkers...')
+
+            client.apply_batch([carla.command.DestroyActor(x) for x in walkers])
+
+            print('Walkers destroyed.')
+
+            print('Destroying controllers...')
+
+            client.apply_batch([carla.command.DestroyActor(x) for x in controllers])
+
+            print('Controllers destroyed.')
+
+            if scene == 69 or scene == 84 or scene == 99:
                 info = {'metadata': metadata, 'data': data}
                 
-                with open(f'/dataset/carla/carla_infos_{split}.json', 'w') as f:
+                with open(f'/dataset/carla/infos/carla_infos_{split}.json', 'w') as f:
                     json.dump(info, f, indent=4)
-
-                with open(f'/dataset/carla/carla_infos_{split}.pkl', 'wb') as f:
-                    pickle.dump(info, f, protocol=pickle.HIGHEST_PROTOCOL)
             
                 data = []
             
