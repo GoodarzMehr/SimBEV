@@ -35,6 +35,7 @@ import random
 import signal
 import psutil
 import logging
+import argparse
 import traceback
 import subprocess
 
@@ -81,6 +82,55 @@ CAM_I = [[953.4029, 0.0, 800.0],
 CAM_NAME = ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
             'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT']
 
+
+argparser = argparse.ArgumentParser(description='SimBEV is a CARLA BEV data collection tool.')
+    
+argparser.add_argument(
+    '--train',
+    type=int,
+    default=70,
+    help='number of training scenes (default: 70)')
+argparser.add_argument(
+    '--val',
+    type=int,
+    default=15,
+    help='number of validation scenes (default: 15)')
+argparser.add_argument(
+    '--test',
+    type=int,
+    default=15,
+    help='number of test scenes (default: 15)')
+argparser.add_argument(
+    '--duration',
+    type=int,
+    default=40,
+    help='duration of each scene in seconds (default: 40)')
+argparser.add_argument(
+    '--duration-offset',
+    type=int,
+    default=5,
+    help='time passed since the start of the simulation in seconds before data is recorded (default: 5)')
+argparser.add_argument(
+    '--path',
+    default='/dataset',
+    help='path for saving the dataset (default: /dataset)')
+argparser.add_argument(
+    '--render',
+    action='store_true',
+    help='render sensor data (default: False)')
+argparser.add_argument(
+    '--save',
+    action='store_true',
+    help='save sensor data')
+argparser.add_argument(
+    '--no-save',
+    dest='save',
+    action='store_false',
+    help='do not save sensor data')
+
+argparser.set_defaults(save=True)
+
+args = argparser.parse_args()
 
 def is_used(port):
     '''
@@ -434,7 +484,7 @@ def setup_scenario(client, world, traffic_manager):
     print('Spawning NPCs...')
 
     n_vehicles = random.randint(0, 360)
-    n_walkers = random.randint(0, 80)
+    n_walkers = random.randint(0, 240)
 
     vehicle_ids, walker_ids, controller_ids = spawn_npcs(n_vehicles, n_walkers, client, world)
 
@@ -526,33 +576,47 @@ def main():
         client, world, traffic_manager = connect_client(server_port)
 
         time.sleep(1.0)
+
+        if args.save:
+            os.makedirs(f'{args.path}/carla/sweeps/LIDAR_TOP', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/sweeps/CAM_FRONT_LEFT', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/sweeps/CAM_FRONT', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/sweeps/CAM_FRONT_RIGHT', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/sweeps/CAM_BACK_LEFT', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/sweeps/CAM_BACK', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/sweeps/CAM_BACK_RIGHT', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/ground-truth', exist_ok=True)
+            os.makedirs(f'{args.path}/carla/infos', exist_ok=True)
         
-        for scene in range(100):
+        for scene in range(args.train + args.val + args.test):
             print(f'Scene {scene}...')
             
-            if scene < 70:
+            if scene < args.train:
                 split = 'train'
-            elif scene < 85:
+            elif scene < args.train + args.val:
                 split = 'val'
             else:
                 split = 'test'
 
+            sensor_manager, vehicle = spawn_ego(world, traffic_manager)
+            
             vehicle_ids, walker_ids, controller_ids = setup_scenario(client, world, traffic_manager)
 
             vehicles = world.get_actors(vehicle_ids)
             walkers = world.get_actors(walker_ids)
             controllers = world.get_actors(controller_ids)
 
-            sensor_manager, vehicle = spawn_ego(world, traffic_manager)
-
-            for i in range(100):
+            for i in range(args.duration_offset * 20):
                 world.tick()
-                # sensor_manager.render()
             
-            for i in range(800):
+            for i in range(args.duration * 20):
                 world.tick()
-                sensor_manager.save(scene, i)
-                # sensor_manager.render()
+
+                if args.save:
+                    sensor_manager.save(args.path, scene, i)
+                
+                if args.render:
+                    sensor_manager.render()
             
             data += sensor_manager.data
             
@@ -593,13 +657,16 @@ def main():
 
             print('Controllers destroyed.')
 
-            if scene == 69 or scene == 84 or scene == 99:
-                info = {'metadata': metadata, 'data': data}
+            if args.save:
+                if scene == (args.train - 1) or \
+                scene == (args.train + args.val - 1) or \
+                scene == (args.train + args.val + args.test - 1):
+                    info = {'metadata': metadata, 'data': data}
+                    
+                    with open(f'{args.path}/carla/infos/carla_infos_{split}.json', 'w') as f:
+                        json.dump(info, f, indent=4)
                 
-                with open(f'/dataset/carla/infos/carla_infos_{split}.json', 'w') as f:
-                    json.dump(info, f, indent=4)
-            
-                data = []
+                    data = []
             
             time.sleep(10.0)
         

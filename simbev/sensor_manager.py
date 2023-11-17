@@ -22,9 +22,10 @@
 
 """
 Sensor manager module that collects data from all of the sensors on a vehicle
-and writes them file.
+and renders them or writes them to file.
 """
 
+import cv2
 import time
 
 from scipy.spatial.transform import Rotation as R
@@ -54,8 +55,7 @@ class CustomTimer:
 
 class SensorManager:
     '''
-    BEV manager class that manages the fusion of camera and lidar data using
-    BEVFusion to create a probabilistic classification map (PCM).
+    Sensor manager class that manages data collection.
 
     Attributes:
         vehicle: SensorManager's vehicle.
@@ -67,9 +67,9 @@ class SensorManager:
         data: information about the saved data.
 
     Methods:
-        add_camera: add RGB camera to the BEV manager.
-        add_lidar: add lidar to the BEV manager.
-        add_semantic_camera: add semantic camera to the BEV manager.
+        add_camera: add RGB camera to the sensor manager.
+        add_lidar: add lidar to the sensor manager.
+        add_semantic_camera: add semantic camera to the sensor manager.
         render: render camera images and lidar point clouds.
         save: save camera images and lidar point clouds.
         destroy: destroy all sensors.
@@ -102,21 +102,21 @@ class SensorManager:
         for camera, window_name in zip(self.camera_list, self.camera_name_list):
             camera.render(window_name)
 
-        for semantic_camera in self.semantic_camera_list:
-            semantic_camera.render()
-
         for lidar in self.lidar_list:
             lidar.render()
-    
-    def save(self, scene, frame):
-        for camera, camera_name in zip(self.camera_list, self.camera_name_list):
-            camera.save(camera_name, scene, frame)
-
-        for lidar in self.lidar_list:
-            lidar.save(scene, frame)
 
         for semantic_camera in self.semantic_camera_list:
-            semantic_camera.save(scene, frame)
+            semantic_camera.render()
+    
+    def save(self, path, scene, frame):
+        for camera, camera_name in zip(self.camera_list, self.camera_name_list):
+            camera.save(camera_name, path, scene, frame)
+
+        for lidar in self.lidar_list:
+            lidar.save(path, scene, frame)
+
+        for semantic_camera in self.semantic_camera_list:
+            semantic_camera.save(path, scene, frame)
 
         scene_data = {}
 
@@ -133,12 +133,12 @@ class SensorManager:
         
         scene_data['timestamp'] = round(self.timer.time() * 10e6)
 
-        scene_data['LIDAR_TOP'] = f'/dataset/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene}-frame-{frame}-LIDAR_TOP.pcd.bin'
+        scene_data['LIDAR_TOP'] = f'{path}/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene}-frame-{frame}-LIDAR_TOP.pcd.bin'
 
         for camera_name in self.camera_name_list:
-            scene_data[camera_name] = f'/dataset/carla/sweeps/{camera_name}/SimBEV-scene-{scene}-frame-{frame}-{camera_name}.jpg'
+            scene_data[camera_name] = f'{path}/carla/sweeps/{camera_name}/SimBEV-scene-{scene}-frame-{frame}-{camera_name}.jpg'
 
-        scene_data['ground_truth'] = f'/dataset/carla/ground-truth/SimBEV-scene-{scene}-frame-{frame}-GT.bin'
+        scene_data['ground_truth'] = f'{path}/carla/ground-truth/SimBEV-scene-{scene}-frame-{frame}-GT.bin'
 
         self.data.append(scene_data)
     
@@ -146,8 +146,10 @@ class SensorManager:
         for camera in self.camera_list:
             camera.destroy()
 
+        for lidar in self.lidar_list:
+            lidar.destroy()
+
         for semantic_camera in self.semantic_camera_list:
             semantic_camera.destroy()
 
-        for lidar in self.lidar_list:
-            lidar.destroy()
+        cv2.destroyAllWindows()
