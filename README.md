@@ -1,5 +1,6 @@
 # SimBEV
 
+![demo](assets/CAM_BACK.gif)
 
 ## About
 
