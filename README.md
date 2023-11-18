@@ -1,6 +1,6 @@
 # SimBEV
 
-![demo](assets/MultiViewSmall.gif)
+![demo](assets/MultiView.gif)
 
 ## About
 
