@@ -4,7 +4,7 @@
 
 ## About
 
-SimBEV a data generation tool that leverages the [CARLA Simulator](https://github.com/carla-simulator/carla) to record multi-view images and point clouds from randomized scenarios that can be used to train and evaluate autonomous vehicle perception algorithms.
+SimBEV is a data generation tool that leverages the [CARLA Simulator](https://github.com/carla-simulator/carla) to record multi-view images and point clouds from randomized scenarios that can be used to train and evaluate autonomous vehicle perception algorithms.
 
 Currently, SimBEV uses the Town06 environment in CARLA. The ego vehicle is equipped with 6 cameras positioned at 0, +-55, +-110, and 180 degree angles (similar to nuScenes) and one 128-beam lidar with a range of 100 meters.
 An overhead camera provides the segmented ground truth.
