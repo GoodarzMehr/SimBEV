@@ -4,15 +4,17 @@
 
 ## About
 
-SimBEV is a data generation tool that leverages the [CARLA Simulator](https://github.com/carla-simulator/carla) to record multi-view images and point clouds from randomized scenarios that can be used to train and evaluate autonomous vehicle perception algorithms, especially [BEVFusion](https://github.com/mit-han-lab/bevfusion). The user can specify the number of training, validation, and testing scenarios, as well as the duration of each scenario.
+SimBEV is a synthetic data generation tool that leverages the [CARLA Simulator](https://github.com/carla-simulator/carla) to record multi-view images and lidar point clouds from randomized scenarios that can be used to train and evaluate autonomous vehicle perception algorithms, in particular [BEVFusion](https://github.com/mit-han-lab/bevfusion). The user can specify the number of training, validation, and testing scenarios, as well as the duration of each scenario.
 
-The ego vehicle is currently equipped with six cameras and one lidar. The cameras are positioned at the $0$, $\pm55$, $\pm110$, and $180$ degree angles, similar to the [nuScenes dataset](https://www.nuscenes.org/). Each camera has a resolution of $1600\times900$ and an $80$-degree field of view, and the images are saved in the `*.jpg` format. The lidar has $128$ beams and a range of $100$ meters, and its data ($x$, $y$, and $z$ coordinates) is saved as a binary file. Finally, an overhead semantic segmentation camera provides the ground truth. It covers a $100\times100$-meter square centered on the ego vehicle with a resolution of $0.5$ meters, outputting a $200\times200$ image. The segmented image is currently converted into a boolean array and saved as a binary file for the following four classes: road, car, truck, and pedestrian.
+The ego vehicle is currently equipped with six cameras and one lidar, all operating at $20$ Hz. The cameras are positioned at the $0$, $\pm55$, $\pm110$, and $180$ degree angles, similar to the [nuScenes dataset](https://www.nuscenes.org/). Each camera has a resolution of $1600\times900$ and an $80$-degree field of view, and the images are saved in the `*.jpg` format. The lidar has $128$ beams and a range of $100$ meters, generating roughly 2.2 million points per second, with the data ($x$, $y$, and $z$ coordinates) saved as a binary file. Finally, an overhead semantic segmentation camera provides the ground truth. It covers a $100\times100$-meter square centered on the ego vehicle with a resolution of $0.5$ meters, outputting a $200\times200$ image. The segmented image is currently converted into a boolean array and saved as a binary file, containing the following four classes: road, car, truck, and pedestrian.
 
 For each scenario, SimBEV randomizes the weather; the starting point of the ego vehicle; the number, color, and starting point of other vehicles in the traffic; the number and starting point of walkers (pedestrians); traffic behavior; and the duration of green lights.
 
 The recorded data is saved into three folders: `sweeps`, which contains the images and point cloud binary files, `ground-truth`, which contains the ground truth binary files, and `infos`, which contains `*.json` files that provide information about the data.
 
-## Installation
+SimBEV is currently limited to CARLA's **Town06** environment.
+
+## Installation on Ubuntu
 
 ### Without Using Docker
 
@@ -26,25 +28,26 @@ pip install -r requirements.txt
 
 1. Install [Docker](https://docs.docker.com/engine/install/) on your system.
 2. Install the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installation-guide). It exposes your Nvidia graphics card to Docker containers.
-3. In the SimBEV directory, run
+3. In the `SimBEV` directory, run
 ```
 docker build --no-cache --rm -t simbev:develop .
 ```
+You may need to replace the parent Docker image (`nvidia/cuda:11.3.1-devel-ubuntu20.04`) and `libnvidia-gl-470` and `libnvidia-common-470` packages with ones that are compatible with your Ubuntu and Nvidia driver version.
 
-The use of the following build arguments is optional:
+The following build arguments are optional:
 * `USER`: default username inside each container, set to `sb` by default.
-* `CARLA_VERSION`: desired version of CARLA, set to `0.9.14` by default.
+* `CARLA_VERSION`: CARLA version, set to `0.9.14` by default.
 
 ## Usage
 
-If you are using Docker, launch a container using
+If you are using Docker, launch a container by running
 ```
 docker run --privileged --gpus all --network=host -e DISPLAY=$DISPLAY
 -v [path/to/SimBEV]/simbev:/home/simbev
 -v [path/to/dataset]/data:/dataset
 --shm-size 32g -it simbev:develop /bin/bash
 ```
-Run
+In the `simbev` directory, run
 ```
 python simbev.py [options]
 ```
@@ -55,10 +58,10 @@ python simbev.py [options]
 * `val`: number of validation scenes (default: $15$)
 * `test`: number of test scenes (default: $15$)
 * `duration`: duration of data recording in each scene in seconds (default: $40$)
-* `duration-offset`: time passed since the start of the simulation in seconds before data is recorded (default: $5$)
+* `duration-offset`: time passed in seconds since the start of the simulation before data is recorded (default: $5$)
 * `path`: path for saving the dataset (default: `/dataset`)
 * `render`: also render sensor data
-* `no-save`: do not save sensor data
+* `no-save`: refrain from saving sensor data
 
 ## Examples
 
