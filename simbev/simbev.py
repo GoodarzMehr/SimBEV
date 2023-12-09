@@ -625,32 +625,27 @@ def main():
             sensor_manager.destroy()
 
             print('Sensor manager destroyed.')
-            
             print('Destroying vehicle...')
 
             vehicle.destroy()
 
             print('Vehicle destroyed.')
-
             print('Stopping controllers...')
 
             for controller in controllers:
                 controller.stop()
 
             print('Controllers stopped.')
-
             print('Destroying vehicles...')
             
             client.apply_batch([carla.command.DestroyActor(x) for x in vehicles])
 
             print('Vehicles destroyed.')
-
             print('Destroying walkers...')
 
             client.apply_batch([carla.command.DestroyActor(x) for x in walkers])
 
             print('Walkers destroyed.')
-
             print('Destroying controllers...')
 
             client.apply_batch([carla.command.DestroyActor(x) for x in controllers])

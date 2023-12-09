@@ -57,8 +57,8 @@
 # -v [path/to/dataset]/data:/dataset
 # --shm-size 32g -it simbev:develop /bin/bash
 #
-# Use "nvidia-smi" and "nvcc --version" to ensure your graphics card and CUDA
-# are both visible inside the container.
+# Use "nvidia-smi" to ensure your graphics card is visible inside the
+# container.
 
 FROM nvidia/cuda:11.3.1-devel-ubuntu20.04
 
@@ -87,7 +87,7 @@ RUN set -xue && apt-key del 7fa2af80 \
 libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc gdb \
 libglib2.0-0 libgtk2.0-dev libnvidia-gl-470 libnvidia-common-470 libvulkan-dev vulkan-utils python-is-python3
 
-RUN pip install numpy matplotlib opencv-python open3d
+RUN pip install --no-cache-dir numpy matplotlib opencv-python open3d
 
 COPY --chown=${USER}:${USER} carla ${CARLA_ROOT}
 

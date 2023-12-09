@@ -133,12 +133,12 @@ class SensorManager:
         
         scene_data['timestamp'] = round(self.timer.time() * 10e6)
 
-        scene_data['LIDAR_TOP'] = f'{path}/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene}-frame-{frame}-LIDAR_TOP.pcd.bin'
+        scene_data['LIDAR_TOP'] = f'{path}/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene:03d}-frame-{frame:03d}-LIDAR_TOP.pcd.bin'
 
         for camera_name in self.camera_name_list:
-            scene_data[camera_name] = f'{path}/carla/sweeps/{camera_name}/SimBEV-scene-{scene}-frame-{frame}-{camera_name}.jpg'
+            scene_data[camera_name] = f'{path}/carla/sweeps/{camera_name}/SimBEV-scene-{scene:03d}-frame-{frame:03d}-{camera_name}.jpg'
 
-        scene_data['ground_truth'] = f'{path}/carla/ground-truth/SimBEV-scene-{scene}-frame-{frame}-GT.bin'
+        scene_data['ground_truth'] = f'{path}/carla/ground-truth/SimBEV-scene-{scene:03d}-frame-{frame:03d}-GT.bin'
 
         self.data.append(scene_data)
     

@@ -94,7 +94,7 @@ class RGBCamera:
         cv2.waitKey(1)
 
     def save(self, camera_name, path, scene, frame):
-        cv2.imwrite(f'{path}/carla/sweeps/{camera_name}/SimBEV-scene-{scene}-frame-{frame}-{camera_name}.jpg',
+        cv2.imwrite(f'{path}/carla/sweeps/{camera_name}/SimBEV-scene-{scene:03d}-frame-{frame:03d}-{camera_name}.jpg',
                     self.image)
     
     def destroy(self):
@@ -166,7 +166,7 @@ class SemanticCamera:
 
         ground_truth = np.array([road_mask, car_mask, truck_mask, pedestrian_mask])
 
-        with open(f'{path}/carla/ground-truth/SimBEV-scene-{scene}-frame-{frame}-GT.bin', 'wb') as f:
+        with open(f'{path}/carla/ground-truth/SimBEV-scene-{scene:03d}-frame-{frame:03d}-GT.bin', 'wb') as f:
             np.save(f, ground_truth)
     
     def destroy(self):
@@ -269,7 +269,7 @@ class Lidar:
         time.sleep(0.005)
     
     def save(self, path, scene, frame):
-        with open(f'{path}/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene}-frame-{frame}-LIDAR_TOP.pcd.bin', 'wb') as f:
+        with open(f'{path}/carla/sweeps/LIDAR_TOP/SimBEV-scene-{scene:03d}-frame-{frame:03d}-LIDAR_TOP.pcd.bin', 'wb') as f:
             np.save(f, self.points)
     
     def destroy(self):
