@@ -1,0 +1,396 @@
+########## Dataset Settings ##########
+
+mode: 'create' # can be 'create' or 'replace'
+
+# When mode is 'create' the following settings denote the number of scenes
+# that should be generated for each set and for each map.
+
+train_scene_config:
+  Town01: 2
+  Town02: 2
+  Town03: 2
+  Town04: 2
+  Town05: 2
+  Town06: 2
+  Town07: 2
+  Town10HD: 2
+  Town12: 2
+  Town13: 2
+  Town15: 2
+
+val_scene_config:
+  Town01: 1
+  Town02: 1
+  Town03: 1
+  Town04: 1
+  Town05: 1
+  Town06: 1
+  Town07: 1
+  Town10HD: 1
+  Town12: 1
+  Town13: 1
+  Town15: 1
+
+
+test_scene_config:
+  Town01: 1
+  Town02: 1
+  Town03: 1
+  Town04: 1
+  Town05: 1
+  Town06: 1
+  Town07: 1
+  Town10HD: 1
+  Town12: 1
+  Town13: 1
+  Town15: 1
+
+
+# When mode is 'replace' the following setting denotes the list of scenes that
+# should be overwritten.
+scene_config: []
+
+########## Simulation Settings ##########
+
+# The following settings determine what vehicle to use as the ego vehicle and
+# its color.
+vehicle: 'mustang_2016' # any vehicle within the CARLA library, preferably a
+                        # sedan as others may interfere with data collection
+                        # and require moving the sensors
+vehicle_color: '0,0,0' # color in 'R,G,B' format, values between 0 and 255
+
+# The following settings determine whether to simulate physics for vehicles
+# and whether to show debug telemetry on the spectator view.
+simulate_physics: True
+show_debug_telemetry: False
+
+# Because all vehicles and pedestrians are spawned in a stationary state, for
+# each scene the simulation is first run for a certain number of seconds for
+# everyone to get up to speed and then data is collected and saved for the
+# rest of the scene.
+warmup_duration: 4 # warmup duration in seconds
+scene_duration: 16 # data collection duration in seconds
+
+# Basic CARLA settings.
+host: 'localhost' # IP address of the CARLA server
+timeout: 80.0 # timeout in seconds, it is large to accomodate loading the
+              # large maps (Town12 and Town13).
+timestep: 0.05 # simulation time step in seconds
+show_display: True # whether to show the spectator view
+resolution_x: 1920 # spectator view width
+resolution_y: 1080 # spectator view height
+quality_level: 'Epic' # graphics quality level of the simulation, can be
+                      # 'Low', 'Medium', and 'Epic'
+retries_on_error: 10 # number of retries for the client to connect to the
+                     # server in case of an error
+
+# The following settings are used in large maps (Town12 and Town13) to manage
+# the environment efficiently.
+tile_stream_distance: 800.0 # configures the maximum distance from the ego
+                            # vehicle to stream tiled maps; regions of the map
+                            # within this range will be visible (and capable
+                            # of simulating physics); regions outside this
+                            # range will not be loaded
+actor_active_distance: 800.0 # configures the maximum distance from the ego
+                             # vehicle to convert actors to dormant; actors
+                             # within this range will be active, and actors
+                             # outside it will become dormant
+
+# The following settings are used to control how waypoints are generated and
+# filtered to create the road ground truth efficiently.
+waypoint_distance: 0.4 # distance between waypoints generated from the
+                       # OpenDRIVE map in meters; A good rule of thumb is to
+                       # set this to the same value as bev_res
+waypoint_area_radius: 800.0 # For improved performance, especially in large
+                            # maps, at the start of each scene only waypoints
+                            # within this radius of the ego vehicle are kept
+                            # and the rest are discarded; a good rule of thumb
+                            # is to set this value to
+                            # 40 * (warmup_duration + scene_duration);
+                            # essentially the farthest distance the ego
+                            # vehicle can theoretically travel in the scene at
+                            # 40 m/s
+nearby_waypoint_area_radius: 120.0 # Of the remaining waypoints, every 0.5
+                                   # simulation seconds waypoints within this
+                                   # radius of the ego vehicle are selected to
+                                   # calculate the road ground truth; a good
+                                   # rule of thumb is to set this value to
+                                   # around 20 + (bev_dim * bev_res) / sqrt(2)
+
+# The following setting controls the distance between waypoints generated
+# from the OpenDRIVE map and used as spawn points for vehicles, instead of the
+# default spawn points.
+spawn_point_separation_distance: 24.0 # distance in meters
+
+# The following setting controls the radius around the ego vehicle within
+# which object bounding boxes are collected.
+bbox_collection_radius: 120.0 # radius in meters
+
+# The following setting controls the radius around the ego vehicle within
+# which other vehicles and pedestrians are spawned. This should not be bigger
+# than the smaller of tile_stream_distance and actor_active_distance;
+# otherwise CARLA can segfault. A good rule of thumb is to set this value to
+# around half of waypoint_area_radius.
+npc_spawn_radius: 400.0 # radius in meters
+
+# The following settings control the size and resolution of the bird's-eye
+# view (BEV) image.
+bev_dim: 360 # height and width of the BEV image in pixels
+bev_res: 0.4 # resolution of the BEV image in meters per pixel
+
+# The following settings control the percentage (0 to 100) chance of vehicles
+# ignoring traffic lights, signs, other vehicles, and pedestrians at each time
+# step.
+ignore_lights_percentage: 0.1
+ignore_signs_percentage: 0.1
+ignore_vehicles_percentage: 0.1
+ignore_walkers_percentage: 0.1
+
+# The following setting controls the percentage (0 to 100) chance of some or
+# all doors of a stopped vehicle (e.g. at a traffic light) opening. It only
+# applies to supported vehicles (ones with articulated doors), and all doors
+# are closed when the vehicle starts moving again.
+door_open_percentage: 10.0
+
+# The following setting controls the percentage (0 to 100) chance of an
+# emergency vehicle (police, ambulance, fire truck) having its lights on.
+emergency_lights_percentage: 50.0
+
+# The following settings control whether, and the percentage (0 to 100) chance
+# of, the ego vehicle driving recklessly, completely ignoring traffic lights,
+# signs, other vehicles, and pedestrians.
+reckless_ego: True
+reckless_ego_percentage: 1.0
+
+# The following settings control whether, and the percentage (0 to 100) chance
+# of, other vehicles driving recklessly, completely ignoring traffic lights,
+# signs, other vehicles, and pedestrians.
+reckless_npc: True
+reckless_npc_percentage: 1.0
+
+# The following setting controls the number of attempts to spawn a pedestrian.
+walker_spawn_attempts: 100
+
+# The following setting controls the minimum speed of a pedestrian.
+walker_speed_min: 0.8 # speed in meters per second
+
+# The following setting controls whether to randomize the color of building
+# lights. Does not work in Town12, Town13, or Town15.
+random_building_light_colors: True
+
+# The following settings control whether to randomly add to or subtract a
+# constant value from the intensity of all street lights, and the minimum
+# intensity of each street light.
+change_street_light_intensity: True
+min_street_light_intensity: 10000 # intensity in lumens
+
+# The following settings control whether, and the percentage (0 to 100) chance
+# of, a street light being turned off.
+random_street_light_failure: True
+street_light_failure_percentage: 10.0
+
+# The following settings control whether to turn off all building and street
+# lights.
+turn_off_building_lights: False
+turn_off_street_lights: False
+
+# The following setting controls whether to use our custom palette or the
+# Cityscapes palette for visualizing the BEV ground truth.
+use_cityscapes_palette: False
+
+########## Sensor Settings ##########
+
+# Sensor properties supported by CARLA but not included here can be added
+# to the properties of the respective sensor as well.
+
+camera_width: 1600 # image width in pixels
+camera_height: 900 # image height in pixels
+camera_fov: '80' # camera field of view in degrees
+
+# The following settings control whether to use RGB cameras, and if so, the
+# properties of the cameras.
+use_rgb_camera: True
+
+rgb_camera_properties:
+  fstop: '1.8'
+
+# The following settings control whether to use semantic segmentation cameras,
+# and if so, the properties of the cameras.
+use_semantic_camera: True
+
+semantic_camera_properties:
+  {}
+
+# The following settings control whether to use instance segmentation cameras,
+# and if so, the properties of the cameras.
+use_instance_camera: True
+
+instance_camera_properties:
+  {}
+
+# The following settings control whether to use depth cameras, and if so, the
+# properties of the cameras.
+use_depth_camera: True
+
+depth_camera_properties:
+  {}
+
+# The following settings control whether to use optical flow cameras, and if
+# so, the properties of the cameras.
+use_flow_camera: True
+
+flow_camera_properties:
+  {}
+
+# The following settings control whether to use lidar, and if so, the number
+# of channels, range, and properties of the lidar.
+use_lidar: True
+
+lidar_channels: 128 # number of channels (vertical beams)
+lidar_range: 120.0 # range in meters
+lidar_properties:
+  rotation_frequency: '20.0' # rotation frequency in Hz
+  points_per_second: '5242880'
+  upper_fov: '10.67' # upper field of view angle in degrees
+  lower_fov: '-30.67' # lower field of view angle in degrees
+  dropoff_general_rate: '0.14' # proportion of points that are randomly
+                               # dropped
+  noise_stddev: '0.01' # standard deviation of the noise model for disturbing
+                       # each point along the vector of its ray in meters
+
+# The following settings control whether to use semantic lidar, and if so, the
+# number of channels, range, and properties of the semantic lidar.
+use_semantic_lidar: True
+
+semantic_lidar_channels: 128 # number of channels (vertical beams)
+semantic_lidar_range: 120.0 # range in meters
+semantic_lidar_properties:
+  rotation_frequency: '20.0' # rotation frequency in Hz
+  points_per_second: '5242880'
+  upper_fov: '10.67' # upper field of view angle in degrees
+  lower_fov: '-30.67' # lower field of view angle in degrees
+
+# The following settings control whether to use radars, and if so, the range,
+# field of view (FoV), and properties of the radars.
+use_radar: True
+
+radar_range: 120.0 # range in meters
+radar_horizontal_fov: 100.0 # horizontal field of view in degrees
+radar_vertical_fov: 12 # vertical field of view in degrees
+radar_properties:
+  points_per_second: '40000'
+
+# The following settings control whether to use GNSS, and if so, the
+# properties of the GNSS sensor.
+use_gnss: True
+
+gnss_properties:
+  noise_seed: '27'
+  noise_alt_stddev: '0.04' # standard deviation of the altitude noise model in
+                           # meters
+  noise_lat_stddev: '0.0000004' # standard deviation of the latitude noise
+                                # model in degrees
+  noise_lon_stddev: '0.0000004' # standard deviation of the longitude noise
+                                # model in degrees
+
+# The following settings control whether to use IMU, and if so, the properties
+# of the IMU sensor.
+use_imu: True
+
+imu_properties:
+  noise_seed: '27'
+  noise_accel_stddev_x: '0.00017' # standard deviation of the accelerometer
+                                  # noise model in m/s^2
+  noise_accel_stddev_y: '0.00017' # standard deviation of the accelerometer
+                                  # noise model in m/s^2
+  noise_accel_stddev_z: '0.00017' # standard deviation of the accelerometer
+                                  # noise model in m/s^2
+  noise_gyro_bias_x: '0.00017' # bias of the gyroscope noise model in rad/s
+  noise_gyro_bias_y: '0.00017' # bias of the gyroscope noise model in rad/s
+  noise_gyro_bias_z: '0.00017' # bias of the gyroscope noise model in rad/s
+  noise_gyro_stddev_x: '0.0000056' # standard deviation of the gyroscope noise
+                                   # model in rad/s
+  noise_gyro_stddev_y: '0.0000056' # standard deviation of the gyroscope noise
+                                   # model in rad/s
+  noise_gyro_stddev_z: '0.0000056' # standard deviation of the gyroscope noise
+                                   # model in rad/s
+
+########## Optional Settings ##########
+
+# The following setting controls the change in street light intensity. For it
+# to take effect, change_street_light_intensity must be set to True. If it is
+# not provided the change in street light intensity is chosen randomly for
+# each scene.
+# street_light_intensity_change: 200000.0 # intensity in lumens
+
+# The following settings control the number of vehicles and pedestrians that
+# are spawned in each scene. If these are not provided, the number of vehicles
+# and pedestrians are chosen randomly for each scene.
+# n_vehicles: 100
+# n_walkers: 100
+
+# The following setting controls the portion of pedestrians that may walk on
+# the road in places other than a crosswalk. If it is not provided, it is
+# chosen randomly for each scene.
+# walker_cross_factor: 0.6
+
+# The following settings control traffic behavior. If any of these are not
+# provided, they are chosen randomly for each scene.
+# speed_difference: -10.0 # the percentage difference between the vehicles'
+#                         # intended speeds and the speed limit; negative
+#                         # values indicate speeds higher than the speed limit
+# distance_to_leading: 4.0 # minimum distance each vehicle has to maintain
+#                          # with the vehicle in front of it in meters
+# green_time: 12.0 # duration of the green light in seconds
+
+# The following settings control the weather. Any subset of these settings can
+# be provided, and the ones not provided are chosen randomly for each scene.
+# Other weather parameters supported by CARLA can be used as well.
+# weather:
+#   cloudiness: 10.0 # cloud cover, values range from 0 (clear sky) to 100
+#   precipitation: 0.0 # rain intensity, values range from 0 (no rain) to 100
+#   precipitation_deposits: 10.0 # amount of water on the ground, values range
+#                                # from 0 (dry road) to 100 (covered in water)
+#   wind_intensity: 10.0 # intensity of the wind, values range from 0 (no
+#                        # wind) to 100
+#   sun_azimuth_angle: 300.0 # azimuth angle of the sun in degrees, values
+#                            # range from 0 to 360
+#   sun_altitude_angle: 20.0 # altitude angle of the sun in degrees, values
+#                            # range from -90 to 90
+#   wetness: 0.0 # intensity of camera wetness, values range from 0 (dry
+#                # camera) to 100
+#   fog_density: 2.0 # fog concentration or thickness, values range from 0 (no
+#                    # fog) to 100
+#   fog_distance: 0.75 # distance at which the fog starts, values greater than
+#                      # 0
+#   fog_falloff: 0.1 # heaviness (specific mass) of the fog, values greater
+#                    # than 0; at 0 it is lighter than air, at 1 it has about
+#                    # the same heaviness as air, at 5 it is so heavy that it
+#                    # is compressed to the ground
+
+# The following setting provides a list of spawn point(s) for the ego vehicle
+# for each map. Each spawn point is in the format of
+# [[x, y, z], [roll, pitch, yaw]] (in CARLA's left-handed coordinate system).
+# For the maps where the spawn point(s) are provided, for each scene one of
+# the spawn points is chosen randomly. For the maps that are not provided, the
+# spawn points are chosen entirely randomly.
+# ego_vehicle_spawn_point:
+#   Town04: [
+#     [[185.2, 204.1, 0.3], [0.0, 0.0, -20.0]],
+#     [[198.3, 195.9, 0.3], [0.0, 0.0, -20.0]],
+#     [[112.8, 38.2, 11.1], [0.0, 0.0, 0.0]]
+#   ]
+#   Town10HD: [
+#     [[-17.1, 13.2, 0.6], [0.0, 0.0, 180.0]],
+#     [[-64.6, 24.4, 0.6], [0.0, 0.0, 0.0]],
+#     [[-52.3, -28.9, 0.6], [0.0, 0.0, 90.0]],
+#     [[-48.6, 60.6, 0.6], [0.0, 0.0, 90.0]],
+#     [[40.4, 41.9, 0.6], [0.0, 0.0, 90.0]],
+#     [[27.1, 66.3, 0.6], [0.0, 0.0, 180.0]],
+#     [[-54.3, 137.1, 0.6], [0.0, 0.0, 0.0]],
+#     [[106.0, 50.9, 0.6], [0.0, 0.0, -90.0]],
+#     [[57.6, -67.8, 0.6], [0.0, 0.0, 180.0]],
+#     [[-27.8, -61.2, 0.6], [0.0, 0.0, 0.0]],
+#     [[-110.2, -9.8, 0.6], [0.0, 0.0, 90.0]],
+#     [[-87.6, 13.0, 0.6], [0.0, 0.0, 180.0]]
+#   ]

@@ -1,0 +1,239 @@
+mode: 'create' # can be 'create' or 'replace'
+
+# When mode is 'create' the following configurations denote the number of
+# scenes that should be generated for each map.
+
+train_scene_config:
+  Town01: 8
+  Town02: 8
+  Town03: 20
+  Town04: 20
+  Town05: 20
+  Town06: 20
+  Town07: 20
+  Town10HD: 20
+  Town12: 48
+  Town15: 36
+
+val_scene_config:
+  Town01: 2
+  Town02: 2
+  Town03: 4
+  Town04: 4
+  Town05: 4
+  Town06: 4
+  Town07: 4
+  Town10HD: 4
+  Town12: 8
+  Town13: 8
+  Town15: 6
+
+test_scene_config:
+  Town01: 2
+  Town02: 2
+  Town03: 4
+  Town04: 4
+  Town05: 4
+  Town06: 4
+  Town07: 4
+  Town10HD: 4
+  Town12: 8
+  Town13: 8
+  Town15: 6
+
+# When mode is 'replace' the following configuration denotes the list of
+# scenes that should be overwritten.
+scene_config: []
+
+vehicle: 'mustang_2016'
+vehicle_color: '0,0,0'
+
+show_debug_telemetry: False
+simulate_physics: True
+
+warmup_duration: 4
+scene_duration: 16
+
+host: 'localhost'
+timeout: 80.0
+timestep: 0.05
+resolution_x: 1920
+resolution_y: 1080
+show_display: True
+quality_level: 'Epic'
+retries_on_error: 10
+
+tile_stream_distance: 800.0
+actor_active_distance: 800.0
+
+waypoint_distance: 0.4
+waypoint_area_radius: 800.0
+nearby_waypoint_area_radius: 120.0
+
+spawn_point_separation_distance: 24.0
+
+bbox_collection_radius: 120.0
+
+npc_spawn_radius: 400.0
+
+bev_dim: 360
+bev_res: 0.4
+
+ignore_lights_percentage: 0.1
+ignore_signs_percentage: 0.1
+ignore_vehicles_percentage: 0.1
+ignore_walkers_percentage: 0.1
+
+door_open_percentage: 10.0
+
+emergency_lights_percentage: 50.0
+
+reckless_ego: True
+reckless_ego_percentage: 1.0
+
+reckless_npc: True
+reckless_npc_percentage: 1.0
+
+walker_spawn_attempts: 100
+
+walker_speed_min: 0.8
+
+random_building_light_colors: True
+
+change_street_light_intensity: True
+min_street_light_intensity: 10000
+
+random_street_light_failure: True
+street_light_failure_percentage: 10.0
+
+turn_off_building_lights: False
+turn_off_street_lights: False
+
+use_cityscapes_palette: False
+
+camera_width: 1600
+camera_height: 900
+camera_fov: '80'
+
+use_rgb_camera: True
+
+rgb_camera_properties:
+  fstop: '1.8'
+
+use_semantic_camera: True
+
+semantic_camera_properties:
+
+
+use_instance_camera: True
+
+instance_camera_properties:
+
+
+use_depth_camera: True
+
+depth_camera_properties:
+
+
+use_flow_camera: True
+
+flow_camera_properties:
+
+
+use_lidar: True
+
+lidar_channels: 128
+lidar_range: 120.0
+lidar_properties:
+  rotation_frequency: '20.0'
+  points_per_second: '5242880'
+  upper_fov: '10.67'
+  lower_fov: '-30.67'
+  dropoff_general_rate: '0.14'
+  noise_stddev: '0.01'
+
+use_semantic_lidar: True
+
+semantic_lidar_channels: 128
+semantic_lidar_range: 120.0
+semantic_lidar_properties:
+  rotation_frequency: '20.0'
+  points_per_second: '5242880'
+  upper_fov: '10.67'
+  lower_fov: '-30.67'
+
+use_radar: True
+
+radar_range: 120.0
+radar_horizontal_fov: 100.0
+radar_vertical_fov: 12.0
+radar_properties:
+  points_per_second: '40000'
+
+use_gnss: True
+
+gnss_properties:
+  noise_seed: '27'
+  noise_alt_stddev: '0.04'
+  noise_lat_stddev: '0.0000004'
+  noise_lon_stddev: '0.0000004'
+
+use_imu: True
+
+imu_properties:
+  noise_seed: '27'
+  noise_accel_stddev_x: '0.00017'
+  noise_accel_stddev_y: '0.00017'
+  noise_accel_stddev_z: '0.00017'
+  noise_gyro_bias_x: '0.00017'
+  noise_gyro_bias_y: '0.00017'
+  noise_gyro_bias_z: '0.00017'
+  noise_gyro_stddev_x: '0.0000056'
+  noise_gyro_stddev_y: '0.0000056'
+  noise_gyro_stddev_z: '0.0000056'
+
+########## Optional Settings ##########
+
+# street_light_intensity_change: 200000.0
+
+# n_vehicles: 100
+# n_walkers: 100
+
+# walker_cross_factor: 0.6
+
+# speed_difference: -10.0
+# distance_to_leading: 4.0
+# green_time: 12.0
+
+# weather:
+#   cloudiness: 10.0
+#   precipitation: 0.0
+#   precipitation_deposits: 10.0
+#   wind_intensity: 10.0
+#   sun_azimuth_angle: 300.0
+#   sun_altitude_angle: 20.0
+#   wetness: 0.0
+#   fog_density: 2.0
+#   fog_distance: 0.75
+#   fog_falloff: 0.1
+
+# ego_vehicle_spawn_point:
+#   Town04: [
+#     [[185.2, 204.1, 0.3], [0.0, 0.0, -20.0]],
+#     [[198.3, 195.9, 0.3], [0.0, 0.0, -20.0]],
+#     [[112.8, 38.2, 11.1], [0.0, 0.0, 0.0]]
+#   ]
+#   Town10HD: [
+#     [[-17.1, 13.2, 0.6], [0.0, 0.0, 180.0]],
+#     [[-64.6, 24.4, 0.6], [0.0, 0.0, 0.0]],
+#     [[-52.3, -28.9, 0.6], [0.0, 0.0, 90.0]],
+#     [[-48.6, 60.6, 0.6], [0.0, 0.0, 90.0]],
+#     [[40.4, 41.9, 0.6], [0.0, 0.0, 90.0]],
+#     [[27.1, 66.3, 0.6], [0.0, 0.0, 180.0]],
+#     [[-54.3, 137.1, 0.6], [0.0, 0.0, 0.0]],
+#     [[106.0, 50.9, 0.6], [0.0, 0.0, -90.0]],
+#     [[57.6, -67.8, 0.6], [0.0, 0.0, 180.0]],
+#     [[-27.8, -61.2, 0.6], [0.0, 0.0, 0.0]],
+#     [[-110.2, -9.8, 0.6], [0.0, 0.0, 90.0]],
+#     [[-87.6, 13.0, 0.6], [0.0, 0.0, 180.0]]
+#   ]
