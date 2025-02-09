@@ -8,6 +8,8 @@
 
 ## News
 
+**[2025/2/9]** Added reference to [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) using the SimBEV dataset.
+
 **[2025/2/6]** Initial release of dataset, code, and paper.
 
 ## About
@@ -230,6 +232,16 @@ For instance, using
 python visualization.py rgb depth lidar3d semantic-lidar radar-with-bbox --scene 0 12 27 --frame 3 30 300
 ```
 visualizes RGB images with 3D object bounding boxes overlaid, depth images, lidar point clouds from a 3D perspective view, semantic lidar point clouds from a top-down view, and radar point clouds from a top-down view with 3D object bounding boxes overlaid for frames 3, 30, and 300 of scenes 0, 12, and 27.
+
+</details>
+
+<details>
+<summary>
+<h3>Using the SimBEV Dataset</h3>
+</summary>
+
+Consult [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) (or the [simbev_dataset](datasets/simbev_dataset.py) file) on how to use the SimBEV dataset.
+
 </details>
 
 ## Data Format
