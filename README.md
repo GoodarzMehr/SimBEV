@@ -26,25 +26,6 @@ SimBEV currently supports five camera types (RGB, semantic segmentation, instanc
 
 The SimBEV dataset is a collection of 320 scenes spread across 11 CARLA maps and contains data from all supported sensors. With each scene lasting 16 seconds at a frame rate of 20 Hz, the SimBEV dataset contains 102,400 annotated frames, 8,315,935 3D object bounding boxes (3,792,499 of which are _valid_ (i.e. have at least one lidar or radar point inside)), and 2,793,491,357 BEV ground truth labels.
 
-SimBEV works best with our modified version of CARLA 0.9.15 that has an enhanced content library. Some of the enhancements are:
-* We added three new sports cars to CARLA's vehicle library using existing 3D models: sixth generation Ford Mustang, Toyota GR Supra, and Bugatti Chiron. The Ford Mustang is SimBEV's default vehicle for collecting data.
-
-https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
-
-* We added lights (headlights, taillights, blinkers, etc.) to those older vehicle models in CARLA's library that lacked them, and redesigned existing vehicle lights in Blender using a new multi-layer approach that better visualizes modern multi-purpose lights.
-
-![mustang-lights](assets/MustangLights.png)
-
-* We added a set of 160 standard paint colors for most vehicle models (apart from a few like the firetruck) to choose from, and fixed paint color randomization issues for a few vehicles (e.g. the bus).
-* We updated the vehicle dynamics parameters of vehicle models to better match their vehicle's behavior and performance in the real world.
-* We added or updated pedestrian navigation information for CARLA's Town12, Town13, and Town15 maps.
-* We updated motorcycle and bicycle models to select their driver model randomly, instead of always sticking with the same model.
-* We added lights to buildings in Town12 and fixed issues that prevented full control over building/street lights in Town12 and Town15.
-
-SimBEV is compatible with the standard version of CARLA 0.9.15, but some features may not work properly.
-
-**We have not tested SimBEV with CARLA 0.10.0 and advise against using it with SimBEV. While CARLA 0.10.0 offers superior graphics, it lacks some features from CARLA 0.9.15 that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with CARLA 0.9.15.**
-
 ## Installation
 
 <details>
@@ -65,6 +46,25 @@ To run SimBEV, your system must satisfy CARLA 0.9.15's [minimum system requireme
 <summary>
 <h3>CARLA</h3>
 </summary>
+
+SimBEV works best with our modified version of CARLA 0.9.15 that has an enhanced content library. Some of the enhancements are:
+* We added three new sports cars to CARLA's vehicle library using existing 3D models: sixth generation Ford Mustang, Toyota GR Supra, and Bugatti Chiron. The Ford Mustang is SimBEV's default vehicle for collecting data.
+
+https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
+
+* We added lights (headlights, taillights, blinkers, etc.) to those older vehicle models in CARLA's library that lacked them, and redesigned existing vehicle lights in Blender using a new multi-layer approach that better visualizes modern multi-purpose lights.
+
+![mustang-lights](assets/MustangLights.png)
+
+* We added a set of 160 standard paint colors for most vehicle models (apart from a few like the firetruck) to choose from, and fixed paint color randomization issues for a few vehicles (e.g. the bus).
+* We updated the vehicle dynamics parameters of vehicle models to better match their vehicle's behavior and performance in the real world.
+* We added or updated pedestrian navigation information for CARLA's Town12, Town13, and Town15 maps.
+* We updated motorcycle and bicycle models to select their driver model randomly, instead of always sticking with the same model.
+* We added lights to buildings in Town12 and fixed issues that prevented full control over building/street lights in Town12 and Town15.
+
+SimBEV is compatible with the standard version of CARLA 0.9.15, but some features may not work properly.
+
+**We have not tested SimBEV with CARLA 0.10.0 and advise against using it with SimBEV. While CARLA 0.10.0 offers superior graphics, it lacks some features from CARLA 0.9.15 that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with CARLA 0.9.15.**
 
 1. Download [CARLA 0.9.15 for Ubuntu](https://github.com/carla-simulator/carla/releases/tag/0.9.15) to your desired directory and unzip it.
 2. Download our [enhanced content library](https://drive.google.com/file/d/16y3nM27-c1z-_up1T3Qreyw6yr49Q3Qt/view) and unzip it. In your CARLA directory, under `CarlaUE4`, rename the `Content` folder to `Content.bak` to have a backup of the original CARLA content library. Copy the downloaded `Content` folder to the `CarlaUE4` directory.
