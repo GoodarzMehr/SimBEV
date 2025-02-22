@@ -419,11 +419,11 @@ Contains collected sensor data for each frame, with the files using the `{sensor
 
 ### 3D Object Detection
 
-| Model     |   Modality | AP (%) | ATE (m) | AOE (rad) |   ASE | AVE (m/s) |     |
-| :-------: | :--------: | :----: | :-----: | :-------: | :---: | :-------: | :-: |
-| BEVFusion |          C |   19.5 |   0.850 |      1.48 | 0.146 |      4.87 | [Checkpoint](https://drive.google.com/file/d/1y5iN_6XNDjGVVHjgDSQ14yPWW6NXRK29/view?usp=sharing) |
-| BEVFusion |          L |   45.9 |   0.179 |     0.167 | 0.143 |      1.63 | [Checkpoint](https://drive.google.com/file/d/1XJz-adjQW4VhBKlZ5pBEWsXxcOwKJuT-/view?usp=sharing) |
-| BEVFusion |        C+L |   46.0 |   0.170 |     0.153 | 0.134 |      1.48 | [Checkpoint](https://drive.google.com/file/d/14_ld7qbDlrWs7HeYVhJn3i_fjBPRy2CV/view?usp=sharing)
+| Model     |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) |     |
+| :-------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-: |
+| BEVFusion |          C |    19.5 |    0.850 |       1.48 | 0.146 |       4.87 | [Checkpoint](https://drive.google.com/file/d/1y5iN_6XNDjGVVHjgDSQ14yPWW6NXRK29/view?usp=sharing) |
+| BEVFusion |          L |    45.9 |    0.179 |      0.167 | 0.143 |       1.63 | [Checkpoint](https://drive.google.com/file/d/1XJz-adjQW4VhBKlZ5pBEWsXxcOwKJuT-/view?usp=sharing) |
+| BEVFusion |        C+L |    46.0 |    0.170 |      0.153 | 0.134 |       1.48 | [Checkpoint](https://drive.google.com/file/d/14_ld7qbDlrWs7HeYVhJn3i_fjBPRy2CV/view?usp=sharing)
 
 ### BEV Segmentation
 
