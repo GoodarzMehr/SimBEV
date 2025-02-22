@@ -8,7 +8,7 @@
 
 ## News
 
-**[2025/2/9]** Added reference to [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) using the SimBEV dataset.
+**[2025/2/9]** Released [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) using the SimBEV dataset.
 
 **[2025/2/6]** Initial release of dataset, code, and paper.
 
@@ -240,7 +240,7 @@ visualizes RGB images with 3D object bounding boxes overlaid, depth images, lida
 <h3>Using the SimBEV Dataset</h3>
 </summary>
 
-Consult [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) (or the [simbev_dataset](datasets/simbev_dataset.py) file) on how to use the SimBEV dataset.
+Consult [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) for how to use the SimBEV dataset.
 
 </details>
 
@@ -414,6 +414,25 @@ Contains collected sensor data for each frame, with the files using the `{sensor
 </details>
 
 </details>
+
+## SimBEV Dataset Benchmarks
+
+### 3D Object Detection
+
+| Model     |   Modality | AP (%) | ATE (m) | AOE (rad) |   ASE | AVE (m/s) |     |
+| :-------: | :--------: | :----: | :-----: | :-------: | :---: | :-------: | :-: |
+| BEVFusion |          C |   19.5 |   0.850 |      1.48 | 0.146 |      4.87 | [Checkpoint](https://drive.google.com/file/d/1y5iN_6XNDjGVVHjgDSQ14yPWW6NXRK29/view?usp=sharing) |
+| BEVFusion |          L |   45.9 |   0.179 |     0.167 | 0.143 |      1.63 | [Checkpoint](https://drive.google.com/file/d/1XJz-adjQW4VhBKlZ5pBEWsXxcOwKJuT-/view?usp=sharing) |
+| BEVFusion |        C+L |   46.0 |   0.170 |     0.153 | 0.134 |      1.48 | [Checkpoint](https://drive.google.com/file/d/14_ld7qbDlrWs7HeYVhJn3i_fjBPRy2CV/view?usp=sharing)
+
+### BEV Segmentation
+
+| Model     |   Modality | Road |  Car | Truck |  Bus | Motorcycle | Bicycle | Rider | Pedestrian | mIoU |     |
+| :-------: | :--------: | :--: | :--: | :---: | :--: | :--------: | :-----: | :---: | :--------: | :--: | :-: |
+| BEVFusion |          C | 74.2 | 13.3 |   0.0 |  1.4 |        0.0 |     0.0 |   0.0 |        0.0 | 11.1 | [Checkpoint](https://drive.google.com/file/d/1M17nZ-jn1Z2aUoaJxuUA9RXTPtLQb6Rq/view?usp=sharing) |
+| BEVFusion |          L | 86.2 | 68.0 |  68.6 | 76.9 |       23.6 |     3.1 |  12.5 |       11.6 | 43.8 | [Checkpoint](https://drive.google.com/file/d/1tLg2b5ucOm6RKDIboxHOdnvOpgQTgcgF/view?usp=sharing) |
+| BEVFusion |        C+L | 86.5 | 68.9 |  67.5 | 78.3 |       23.4 |     1.3 |  14.3 |       10.7 | 43.9 | [Checkpoint](https://drive.google.com/file/d/1r30cHo4NOsz-RKONZDtHM9btH4oVSaUt/view?usp=sharing) |
+
 
 ## Acknowledgement
 
