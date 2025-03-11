@@ -63,7 +63,8 @@ RUN set -xue && apt-key del 7fa2af80 \
 && apt-get update \
 && apt-get install -y build-essential cmake debhelper git wget xdg-user-dirs xserver-xorg libvulkan1 libsdl2-2.0-0 \
 libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc gdb \
-libglib2.0-0 libgtk2.0-dev libnvidia-gl-550 libnvidia-common-550 libvulkan-dev vulkan-utils python-is-python3
+libglib2.0-0 libgtk2.0-dev libnvidia-gl-550 libnvidia-common-550 libvulkan-dev vulkan-utils python-is-python3 \
+mesa-utils
 
 RUN pip install --no-cache-dir numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
 networkx==2.7.1 torch==1.10.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html

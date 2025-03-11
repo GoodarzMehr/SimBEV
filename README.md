@@ -419,20 +419,19 @@ Contains collected sensor data for each frame, with the files using the `{sensor
 
 ### 3D Object Detection
 
-| Model     |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) |     |
-| :-------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-: |
-| BEVFusion |          C |    19.5 |    0.850 |       1.48 | 0.146 |       4.87 | [Checkpoint](https://drive.google.com/file/d/1y5iN_6XNDjGVVHjgDSQ14yPWW6NXRK29/view?usp=sharing) |
-| BEVFusion |          L |    45.9 |    0.179 |      0.167 | 0.143 |       1.63 | [Checkpoint](https://drive.google.com/file/d/1XJz-adjQW4VhBKlZ5pBEWsXxcOwKJuT-/view?usp=sharing) |
-| BEVFusion |        C+L |    46.0 |    0.170 |      0.153 | 0.134 |       1.48 | [Checkpoint](https://drive.google.com/file/d/14_ld7qbDlrWs7HeYVhJn3i_fjBPRy2CV/view?usp=sharing)
+| Model     |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) | SDS (%) |     |
+| :-------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-----: | :-: |
+| BEVFusion |          C |    22.1 |    0.744 |       1.04 | 0.137 |       4.65 |    25.1 | [Checkpoint](https://drive.google.com/file/d/1pV8-peIEbnhRogjyXD4skVt-ZoCo_4yq) |
+| BEVFusion |          L |    48.1 |    0.144 |      0.133 | 0.134 |       1.56 |    56.4 | [Checkpoint](https://drive.google.com/file/d/1-xvt3JfoSsZqu0BMmg90MnF8sxKWVvx-) |
+| BEVFusion |        C+L |    48.1 |    0.146 |      0.122 | 0.127 |       1.54 |    56.6 | [Checkpoint](https://drive.google.com/file/d/1vZrYQ5tCAlo67jYGQ_4plNYBvctfi5Au) |
 
 ### BEV Segmentation
 
 | Model     |   Modality | Road |  Car | Truck |  Bus | Motorcycle | Bicycle | Rider | Pedestrian | mIoU |     |
 | :-------: | :--------: | :--: | :--: | :---: | :--: | :--------: | :-----: | :---: | :--------: | :--: | :-: |
-| BEVFusion |          C | 74.2 | 13.3 |   0.0 |  1.4 |        0.0 |     0.0 |   0.0 |        0.0 | 11.1 | [Checkpoint](https://drive.google.com/file/d/1M17nZ-jn1Z2aUoaJxuUA9RXTPtLQb6Rq/view?usp=sharing) |
-| BEVFusion |          L | 86.2 | 68.0 |  68.6 | 76.9 |       23.6 |     3.1 |  12.5 |       11.6 | 43.8 | [Checkpoint](https://drive.google.com/file/d/1tLg2b5ucOm6RKDIboxHOdnvOpgQTgcgF/view?usp=sharing) |
-| BEVFusion |        C+L | 86.5 | 68.9 |  67.5 | 78.3 |       23.4 |     1.3 |  14.3 |       10.7 | 43.9 | [Checkpoint](https://drive.google.com/file/d/1r30cHo4NOsz-RKONZDtHM9btH4oVSaUt/view?usp=sharing) |
-
+| BEVFusion |          C | 76.0 | 17.2 |   5.1 | 22.9 |        0.0 |     0.0 |   0.0 |        0.0 | 15.2 | [Checkpoint](https://drive.google.com/file/d/12HJVTAxoVnyZnEBePRaFT44chUi0HPp1) |
+| BEVFusion |          L | 87.7 | 70.6 |  73.5 | 81.5 |       32.5 |     3.6 |  18.4 |       18.9 | 48.3 | [Checkpoint](https://drive.google.com/file/d/1ga4B6-C45hWVMUTv0CpGjs6kG5cD6aW9) |
+| BEVFusion |        C+L | 88.4 | 72.7 |  74.5 | 80.0 |       36.3 |     3.6 |  23.3 |       20.0 | 50.0 | [Checkpoint](https://drive.google.com/file/d/1ikXihAr3_8KL_Usq426tEkNgeTxpGpkq) |
 
 ## Acknowledgement
 
