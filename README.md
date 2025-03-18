@@ -421,23 +421,23 @@ Models are trained on the SimBEV dataset's _train_ set and evaluated on its _tes
 
 ### 3D Object Detection
 
-| Model     |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) | SDS (%) |     |
-| :-------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-----: | :-: |
-| BEVFusion |          C |    22.1 |    0.744 |       1.04 | 0.137 |       4.65 |    25.1 | [Checkpoint](https://drive.google.com/file/d/1pV8-peIEbnhRogjyXD4skVt-ZoCo_4yq) |
-| BEVFusion |          L |    48.1 |    0.144 |      0.133 | 0.134 |       1.56 |    56.4 | [Checkpoint](https://drive.google.com/file/d/1-xvt3JfoSsZqu0BMmg90MnF8sxKWVvx-) |
-| BEVFusion |        C+L |    48.1 |    0.146 |      0.122 | 0.127 |       1.54 |    56.6 | [Checkpoint](https://drive.google.com/file/d/1vZrYQ5tCAlo67jYGQ_4plNYBvctfi5Au) |
-| UniTR     |        C+L |    47.7 |    0.113 |      0.224 | 0.090 |       0.55 |    61.7 | [Checkpoint](https://drive.google.com/file/d/1Dsx3JYTNwfgIgkH-XF-tOHNpFhTC_AFv) |
-| UniTR+LSS |        C+L |    47.8 |    0.113 |      0.207 | 0.085 |       0.53 |    62.2 | [Checkpoint](https://drive.google.com/file/d/1-yu5D_VuIGNm5mxnGyf8ubUgP4AQ3TSA) |
+| Model       |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) | SDS (%) |     |
+| :---------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-----: | :-: |
+| BEVFusion-C |          C |    22.1 |    0.744 |       1.04 | 0.137 |       4.65 |    25.1 | [Checkpoint](https://drive.google.com/file/d/1pV8-peIEbnhRogjyXD4skVt-ZoCo_4yq) |
+| BEVFusion-L |          L |    48.1 |    0.144 |      0.133 | 0.134 |       1.56 |    56.4 | [Checkpoint](https://drive.google.com/file/d/1-xvt3JfoSsZqu0BMmg90MnF8sxKWVvx-) |
+| BEVFusion   |        C+L |    48.1 |    0.146 |      0.122 | 0.127 |       1.54 |    56.6 | [Checkpoint](https://drive.google.com/file/d/1vZrYQ5tCAlo67jYGQ_4plNYBvctfi5Au) |
+| UniTR       |        C+L |    47.7 |    0.113 |      0.224 | 0.090 |       0.55 |    61.7 | [Checkpoint](https://drive.google.com/file/d/1Dsx3JYTNwfgIgkH-XF-tOHNpFhTC_AFv) |
+| UniTR+LSS   |        C+L |    47.8 |    0.113 |      0.207 | 0.085 |       0.53 |    62.2 | [Checkpoint](https://drive.google.com/file/d/1-yu5D_VuIGNm5mxnGyf8ubUgP4AQ3TSA) |
 
 ### BEV Segmentation
 
-| Model     |   Modality | Road |  Car | Truck |  Bus | Motorcycle | Bicycle | Rider | Pedestrian | mIoU |     |
-| :-------: | :--------: | :--: | :--: | :---: | :--: | :--------: | :-----: | :---: | :--------: | :--: | :-: |
-| BEVFusion |          C | 76.0 | 17.2 |   5.1 | 22.9 |        0.0 |     0.0 |   0.0 |        0.0 | 15.2 | [Checkpoint](https://drive.google.com/file/d/12HJVTAxoVnyZnEBePRaFT44chUi0HPp1) |
-| BEVFusion |          L | 87.7 | 70.6 |  73.5 | 81.5 |       32.5 |     3.6 |  18.4 |       18.9 | 48.3 | [Checkpoint](https://drive.google.com/file/d/1ga4B6-C45hWVMUTv0CpGjs6kG5cD6aW9) |
-| BEVFusion |        C+L | 88.4 | 72.7 |  74.5 | 80.0 |       36.3 |     3.6 |  23.3 |       20.0 | 50.0 | [Checkpoint](https://drive.google.com/file/d/1ikXihAr3_8KL_Usq426tEkNgeTxpGpkq) |
-| UniTR     |        C+L | 92.8 | 73.8 |  67.7 | 51.7 |       36.5 |    11.4 |  36.2 |       27.5 | 49.7 | [Checkpoint](https://drive.google.com/file/d/1BBQOVime8i2lbt9S8-q_KNEoHv_xSMPK) |
-| UniTR+LSS |        C+L | 93.3 | 72.8 |  69.4 | 58.5 |       35.9 |     6.3 |  31.6 |       12.9 | 47.6 | [Checkpoint](https://drive.google.com/file/d/1mTMHVZu-RHYoYDByAanilfFtMneqCf-W) |
+| Model       |   Modality | Road |  Car | Truck |  Bus | Motorcycle | Bicycle | Rider | Pedestrian | mIoU |     |
+| :---------: | :--------: | :--: | :--: | :---: | :--: | :--------: | :-----: | :---: | :--------: | :--: | :-: |
+| BEVFusion-C |          C | 76.0 | 17.2 |   5.1 | 22.9 |        0.0 |     0.0 |   0.0 |        0.0 | 15.2 | [Checkpoint](https://drive.google.com/file/d/12HJVTAxoVnyZnEBePRaFT44chUi0HPp1) |
+| BEVFusion-L |          L | 87.7 | 70.6 |  73.5 | 81.5 |       32.5 |     3.6 |  18.4 |       18.9 | 48.3 | [Checkpoint](https://drive.google.com/file/d/1ga4B6-C45hWVMUTv0CpGjs6kG5cD6aW9) |
+| BEVFusion   |        C+L | 88.4 | 72.7 |  74.5 | 80.0 |       36.3 |     3.6 |  23.3 |       20.0 | 50.0 | [Checkpoint](https://drive.google.com/file/d/1ikXihAr3_8KL_Usq426tEkNgeTxpGpkq) |
+| UniTR       |        C+L | 92.8 | 73.8 |  67.7 | 51.7 |       36.5 |    11.4 |  36.2 |       27.5 | 49.7 | [Checkpoint](https://drive.google.com/file/d/1BBQOVime8i2lbt9S8-q_KNEoHv_xSMPK) |
+| UniTR+LSS   |        C+L | 93.3 | 72.8 |  69.4 | 58.5 |       35.9 |     6.3 |  31.6 |       12.9 | 47.6 | [Checkpoint](https://drive.google.com/file/d/1mTMHVZu-RHYoYDByAanilfFtMneqCf-W) |
 
 ## Acknowledgement
 
