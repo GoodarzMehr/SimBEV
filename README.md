@@ -14,6 +14,33 @@ Virginia Commonwealth University
 
 https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 
+## Table of Contents
+
+- [News](#news)
+- [About](#about)
+- [Installation](#installation)
+  - [Hardware Requirements](#hardware-requirements)
+  - [CARLA](#carla)
+  - [SimBEV](#simbev)
+- [Usage](#usage)
+  - [Creating/Expanding/Replacing a SimBEV Dataset](#creatingexpandingreplacing-a-simbev-dataset)
+  - [Post-processing](#post-processing)
+  - [Data Visualization](#data-visualization)
+  - [Using the SimBEV Dataset](#using-the-simbev-dataset)
+- [Data Format](#data-format)
+  - [Sensor Setup](#sensor-setup)
+  - [Folder Structure](#folder-structure)
+    - [configs](#configs)
+    - [ground-truth](#ground-truth)
+    - [infos](#infos)
+    - [logs](#logs)
+    - [sweeps](#sweeps)
+- [SimBEV Dataset Benchmarks](#simbev-dataset-benchmarks)
+  - [3D Object Detection](#3d-object-detection)
+  - [BEV Segmentation](#bev-segmentation)
+- [Acknowledgement](#acknowledgement)
+- [Citation](#citation)
+
 ## News
 **[2025/4/15]** We released [our implementation](https://github.com/GoodarzMehr/UniTR) of [UniTR](https://github.com/Haiyang-W/UniTR) trained on the SimBEV dataset.
 
