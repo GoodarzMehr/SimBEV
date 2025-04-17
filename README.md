@@ -1,14 +1,21 @@
-# SimBEV
+# <p align="center"> SimBEV: A Synthetic Multi-Task Multi-Sensor Driving Data Generation Tool and Dataset </p>
 
-### [Paper](https://arxiv.org/abs/2502.01894) | Website | Video | [Dataset](https://drive.google.com/drive/folders/14MytQeGmW80Btg_AGPNrE18ZLdLzyGx5?usp=sharing)
-
-> SimBEV: A Synthetic Multi-Task Multi-Sensor Driving Data Generation Tool and Dataset
-
-> [Goodarz Mehr](https://scholar.google.com/citations?hl=en&user=zXkVUDgAAAAJ), [Azim Eskandarian](https://scholar.google.com/citations?user=mLc5_pcAAAAJ)
+<p align="center">
+  <img alt="Static Badge" src="https://img.shields.io/badge/Dataset-blue?logo=google%20drive&logoColor=%23FFFFFF&logoSize=auto&link=https%3A%2F%2Fdrive.google.com%2Fdrive%2Ffolders%2F14MytQeGmW80Btg_AGPNrE18ZLdLzyGx5">
+  <img alt="Static Badge" src="https://img.shields.io/badge/Project%20Page-green?color=%2300CC00&link=https%3A%2F%2Fsimbev.org%2F">
+  <img alt="Static Badge" src="https://img.shields.io/badge/Video-green?logo=youtube&logoColor=%23FFFFFF&color=%23FF0000&link=https%3A%2F%2Fyoutu.be%2F5hDH31RDk8c">
+  <img alt="Static Badge" src="https://img.shields.io/badge/arXiv%20Paper-lavender?color=%23967BB6&link=https%3A%2F%2Farxiv.org%2Fabs%2F2502.01894">
+</p>
+<p align="center">
+  <a href="https://scholar.google.com/citations?hl=en&user=zXkVUDgAAAAJ">Goodarz Mehr</a>, <a href="https://scholar.google.com/citations?user=mLc5_pcAAAAJ">Azim Eskandarian</a>
+<br>
+Virginia Commonwealth University
+</p>
 
 ## News
+**[2025/4/15]** We released [our implementation](https://github.com/GoodarzMehr/UniTR) of [UniTR](https://github.com/Haiyang-W/UniTR) trained on the SimBEV dataset.
 
-**[2025/2/9]** Released [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) using the SimBEV dataset.
+**[2025/2/9]** We released [our implementation](https://github.com/GoodarzMehr/bevfusion) of [BEVFusion](https://github.com/mit-han-lab/bevfusion) trained on the SimBEV dataset.
 
 **[2025/2/6]** Initial release of dataset, code, and paper.
 
@@ -28,10 +35,7 @@ The SimBEV dataset is a collection of 320 scenes spread across 11 CARLA maps and
 
 ## Installation
 
-<details>
-<summary>
-<h3>Hardware Requirements</h3>
-</summary>
+### Hardware Requirements
 
 We developed and tested SimBEV on a system with the following specifications:
 * AMD Ryzen 9 3900X (Any Intel 9th gen or newer or Ryzen 7/9 CPU will probably work)
@@ -40,12 +44,8 @@ We developed and tested SimBEV on a system with the following specifications:
 * Ubuntu 22.04
 
 To run SimBEV, your system must satisfy CARLA 0.9.15's [minimum system requirements](https://github.com/carla-simulator/carla/tree/ue4-dev?tab=readme-ov-file#recommended-system). You must also have an Nvidia graphics card with at least 16 (preferrably 24) GB of VRAM (RTX 3090/3090 Ti/4080/4080 Super/4090/5070 Ti/5080/5090 or one of the pro models).
-</details>
 
-<details>
-<summary>
-<h3>CARLA</h3>
-</summary>
+### CARLA
 
 SimBEV works best with our modified version of CARLA 0.9.15 that has an enhanced content library. Some of the enhancements are:
 * We added three new sports cars to CARLA's vehicle library using existing 3D models: sixth generation Ford Mustang, Toyota GR Supra, and Bugatti Chiron. The Ford Mustang is SimBEV's default vehicle for collecting data.
@@ -70,12 +70,7 @@ SimBEV is compatible with the standard version of CARLA 0.9.15, but some feature
 2. Download our [enhanced content library](https://drive.google.com/file/d/16y3nM27-c1z-_up1T3Qreyw6yr49Q3Qt/view) and unzip it. In your CARLA directory, under `CarlaUE4`, rename the `Content` folder to `Content.bak` to have a backup of the original CARLA content library. Copy the downloaded `Content` folder to the `CarlaUE4` directory.
 3. Open `CarlaUE4/Config/DefaultEngine.ini` and replace all mentions of `Town10HD_Opt` with `Town10HD`.
 
-</details>
-
-<details>
-<summary>
-<h3>SimBEV</h3>
-</summary>
+### SimBEV
 
 We recommend using SimBEV with Docker. The base Docker image is Ubuntu 20.04 with CUDA 11.3 and Vulkan SDK 1.3.204.1. If you want to use a different base image, you may have to modify `ubuntu2004/x86_64` when fetching keys on line 62 of the [Dockerfile](Dockerfile), based on your Ubuntu release and system architecture. **Ensure that `libnvidia-gl` and `libnvidia-common` version numbers on line 66 of the [Dockerfile](Dockerfile) match your Nvidia driver version number.**
 
@@ -104,14 +99,10 @@ It exposes your Nvidia graphics card to Docker containers.
    Use `nvidia-smi` to ensure your graphics card is visible inside the container.
 
 If you would like to use SimBEV without Docker, you can replicate the steps in the [Dockerfile](Dockerfile) to install the dependencies. Be sure to add the CARLA `.egg` file (located in `[path/to/CARLA]/PythonAPI/carla/dist/`) to the `PYTHONPATH` environment variable.
-</details>
 
 ## Usage
 
-<details>
-<summary>
-<h3>Creating/Expanding/Replacing a SimBEV Dataset</h3>
-</summary>
+### Creating/Expanding/Replacing a SimBEV Dataset
 
 In the [simbev](simbev) directory, use the [config.yaml](simbev/config.yaml) file to configure SimBEV's behavior (for a detailed explanation of available parameters see the [sample_config.yaml](simbev/sample_config.yaml) file). Then run
 ```Bash
@@ -130,24 +121,16 @@ python simbev.py config.yaml --render --no-save
 visualizes sensor data as it is captured without saving it.
 
 Set `mode` in the [config.yaml](simbev/config.yaml) file to `create` to create a new SimBEV dataset. If a SimBEV dataset already exists (in the path provided by `path`), SimBEV compares the number of existing and desired scenes for each map and creates additional ones if necessary. This feature can be used to continue creating a dataset in the event of a crash or expand an already existing one. To replace undesired scenes, set `mode` to `replace` and denote which scenes should be replaced.
-</details>
 
-<details>
-<summary>
-<h3>Post-processing</h3>
-</summary>
+### Post-processing
 
 An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if not collected) alongside a flag indicating whether the number of points inside the bounding box is non-zero, and will append this information to bounding box data. To do this, in the [simbev](simbev) directory run
 ```Bash
 python post_processing.py
 ```
 where an optional `path` argument can be used to provided the path to the SimBEV dataset (`path` is `/dataset` by default). This will create a new folder called `new_det` under `ground-truth` (see [Data Format](#data-format) for more information). Delete the `det` folder (or add `.bak` to its name to keep it as backup) and rename `new_det` to `det`.
-</details>
 
-<details>
-<summary>
-<h3>Data Visualization</h3>
-</summary>
+### Data Visualization
 
 To visualize certain types of collected data (those that are not readily visualized, e.g. semantic segmentation images are already in `.png` format), in the [viz](viz) directory run
 ```Bash
@@ -233,23 +216,13 @@ python visualization.py rgb depth lidar3d semantic-lidar radar-with-bbox --scene
 ```
 visualizes RGB images with 3D object bounding boxes overlaid, depth images, lidar point clouds from a 3D perspective view, semantic lidar point clouds from a top-down view, and radar point clouds from a top-down view with 3D object bounding boxes overlaid for frames 3, 30, and 300 of scenes 0, 12, and 27.
 
-</details>
+### Using the SimBEV Dataset
 
-<details>
-<summary>
-<h3>Using the SimBEV Dataset</h3>
-</summary>
-
-Consult [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusion) for how to use the SimBEV dataset.
-
-</details>
+Consult our implementations of [BEVFusion](https://github.com/GoodarzMehr/bevfusion) and [UniTR](https://github.com/GoodarzMehr/UniTR) for how to use the SimBEV dataset.
 
 ## Data Format
 
-<details>
-<summary>
-<h3>Sensor Setup</h3>
-</summary>
+### Sensor Setup
 
 <p align="middle">
   <img src="assets/SensorCoord.png" width="58%" />
@@ -267,12 +240,7 @@ Consult [our implementation of BEVFusion](https://github.com/GoodarzMehr/bevfusi
 
 Sensors in SimBEV are referenced using the `{subtype}-{position}` format (which turns into `{position}` when subtype is not available). For cameras, subtype can be one of `RGB` (RGB camera), `SEG` (semantic segmentation camera), `IST` (instance segmentation camera), `DPT` (depth camera), or `FLW` (optical flow camera), while position can be one of `CAM_FRONT_LEFT`, `CAM_FRONT`, `CAM_FRONT_RIGHT`, `CAM_BACK_RIGHT`, `CAM_BACK`, `CAM_BACK_LEFT`. For instance, `DPT-CAM_BACK_LEFT` denotes the back left depth camera. For lidar, since there is only one position, regular lidar is denoted by `LIDAR` while semantic lidar is denoted by `SEG-LIDAR`. For radar, subtype is not available and position can be one of `RAD_LEFT`, `RAD_FRONT`, `RAD_RIGHT`, `RAD_BACK`. GNSS and IMU are simply denoted as `GNSS` and `IMU`, respectively.
 
-</details>
-
-<details>
-<summary>
-<h3>Folder Structure</h3>
-</summary>
+### Folder Structure
 
 A SimBEV dataset uses the following folder structure.
 ```
@@ -336,19 +304,11 @@ simbev/
 ```
 
 
-<details>
-<summary>
-<h4>configs</h4>
-</summary>
+#### configs
 
 Contains the config file for each scene, with the files using the `SimBEV-scene-{scene number}.yaml` naming scheme. The files are usually identical, unless the dataset was expanded or some scenes were replaced using a different configuration.
 
-</details>
-
-<details>
-<summary>
-<h4>ground-truth</h4>
-</summary>
+#### ground-truth
 
 Contains the ground truth files for each frame, with the files using the `SimBEV-scene-{scene number}-frame-{frame number}-{type}.{data type}` naming scheme. For the `det`, `seg`, and `seg_viz` folders, `type` and `data type` are `GT_DET` and `bin`; `GT_SEG` and `npz`; and`GT_SEG_VIZ` and `jpg`, respectively.
 
@@ -372,32 +332,17 @@ The `seg` folder contains the BEV ground truth file for each frame. BEV ground t
 
 The `seg_viz` folder contains the visualization of the BEV ground truth for each frame.
 
-</details>
-
-<details>
-<summary>
-<h4>infos</h4>
-</summary>
+#### infos
 
 Contains the info files for each data split, with the files using the `simbev_infos_{split}.json` naming scheme where `split` is either `train`, `val`, or `test`. Each file is comprised of `metadata` and `data`. `metadata` contains coordinate transformation matrices for all sensors (i.e. `sensor2lidar_translation`, `sensor2lidar_rotation`, `sensor2ego_translation`, and `sensor2ego_rotation`), as well as the camera intrinsics matrix. `data` contains scene information, divided into `scene_info` and `scene_data` for each scene. `scene_info` includes overall scene information, while `scene_data` provides information about individual frames, including file paths for collected sensor data and the corresponding ground truth.
 
 ![collage](assets/Infos.png)
 
-</details>
-
-<details>
-<summary>
-<h4>logs</h4>
-</summary>
+#### logs
 
 Contains the log file for each scene, with the files using the `SimBEV-scene-{scene number}.log` naming scheme. Log files can be used to replay scenes in CARLA and collect additional data.
 
-</details>
-
-<details>
-<summary>
-<h4>sweeps</h4>
-</summary>
+#### sweeps
 
 Contains collected sensor data for each frame, with the files using the `{sensor}/SimBEV-scene-{scene number}-frame-{frame number}-{sensor}.{type}` naming scheme. For instance, back left RGB camera image for frame 12 of scene 27 is saved as `RGB-CAM_BACK_LEFT/SimBEV-scene-0027-frame-0012-RGB-CAM_BACK_LEFT.jpg`. We briefly discuss how each sensor's data is saved below. See [CARLA's sensors documentation](https://carla.readthedocs.io/en/latest/ref_sensors/) for more details.
 * RGB camera: images are saved as `.jpg` files.
@@ -410,10 +355,6 @@ Contains collected sensor data for each frame, with the files using the `{sensor
 * Radar: point clouds are saved as a $(n, 4)$ NumPy array where the columns represent the depth, altitude angle, azimuth angle, and velocity, respectively.
 * GNSS: data is saved as a \[latitude, longitude, altitude\] Numpy array.
 * IMU: data is saved as a \[ $\dot{x}$, $\dot{y}$, $\dot{z}$, $\dot{\phi}$, $\dot{\theta}$, $\dot{\psi}$, $\psi$\] NumPy array.
-
-</details>
-
-</details>
 
 ## SimBEV Dataset Benchmarks
 
