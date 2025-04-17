@@ -2,17 +2,13 @@
 
 <p align="center">
   <a href="https://drive.google.com/drive/folders/14MytQeGmW80Btg_AGPNrE18ZLdLzyGx5" alt="SimBEV Dataset">
-      <img src="https://img.shields.io/badge/Dataset-blue?logo=google%20drive&logoColor=%23FFFFFF&logoSize=auto" />
-  </a>
+      <img src="https://img.shields.io/badge/Dataset-blue?logo=google%20drive&logoColor=%23FFFFFF&logoSize=auto" /></a>
   <a href="https://simbev.org" alt="SimBEV Project Page">
-      <img src="https://img.shields.io/badge/Project%20Page-green?color=%2300CC00" />
-  </a>
+      <img src="https://img.shields.io/badge/Project%20Page-green?color=%2300CC00" /></a>
   <a href="https://youtu.be/5hDH31RDk8c" alt="SimBEV Dataset">
-      <img src="https://img.shields.io/badge/Video-green?logo=youtube&logoColor=%23FFFFFF&color=%23FF0000" />
-  </a>
+      <img src="https://img.shields.io/badge/Video-green?logo=youtube&logoColor=%23FFFFFF&color=%23FF0000" /></a>
   <a href="https://arxiv.org/abs/2502.01894" alt="SimBEV Project Page">
-      <img src="https://img.shields.io/badge/arXiv%20Paper-lavender?color=%23967BB6" />
-  </a>
+      <img src="https://img.shields.io/badge/arXiv%20Paper-lavender?color=%23967BB6" /></a>
 </p>
 <p align="center">
   <a href="https://scholar.google.com/citations?hl=en&user=zXkVUDgAAAAJ">Goodarz Mehr</a>, <a href="https://scholar.google.com/citations?user=mLc5_pcAAAAJ">Azim Eskandarian</a>
