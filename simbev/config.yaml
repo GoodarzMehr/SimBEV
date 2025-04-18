@@ -123,22 +123,22 @@ rgb_camera_properties:
 use_semantic_camera: True
 
 semantic_camera_properties:
-
+  {}
 
 use_instance_camera: True
 
 instance_camera_properties:
-
+ {}
 
 use_depth_camera: True
 
 depth_camera_properties:
-
+ {}
 
 use_flow_camera: True
 
 flow_camera_properties:
-
+ {}
 
 use_lidar: True
 
