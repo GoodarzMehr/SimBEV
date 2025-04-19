@@ -145,7 +145,8 @@ class CarlaCore:
 
         server_command += [
             f'--carla-rpc-port={self.server_port}',
-            f'-quality-level={self.config["quality_level"]}'
+            f'-quality-level={self.config["quality_level"]}',
+            f'-ini:[/Script/Engine.RendererSettings]:r.GraphicsAdapter={self.config["render_gpu"]}'
         ]
 
         server_command_text = ' '.join(map(str, server_command))
@@ -1455,7 +1456,8 @@ class CarlaCore:
             self.vehicle.get_transform().rotation,
             self.config['bev_dim'],
             self.config['bev_res'],
-            dType = self.dType
+            device=f'cuda:{self.config["cuda_gpu"]}',
+            dType=self.dType
         )
 
         # Get images from the top and bottom semantic cameras. Use the top
@@ -1515,7 +1517,8 @@ class CarlaCore:
             self.vehicle.get_transform().rotation,
             self.config['bev_dim'],
             self.config['bev_res'],
-            dType = self.dType
+            device=f'cuda:{self.config["cuda_gpu"]}',
+            dType=self.dType
         )
 
         road_mask = binary_closing(wp_road_mask)
@@ -1541,7 +1544,8 @@ class CarlaCore:
                         self.vehicle.get_transform().rotation,
                         self.config['bev_dim'],
                         self.config['bev_res'],
-                        dType = self.dType
+                        device=f'cuda:{self.config["cuda_gpu"]}',
+                        dType=self.dType
                     )
                     
                     if 12 in actor['semantic_tags']:

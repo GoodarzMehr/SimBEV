@@ -63,6 +63,9 @@ show_display: True
 quality_level: 'Epic'
 retries_on_error: 10
 
+render_gpu: 0
+cuda_gpu: 0
+
 tile_stream_distance: 800.0
 actor_active_distance: 800.0
 
