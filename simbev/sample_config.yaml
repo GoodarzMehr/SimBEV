@@ -84,6 +84,11 @@ quality_level: 'Epic' # graphics quality level of the simulation, can be
 retries_on_error: 10 # number of retries for the client to connect to the
                      # server in case of an error
 
+# The following settings control which GPU is used for rendering and CUDA
+# calculations.
+render_gpu: 0 # GPU used for rendering CARLA
+cuda_gpu: 0 # GPU used for CUDA calculations
+
 # The following settings are used in large maps (Town12 and Town13) to manage
 # the environment efficiently.
 tile_stream_distance: 800.0 # configures the maximum distance from the ego
