@@ -4,11 +4,11 @@
   <a href="https://drive.google.com/drive/folders/14MytQeGmW80Btg_AGPNrE18ZLdLzyGx5" alt="SimBEV Dataset">
       <img src="https://img.shields.io/badge/Dataset-blue?logo=google%20drive&logoColor=%23FFFFFF&logoSize=auto" /></a>
   <a href="https://simbev.org" alt="SimBEV Project Page">
-      <img src="https://img.shields.io/badge/Project%20Page-green?color=%2300CC00" /></a>
-  <a href="https://youtu.be/5hDH31RDk8c" alt="SimBEV Dataset">
+      <img src="https://img.shields.io/badge/Project%20Page-green?color=%2300CC00&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QA/4ePzL8AAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQfpBBUSAyKON4S+AAAECUlEQVRIx4WVXUzVdRjHP//D4XhI3BE3yRd0QKArC2Li1gWzsFqt1nq5cV540VYXtNVN3XijW6vFVr5cyEZzaktzaBf4Mm2Ks7ms+dIbpJtiEnAAQ1OgAzQIzqcL/pxEoJ6L//bs/3u+v+f/PP/v9xswLYQsllJGGUXkAX38RgstdDMe8J8hYtxq6201Zdq04446ZtqUrdZbbVz8j/LAShtMmXSPjaY97Pd+6y7TfuNnJk3ZYKWBs5THrbHHbjdbZKW/etaHPOkpF3nIW75okZvttsca485Qnmutwx61XMzzK9utNGqTTWZb5A/+bJFY7lGHrTXXabfXOuwO80R81yHfEGM22WRMfN677jQq5rnDYWvv6ULEGkc9YkLEFbbZ6NwpAFlus89qERMecdSacJwirrHDYW/7sSsM/NA+n5QpAFjqDQ8Zt9RPvO2QHVaKYfsNdvqKdQ7YYb2dfumcaQD4kQN+YbsD1vmynTYYnwCodsDNYrZr3We/es2tbrTKcs95znKr3OhWm9VB97nWbHGLA1YLRqy309LwlhyP+7unTDpoyjuOOOIdUw6a9ISXveyD4clSO603EqWAas5wAwKEPFZylLdZRCHLWcKbwC566KSdbmr4gEJ6A4QbnKGagihlLOYM6XAlheRziRE6gg4hxjPAdkaDCY78RIRHuSBAmjO8RlmEcsa4AsEkQITrmez+SNJPKYTvrzBGeZRiUvSRbQCMsYRRBogaASBGAMSY3Phf9LM0zKWPFMVREuSzlxEmuixmLjsZClsIqAAOZwiYxXLyOR7+f3PIJxGZRor/ofx0Fu62w2KzjRkz4nvetcKoMWPGzPW0p80Ns2zz/cX9mazYDndHaWMeebSFc+4mxnzGwmziMZrZQpz5dDOaWfk82iI0E2UVk5/ZTpoVzKY6BSS4PonLKqI0R2jhJuuYnEU7vawhIDDGApaRQw7LWGDMAKjAzMojrOMmLVG6+JoXKKEVgFtcYi2v8wiPUUCChcBZBujiMhd4ibbwHJSwjhN0RUhzkAQbQHiAp1hMKXWsJ85FDtBFFwe4SJz17OU5slhNjgAbSHCQ9CSdk1ZaZaODdtjnBVeaY5Chc2COhR50xG5TNlplpcl/6YyVdnrVXtvcZJHvZ7TnXj0o8qqNPuwm2+z1qp2hoGQkbcRWK0Qs8brHnDcFIGKt/T4rYoWtjmQk7R5RHXJbKKrvOOxbUwCe9g8/NVvMc7tDU0R1BllPeMykT2RkfbnnvWLJrLJ+n7FssdjHveZ3rvSkp1zofu/4qsVumdVYQojA1TaYsss9HnLc4/7oOesc97yfh9a2ehZry4xz0lz/DM11xL/VlNdmNtdgJhiyWEI5ZRQxnyC092Z6ZrL3fwBmmHFVhXdUNwAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNS0wNC0yMVQxODowMTo1NSswMDowMOY/5WAAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjUtMDQtMjFUMTg6MDE6MzQrMDA6MDD3el/vAAAAAElFTkSuQmCC" /></a>
+  <a href="https://youtu.be/5hDH31RDk8c" alt="SimBEV Video">
       <img src="https://img.shields.io/badge/Video-green?logo=youtube&logoColor=%23FFFFFF&color=%23FF0000" /></a>
-  <a href="https://arxiv.org/abs/2502.01894" alt="SimBEV Project Page">
-      <img src="https://img.shields.io/badge/arXiv%20Paper-lavender?color=%23967BB6" /></a>
+  <a href="https://arxiv.org/abs/2502.01894" alt="SimBEV Paper">
+      <img src="https://img.shields.io/badge/arXiv%20Paper-lavender?logo=arxiv&color=%23B31B1B" /></a>
 </p>
 <p align="center">
   <a href="https://scholar.google.com/citations?hl=en&user=zXkVUDgAAAAJ">Goodarz Mehr</a>, <a href="https://scholar.google.com/citations?user=mLc5_pcAAAAJ">Azim Eskandarian</a>
