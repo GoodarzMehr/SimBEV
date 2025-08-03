@@ -148,6 +148,9 @@ def main():
                         ) as f:
                             np.save(f, np.array(new_det_objects), allow_pickle=True)
 
+        os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
+        os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
+
     except Exception:
         print(traceback.format_exc())
 

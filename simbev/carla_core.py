@@ -47,6 +47,69 @@ CITYSCAPE_PALETTE = {
     'pedestrian': (220, 20, 60)
 }
 
+TRAFFIC_SIGN = {
+    'highwaySign': 'highway',
+    'pole_': 'billboard',
+    'DoNoEnter': 'do_not_enter',
+    'Interchange': 'interchange',
+    'NoTrunLeft': 'no_left_turn',
+    'busNoPark': 'bus_stop_no_parking',
+    'cleanPet': 'clean_up_after_pet',
+    'minPark': 'parking_time_limit',
+    'noBicyc': 'no_bicycles',
+    'noPark': 'no_parking',
+    'noPed': 'no_pedestrians',
+    'noStand': 'no_standing',
+    'onlyCrossw': 'cross_only_at_crosswalk',
+    'photo': 'photo_enforced',
+    'reserved': 'reserved_parking',
+    'school': 'school_zone',
+    'stopPed': 'stop_for_pedestrians',
+    'tow': 'tow_away_zone',
+    'yieldPed': 'yield_to_pedestrians',
+    'passenger': 'passenger_cars_only',
+    'DiamondSignal': 'accident_ahead',
+    'wildCrossing': 'animal_crossing',
+    'AnimalCrossing': 'animal_crossing',
+    'LaneReduceL': 'lane_reduction',
+    'LaneReduct': 'lane_reduction',
+    'MichiganLeft': 'michigan_left',
+    'NoTurns': 'no_turns',
+    'noTurn': 'no_turns',
+    'OneWay': 'one_way',
+    'oneWay': 'one_way',
+    'stopSign': 'stop',
+    'STOP_': 'stop',
+    '_Stop': 'stop',
+    '_Yield': 'yield',
+    '_yield_': 'yield',
+    '_Flag': 'street_name',
+    '_letter': 'street_name',
+    'SpeedLimiter': 'speed_limit',
+    'SpeedSign': 'speed_limit',
+    '_SpeedLimit': 'speed_limit',
+    'SpeedLimit20': 'speed_limit_20',
+    'SpeedLimit25': 'speed_limit_25',
+    'SpeedLimit30': 'speed_limit_30',
+    'SpeedLimit40': 'speed_limit_40',
+    'SpeedLimit50': 'speed_limit_50',
+    'SpeedLimit55': 'speed_limit_55',
+    'SpeedLimit60': 'speed_limit_60',
+    'SpeedLimit70': 'speed_limit_70',
+    'SpeedLimit75': 'speed_limit_75',
+    'SpeedLimit80': 'speed_limit_80',
+    'SpeedLimit90': 'speed_limit_90',
+    'SpeedLimit100': 'speed_limit_100',
+    'SpeedLimit110': 'speed_limit_110',
+    'SpeedLimit120': 'speed_limit_120',
+    'SpeedLimit20_15': 'speed_limit_20_min_15',
+    'SpeedLimit25_15': 'speed_limit_25_min_15',
+    'SpeedLimit30_15': 'speed_limit_30_min_15',
+    'SpeedLimit50_40': 'speed_limit_50_min_40',
+    'SpeedLimit55_40': 'speed_limit_55_min_40',
+    'SpeedLimit75_45': 'speed_limit_75_min_45',
+}
+
 
 def is_used(port):
     '''
@@ -1439,7 +1502,8 @@ class CarlaCore:
         # Torch can end up hogging GPU memory when calculating the ground
         # truth, so empty it every once in a while.
         if self.counter % 40 == 5:
-            torch.cuda.empty_cache()
+            with torch.cuda.device(f'cuda:{self.config["cuda_gpu"]}'):
+                torch.cuda.empty_cache()
         
         self.counter += 1
     
@@ -1611,19 +1675,77 @@ class CarlaCore:
 
                 self.actors.append(actor_properties)
 
+            # Get traffic lights.
+            if self.config['collect_traffic_light_bbox']:
+                if isinstance(actor, carla.TrafficLight):
+                    if self.vehicle_location.distance(actor_location) < self.config['bbox_collection_radius']:
+                        bounding_boxes = actor.get_light_boxes()
+
+                        for bounding_box in bounding_boxes:
+                            if bounding_box.extent.z > 0.3:
+                                actor_properties = {}
+
+                                actor_properties['id'] = actor.id
+                                actor_properties['type'] = str(actor.type_id)
+                                actor_properties['is_alive'] = actor.is_alive
+                                actor_properties['is_active'] = actor.is_active
+                                actor_properties['is_dormant'] = actor.is_dormant
+                                actor_properties['parent'] = actor.parent.id if actor.parent is not None else None
+                                actor_properties['attributes'] = actor.attributes
+                                actor_properties['semantic_tags'] = [7]
+
+                                if self.map_name in ['Town12', 'Town13']:
+                                    tile_bounding_box = carla_vector_to_numpy(bounding_box.get_local_vertices())
+
+                                    x_difference = np.round((actor_location.x - bounding_box.location.x) / 1000.0) \
+                                        * 1000.0
+                                    y_difference = np.round((actor_location.y - bounding_box.location.y) / 1000.0) \
+                                        * 1000.0
+
+                                    actor_properties['bounding_box'] = tile_bounding_box + np.array([
+                                        x_difference, y_difference, 0.0
+                                    ])
+                                else:
+                                    actor_properties['bounding_box'] = carla_vector_to_numpy(
+                                        bounding_box.get_local_vertices()
+                                    )
+
+                                actor_properties['linear_velocity'] = np.zeros(3)
+                                actor_properties['angular_velocity'] = np.zeros(3)
+
+                                actor_properties['bounding_box'][:, 1] *= -1
+
+                                actor_properties['green_time'] = actor.get_green_time()
+                                actor_properties['yellow_time'] = actor.get_yellow_time()
+                                actor_properties['red_time'] = actor.get_red_time()
+                                
+                                actor_properties['state'] = str(actor.get_state())
+
+                                actor_properties['opendrive_id'] = actor.get_opendrive_id()
+                                actor_properties['pole_index'] = actor.get_pole_index()
+
+                                self.actors.append(actor_properties)
+        
         # Get the list of objects (props) in the scene, i.e. parked cars,
         # trucks, etc. that are within a certain radius of the ego vehicle.
+        if self.config['collect_traffic_sign_bbox']:
+            traffic_sign_list = self.world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
+        
         car_list = self.world.get_environment_objects(carla.CityObjectLabel.Car)
         truck_list = self.world.get_environment_objects(carla.CityObjectLabel.Truck)
         bus_list = self.world.get_environment_objects(carla.CityObjectLabel.Bus)
         motorcycle_list = self.world.get_environment_objects(carla.CityObjectLabel.Motorcycle)
         bicycle_list = self.world.get_environment_objects(carla.CityObjectLabel.Bicycle)
 
-        object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
+        if self.config['collect_traffic_sign_bbox']:
+            object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
+        else:
+            object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
 
         for obj in object_list:
             object_properties = {}
-            object_location = obj.transform.location
+            object_location = obj.transform.location if self.map_name not in ['Town12', 'Town13'] \
+                else obj.bounding_box.location
 
             if self.vehicle_location.distance(object_location) < self.config['bbox_collection_radius']:
                 object_properties['id'] = obj.id
@@ -1633,15 +1755,25 @@ class CarlaCore:
                 object_properties['is_dormant'] = False
                 object_properties['parent'] = None
                 object_properties['attributes'] = {}
-                object_properties['bounding_box'] = carla_vector_to_numpy(
-                    obj.bounding_box.get_local_vertices()
-                )
+                object_properties['bounding_box'] = carla_vector_to_numpy(obj.bounding_box.get_local_vertices())
                 object_properties['linear_velocity'] = np.zeros(3)
                 object_properties['angular_velocity'] = np.zeros(3)
 
                 object_properties['bounding_box'][:, 1] *= -1
 
-                if obj.type == carla.CityObjectLabel.Car:
+                if obj.type == carla.CityObjectLabel.TrafficSigns:
+                    object_properties['semantic_tags'] = [8]
+                    object_properties['sign_type'] = ''
+
+                    for sign in TRAFFIC_SIGN.keys():
+                        if sign in obj.name:
+                            object_properties['sign_type'] = TRAFFIC_SIGN[sign]
+
+                    if self.map_name not in ['Town12', 'Town13', 'Town15'] and \
+                        'speed_limit' in object_properties['sign_type']:
+                        object_properties['sign_type'] = 'speed_limit'
+
+                elif obj.type == carla.CityObjectLabel.Car:
                     object_properties['semantic_tags'] = [14]
                 elif obj.type == carla.CityObjectLabel.Truck:
                     object_properties['semantic_tags'] = [15]
@@ -1709,4 +1841,5 @@ class CarlaCore:
         print('Controllers destroyed.')
 
         # Release unused GPU memory.
-        torch.cuda.empty_cache()
+        with torch.cuda.device(f'cuda:{self.config["cuda_gpu"]}'):
+            torch.cuda.empty_cache()

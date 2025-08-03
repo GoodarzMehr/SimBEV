@@ -82,6 +82,9 @@ npc_spawn_radius: 400.0
 bev_dim: 360
 bev_res: 0.4
 
+collect_traffic_light_bbox: True
+collect_traffic_sign_bbox: True
+
 ignore_lights_percentage: 0.1
 ignore_signs_percentage: 0.1
 ignore_vehicles_percentage: 0.1
@@ -239,4 +242,7 @@ imu_properties:
 #     [[-27.8, -61.2, 0.6], [0.0, 0.0, 0.0]],
 #     [[-110.2, -9.8, 0.6], [0.0, 0.0, 90.0]],
 #     [[-87.6, 13.0, 0.6], [0.0, 0.0, 180.0]]
+#   ]
+#   Town12: [
+#       [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
 #   ]
