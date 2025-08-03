@@ -161,7 +161,7 @@ An optional post-processing step will calculate the number of lidar and radar po
 ```Bash
 python post_processing.py
 ```
-where an optional `path` argument can be used to provided the path to the SimBEV dataset (`path` is `/dataset` by default). This will create a new folder called `new_det` under `ground-truth` (see [Data Format](#data-format) for more information). Delete the `det` folder (or add `.bak` to its name to keep it as backup) and rename `new_det` to `det`.
+where an optional `path` argument can be used to provided the path to the SimBEV dataset (`path` is `/dataset` by default). This will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
 
 ### Data Visualization
 
@@ -360,6 +360,13 @@ The `det` folder contains the 3D object ground truth file for each frame. The fo
 * `num_lidar_pts`: number of lidar points inside the 3D bounding box (requires post processing)
 * `num_radar_pts`: number of radar points inside the 3D bounding box (requires post processing)
 * `valid_flag`: True if at least one lidar or radar point falls inside the 3D bounding box, False otherwise (requires post processing)
+* **[traffic light only]** `green_time`: number of seconds the traffic light stays green
+* **[traffic light only]** `yellow_time`: number of seconds the traffic light stays yellow
+* **[traffic light only]** `red_time`: number of seconds the traffic light stays red
+* **[traffic light only]** `state`: current state of the traffic light (i.e. green, yellow, or red)
+* **[traffic light only]** `opendrive_id`: OpenDRIVE ID of the traffic light
+* **[traffic light only]** `pole_index`: index of the traffic light's pole whitin the traffic light group
+* **[traffic sign only]** `sign_type`: type of traffic sign, if it can be extracted from CARLA; generally `stop`, `yield`, or `speed_limit`; for Town12, Town13, and Town15 the speed limit value is also provided, e.g. `speed_limit_30` (30 km/h speed limit) or `speed_limit_55_min_40` (55 km/h speed limit, 40 km/h minimum speed limit)
 
 The `seg` folder contains the BEV ground truth file for each frame. BEV ground truth is a binary $C \times d \times d$ array, where $C$ is the number of classes and $d$ is the dimension of the BEV grid (360 for the SimBEV dataset). Currently, $C$ is 8 and the classes are, in order, `road`, `car`, `truck`, `bus`, `motorcycle`, `bicycle`, `rider`, `pedestrian`. The second and third dimensions of the array increase along the $-x$ and $-y$ axes of the vehicle's FLU coordinate system, respectively.
 

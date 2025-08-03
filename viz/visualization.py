@@ -29,6 +29,8 @@ CAM_NAME = [
 RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
 OBJECT_CLASSES = {
+    7:  'traffic_light',
+    8:  'traffic_sign',
     12: 'pedestrian',
     13: 'rider',
     14: 'car',
@@ -46,7 +48,9 @@ SIMBEV_PALETTE = {
     'motorcycle': (240, 240, 0),
     'bicycle': (0, 240, 240),
     'rider': (240, 144, 0),
-    'pedestrian': (240, 0, 0)
+    'pedestrian': (240, 0, 0),
+    'traffic_light': (240, 160, 0),
+    'traffic_sign': (240, 0, 128)
 }
 
 RANGE = np.linspace(0.0, 1.0, 256)
