@@ -106,21 +106,20 @@ actor_active_distance: 800.0 # configures the maximum distance from the ego
 waypoint_distance: 0.4 # distance between waypoints generated from the
                        # OpenDRIVE map in meters; A good rule of thumb is to
                        # set this to the same value as bev_res
-waypoint_area_radius: 800.0 # For improved performance, especially in large
-                            # maps, at the start of each scene only waypoints
-                            # within this radius of the ego vehicle are kept
-                            # and the rest are discarded; a good rule of thumb
-                            # is to set this value to
-                            # 40 * (warmup_duration + scene_duration);
-                            # essentially the farthest distance the ego
-                            # vehicle can theoretically travel in the scene at
-                            # 40 m/s
-nearby_waypoint_area_radius: 120.0 # Of the remaining waypoints, every 0.5
-                                   # simulation seconds waypoints within this
-                                   # radius of the ego vehicle are selected to
-                                   # calculate the road ground truth; a good
-                                   # rule of thumb is to set this value to
-                                   # around 20 + (bev_dim * bev_res) / sqrt(2)
+mapping_area_radius: 800.0 # For improved performance, especially in large
+                           # maps, at the start of each scene only waypoints
+                           # within this radius of the ego vehicle are kept
+                           # and the rest are discarded; a good rule of thumb
+                           # is to set this value to
+                           # 40 * (warmup_duration + scene_duration);
+                           # essentially the farthest distance the ego vehicle
+                           # can theoretically travel in the scene at 40 m/s
+nearby_mapping_area_radius: 120.0 # Of the remaining waypoints, every 0.5
+                                  # simulation seconds waypoints within this
+                                  # radius of the ego vehicle are selected to
+                                  # calculate the road ground truth; a good
+                                  # rule of thumb is to set this value to
+                                  # around 20 + (bev_dim * bev_res) / sqrt(2)
 
 # The following setting controls the distance between waypoints generated
 # from the OpenDRIVE map and used as spawn points for vehicles, instead of the
@@ -135,13 +134,22 @@ bbox_collection_radius: 120.0 # radius in meters
 # which other vehicles and pedestrians are spawned. This should not be bigger
 # than the smaller of tile_stream_distance and actor_active_distance;
 # otherwise CARLA can segfault. A good rule of thumb is to set this value to
-# around half of waypoint_area_radius.
+# around half of mapping_area_radius.
 npc_spawn_radius: 400.0 # radius in meters
 
 # The following settings control the size and resolution of the bird's-eye
 # view (BEV) image.
 bev_dim: 360 # height and width of the BEV image in pixels
 bev_res: 0.4 # resolution of the BEV image in meters per pixel
+
+# The following settings control whether to collect 3D bounding boxes for
+# traffic lights and signs.
+collect_traffic_light_bbox: True
+collect_traffic_sign_bbox: True
+
+# The following setting controls whether to combine the BEV image with map
+# data to get the BEV ground truth for sidewalks or to use map data alone.
+use_bev_for_sidewalks: False
 
 # The following settings control the percentage (0 to 100) chance of vehicles
 # ignoring traffic lights, signs, other vehicles, and pedestrians at each time
@@ -385,6 +393,12 @@ imu_properties:
 #     [[198.3, 195.9, 0.3], [0.0, 0.0, -20.0]],
 #     [[112.8, 38.2, 11.1], [0.0, 0.0, 0.0]]
 #   ]
+#   Town05: [
+#     [[-218.43, -3.92, 0.3], [0.0, 0.0, 180.0]]
+#   ]
+#   Town06: [
+#     [[-5.5314, -0.3351, 0.3], [0.0, 0.0, 90.0]]
+#   ]
 #   Town10HD: [
 #     [[-17.1, 13.2, 0.6], [0.0, 0.0, 180.0]],
 #     [[-64.6, 24.4, 0.6], [0.0, 0.0, 0.0]],
@@ -398,4 +412,10 @@ imu_properties:
 #     [[-27.8, -61.2, 0.6], [0.0, 0.0, 0.0]],
 #     [[-110.2, -9.8, 0.6], [0.0, 0.0, 90.0]],
 #     [[-87.6, 13.0, 0.6], [0.0, 0.0, 180.0]]
+#   ]
+#   Town12: [
+#       [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
+#   ]
+#   Town15: [
+#       [[-121.87, 169.54, 151.81], [0.0, 0.28, 3.19]]
 #   ]

@@ -156,10 +156,10 @@ def get_road_mask(
     
     cxLim = xLim - xRes / 2
     cyLim = yLim - yRes / 2
-    
-    x = torch.linspace(cxLim, -cxLim, xDim).to(device, dType)
-    y = torch.linspace(cyLim, -cyLim, yDim).to(device, dType)
-    
+
+    x = torch.linspace(cxLim, -cxLim, xDim, dtype=dType, device=device)
+    y = torch.linspace(cyLim, -cyLim, yDim, dtype=dType, device=device)
+
     xx, yy = torch.meshgrid(x, y, indexing='ij')
 
     coordinates = torch.stack([xx, yy], dim=2).reshape(-1, 2)
@@ -243,10 +243,10 @@ def get_object_mask(
 
     cxLim = xLim - xRes / 2
     cyLim = yLim - yRes / 2
-    
-    x = torch.linspace(cxLim, -cxLim, xDim).to(device, dType)
-    y = torch.linspace(cyLim, -cyLim, yDim).to(device, dType)
-    
+
+    x = torch.linspace(cxLim, -cxLim, xDim, dtype=dType, device=device)
+    y = torch.linspace(cyLim, -cyLim, yDim, dtype=dType, device=device)
+
     xx, yy = torch.meshgrid(x, y, indexing='ij')
 
     coordinates = torch.stack([xx, yy], dim=2).reshape(-1, 2)
@@ -260,6 +260,82 @@ def get_object_mask(
     mask4 = is_on_right_side(coordinates[:, 0], coordinates[:, 1], local_bbox[4], local_bbox[0])
 
     mask = (mask1 & mask2 & mask3 & mask4) | (~mask1 & ~mask2 & ~mask3 & ~mask4)
+
+    return mask.reshape(xDim, yDim).detach().cpu()
+
+def get_crosswalk_mask(
+        crosswalk,
+        ego_loc,
+        ego_rot,
+        xDim,
+        xRes,
+        yDim=None,
+        yRes=None,
+        device='cuda:0',
+        dType=torch.float
+    ):
+    '''
+    Get a crosswalk's BEV grid mask using the coordinates of its corners.
+
+    Args:
+        crosswalk: coordinates of the crosswalk's corners.
+        ego_loc: ego vehicle location.
+        ego_rot: ego vehicle rotation.
+        xDim: BEV grid width.
+        xRes: BEV grid width resolution.
+        yDim: BEV grid height.
+        yRes: BEV grid height resolution.
+        device: device to use for computation, can be 'cpu' or 'cuda:i' where
+            i is the GPU index.
+        dType: data type to use for calculations.
+    
+    Returns:
+        mask: the crosswalk's BEV grid mask.
+    '''
+    if yDim is None:
+        yDim = xDim
+    
+    if yRes is None:
+        yRes = xRes
+
+    if not isinstance(crosswalk, torch.Tensor):
+        crosswalk = torch.from_numpy(crosswalk).to(device, dType)
+    else:
+        crosswalk = crosswalk.to(device, dType)
+
+    crosswalk[:, 2] = 1
+    
+    # Calculate the transformation from the global coordinate system to that
+    # of the ego vehicle.
+    R = torch.inverse(torch.from_numpy(local_to_global(ego_loc, ego_rot))).to(device, dType)
+
+    # Transform the crosswalk coordinates into the ego vehicle's local
+    # coordinate system.
+    local_box = (R @ crosswalk.T)[:2].T
+
+    # Calculate the center-point coordinates of the BEV grid cells.
+    xLim = xDim * xRes / 2
+    yLim = yDim * yRes / 2
+
+    cxLim = xLim - xRes / 2
+    cyLim = yLim - yRes / 2
+
+    x = torch.linspace(cxLim, -cxLim, xDim, dtype=dType, device=device)
+    y = torch.linspace(cyLim, -cyLim, yDim, dtype=dType, device=device)
+
+    xx, yy = torch.meshgrid(x, y, indexing='ij')
+
+    coordinates = torch.stack([xx, yy], dim=2).reshape(-1, 2)
+
+    mask = torch.zeros(coordinates.shape[0], crosswalk.shape[0] - 1, device=device, dtype=torch.bool)
+
+    # For each crosswalk edge, find BEV grid cell center-points that are
+    # on the right side of that edge. The crosswalk's BEV grid mask is the
+    # intersection of these masks, or its complement.
+    for i in range(crosswalk.shape[0] - 1):
+        mask[:, i] = is_on_right_side(coordinates[:, 0], coordinates[:, 1], local_box[i], local_box[i + 1])
+
+    mask = torch.all(mask, dim=1) | torch.all(~mask, dim=1)
 
     return mask.reshape(xDim, yDim).detach().cpu()
 
