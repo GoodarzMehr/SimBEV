@@ -70,8 +70,8 @@ tile_stream_distance: 800.0
 actor_active_distance: 800.0
 
 waypoint_distance: 0.4
-waypoint_area_radius: 800.0
-nearby_waypoint_area_radius: 120.0
+mapping_area_radius: 800.0
+nearby_mapping_area_radius: 120.0
 
 spawn_point_separation_distance: 24.0
 
@@ -84,6 +84,8 @@ bev_res: 0.4
 
 collect_traffic_light_bbox: True
 collect_traffic_sign_bbox: True
+
+use_bev_for_sidewalks: False
 
 ignore_lights_percentage: 0.1
 ignore_signs_percentage: 0.1
@@ -229,6 +231,12 @@ imu_properties:
 #     [[198.3, 195.9, 0.3], [0.0, 0.0, -20.0]],
 #     [[112.8, 38.2, 11.1], [0.0, 0.0, 0.0]]
 #   ]
+#   Town05: [
+#     [[-218.43, -3.92, 0.3], [0.0, 0.0, 180.0]]
+#   ]
+#   Town06: [
+#     [[-5.5314, -0.3351, 0.3], [0.0, 0.0, 90.0]]
+#   ]
 #   Town10HD: [
 #     [[-17.1, 13.2, 0.6], [0.0, 0.0, 180.0]],
 #     [[-64.6, 24.4, 0.6], [0.0, 0.0, 0.0]],
@@ -245,4 +253,7 @@ imu_properties:
 #   ]
 #   Town12: [
 #       [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
+#   ]
+#   Town15: [
+#       [[-121.87, 169.54, 151.81], [0.0, 0.28, 3.19]]
 #   ]
