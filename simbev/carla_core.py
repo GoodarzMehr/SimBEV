@@ -9,6 +9,7 @@ actors, applying actions, and setting the spectator view.
 import os
 import cv2
 import time
+import json
 import torch
 import carla
 import random
@@ -1616,7 +1617,15 @@ class CarlaCore:
                 'wb'
             ) as f:
                 np.save(f, np.array(self.actors), allow_pickle=True)
-    
+
+            self.get_hd_map_info()
+
+            with open(
+                f'{path}/simbev/ground-truth/hd_map/SimBEV-scene-{scene:04d}-frame-{frame:04d}-HD_MAP.json',
+                'w'
+            ) as f:
+                json.dump(self.hd_map_info, f, indent=4)
+
     def trim_waypoints(self):
         '''
         Trim the list of waypoints and only leave those within the ego
@@ -2182,6 +2191,77 @@ class CarlaCore:
 
                 self.actors.append(object_properties)
     
+    def get_hd_map_info(self):
+        '''
+        Get HD map information from the waypoint at the vehicle's current location.
+        '''
+        self.hd_map_info = {}
+
+        # Get the waypoint at the vehicle's current location.
+        wp = self.map.get_waypoint(self.vehicle.get_location())
+
+        self.hd_map_info['id'] = wp.id
+        self.hd_map_info['s'] = wp.s
+        self.hd_map_info['road_id'] = wp.road_id
+        self.hd_map_info['section_id'] = wp.section_id
+        self.hd_map_info['lane_id'] = wp.lane_id
+        self.hd_map_info['lane_type'] = str(wp.lane_type)
+        self.hd_map_info['lane_width'] = wp.lane_width
+        self.hd_map_info['lane_change'] = str(wp.lane_change)
+
+        self.hd_map_info['is_junction'] = wp.is_junction
+        self.hd_map_info['junction_id'] = wp.junction_id if wp.is_junction else None
+        self.hd_map_info['is_intersection'] = wp.is_intersection
+
+        self.hd_map_info['left_lane_marking'] = {
+            'type': str(wp.left_lane_marking.type),
+            'width': wp.left_lane_marking.width,
+            'color': str(wp.left_lane_marking.color),
+            'lane_change': str(wp.left_lane_marking.lane_change)
+        }
+
+        self.hd_map_info['right_lane_marking'] = {
+            'type': str(wp.right_lane_marking.type),
+            'width': wp.right_lane_marking.width,
+            'color': str(wp.right_lane_marking.color),
+            'lane_change': str(wp.right_lane_marking.lane_change)
+        }
+
+        self.hd_map_info['transform'] = {
+            'x': wp.transform.location.x,
+            'y': wp.transform.location.y,
+            'z': wp.transform.location.z,
+            'roll': wp.transform.rotation.roll,
+            'pitch': wp.transform.rotation.pitch,
+            'yaw': wp.transform.rotation.yaw
+        }
+
+        left_lane_wp = wp.get_left_lane()
+        right_lane_wp = wp.get_right_lane()
+
+        self.hd_map_info['left_lane'] = {}
+        self.hd_map_info['right_lane'] = {}
+
+        if left_lane_wp is not None:
+            self.hd_map_info['left_lane']['id'] = left_lane_wp.id
+            self.hd_map_info['left_lane']['s'] = left_lane_wp.s
+            self.hd_map_info['left_lane']['road_id'] = left_lane_wp.road_id
+            self.hd_map_info['left_lane']['section_id'] = left_lane_wp.section_id
+            self.hd_map_info['left_lane']['lane_id'] = left_lane_wp.lane_id
+            self.hd_map_info['left_lane']['lane_type'] = str(left_lane_wp.lane_type)
+            self.hd_map_info['left_lane']['lane_width'] = left_lane_wp.lane_width
+            self.hd_map_info['left_lane']['lane_change'] = str(left_lane_wp.lane_change)
+
+        if right_lane_wp is not None:
+            self.hd_map_info['right_lane']['id'] = right_lane_wp.id
+            self.hd_map_info['right_lane']['s'] = right_lane_wp.s
+            self.hd_map_info['right_lane']['road_id'] = right_lane_wp.road_id
+            self.hd_map_info['right_lane']['section_id'] = right_lane_wp.section_id
+            self.hd_map_info['right_lane']['lane_id'] = right_lane_wp.lane_id
+            self.hd_map_info['right_lane']['lane_type'] = str(right_lane_wp.lane_type)
+            self.hd_map_info['right_lane']['lane_width'] = right_lane_wp.lane_width
+            self.hd_map_info['right_lane']['lane_change'] = str(right_lane_wp.lane_change)
+
     def package_data(self):
         '''
         Package scene information and data into a dictionary and return it.
