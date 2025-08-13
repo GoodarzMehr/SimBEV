@@ -203,6 +203,7 @@ def main():
             os.makedirs(f'{args.path}/simbev/ground-truth/seg', exist_ok=True)
             os.makedirs(f'{args.path}/simbev/ground-truth/det', exist_ok=True)
             os.makedirs(f'{args.path}/simbev/ground-truth/seg_viz', exist_ok=True)
+            os.makedirs(f'{args.path}/simbev/ground-truth/hd_map', exist_ok=True)
             
             os.makedirs(f'{args.path}/simbev/infos', exist_ok=True)
             
