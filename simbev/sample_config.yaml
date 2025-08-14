@@ -194,6 +194,10 @@ walker_spawn_attempts: 100
 # The following setting controls the minimum speed of a pedestrian.
 walker_speed_min: 0.8 # speed in meters per second
 
+# The following setting controls whether to continuously shift the weather
+# during the scene.
+weather_shift: True
+
 # The following setting controls whether to randomize the color of building
 # lights. Does not work in Town12, Town13, or Town15.
 random_building_light_colors: True
@@ -363,10 +367,11 @@ imu_properties:
 #                          # with the vehicle in front of it in meters
 # green_time: 12.0 # duration of the green light in seconds
 
-# The following settings control the weather. Any subset of these settings can
-# be provided, and the ones not provided are chosen randomly for each scene.
-# Other weather parameters supported by CARLA can be used as well.
-# weather:
+# The following settings control the (initial and final, if continuous weather
+# shift is enabled) weather. Any subset of these settings can be provided, and
+# the ones not provided are chosen randomly for each scene. Other weather
+# parameters supported by CARLA can be used as well.
+# initial_weather:
 #   cloudiness: 10.0 # cloud cover, values range from 0 (clear sky) to 100
 #   precipitation: 0.0 # rain intensity, values range from 0 (no rain) to 100
 #   precipitation_deposits: 10.0 # amount of water on the ground, values range
@@ -387,6 +392,18 @@ imu_properties:
 #                    # than 0; at 0 it is lighter than air, at 1 it has about
 #                    # the same heaviness as air, at 5 it is so heavy that it
 #                    # is compressed to the ground
+#
+# final_weather:
+#   cloudiness: 100.0
+#   precipitation: 100.0
+#   precipitation_deposits: 100.0
+#   wind_intensity: 100.0
+#   sun_azimuth_angle: 0.0
+#   sun_altitude_angle: -20.0
+#   wetness: 100.0
+#   fog_density: 100.0
+#   fog_distance: 1
+#   fog_falloff: 0.1
 
 # The following setting provides a list of spawn point(s) for the ego vehicle
 # for each map. Each spawn point is in the format of
