@@ -110,6 +110,8 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
+weather_shift: True
+
 random_building_light_colors: True
 
 change_street_light_intensity: True
@@ -217,16 +219,28 @@ imu_properties:
 # distance_to_leading: 4.0
 # green_time: 12.0
 
-# weather:
+# initial_weather:
 #   cloudiness: 10.0
 #   precipitation: 0.0
-#   precipitation_deposits: 10.0
+#   precipitation_deposits: 0.0
 #   wind_intensity: 10.0
 #   sun_azimuth_angle: 300.0
 #   sun_altitude_angle: 20.0
 #   wetness: 0.0
 #   fog_density: 2.0
 #   fog_distance: 0.75
+#   fog_falloff: 0.1
+
+# final_weather:
+#   cloudiness: 100.0
+#   precipitation: 100.0
+#   precipitation_deposits: 100.0
+#   wind_intensity: 100.0
+#   sun_azimuth_angle: 0.0
+#   sun_altitude_angle: -20.0
+#   wetness: 100.0
+#   fog_density: 100.0
+#   fog_distance: 1
 #   fog_falloff: 0.1
 
 # ego_vehicle_spawn_point:

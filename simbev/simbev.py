@@ -276,6 +276,8 @@ def main():
                                     args.config['max_scene_duration']
                                 ))
 
+                                core.scene_duration = scene_duration
+
                                 print(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                                 
                                 if vehicle_moved:
@@ -300,8 +302,11 @@ def main():
                                         core.tick(args.path, scene_counter, j, args.render, args.save)
                                     else:
                                         print('Termination conditions met. Ending scene early.')
+                                        
+                                        core.scene_info['terminated_early'] = True
+                                        
                                         break
-
+                                
                                 if args.save:
                                     # Stop logging the scene.
                                     core.client.stop_recorder()
@@ -373,6 +378,8 @@ def main():
                                 args.config['max_scene_duration']
                             ))
 
+                            core.scene_duration = scene_duration
+
                             print(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                             
                             core.spawn_vehicle()
@@ -392,6 +399,9 @@ def main():
                                     core.tick(args.path, scene_counter, j, args.render, args.save)
                                 else:
                                     print('Termination conditions met. Ending scene early.')
+
+                                    core.scene_info['terminated_early'] = True
+                                    
                                     break
 
                             core.client.stop_recorder()

@@ -117,6 +117,23 @@ TRAFFIC_SIGN = {
     'SpeedLimit75_45': 'speed_limit_75_min_45',
 }
 
+WEATHER_ATTRIBUTES = [
+    'cloudiness',
+    'precipitation',
+    'precipitation_deposits',
+    'wind_intensity',
+    'sun_azimuth_angle',
+    'sun_altitude_angle',
+    'wetness',
+    'fog_density',
+    'fog_distance',
+    'fog_falloff',
+    'scattering_intensity',
+    'mie_scattering_scale',
+    'rayleigh_scattering_scale',
+    'dust_storm'
+]
+
 
 def is_used(port):
     '''
@@ -166,6 +183,8 @@ class CarlaCore:
 
         self.scene_info = {}
         self.scene_data = None
+
+        self.scene_duration = 0.5
 
         self.init_server()
         self.connect_client()
@@ -825,6 +844,10 @@ class CarlaCore:
 
             self.scene_info['map'] = self.map_name
             self.scene_info['vehicle'] = self.bp.id
+
+            self.scene_info['terminated_early'] = False
+
+            self.light_change = False
             
             self.augment_waypoints()
             self.trim_crosswalks()
@@ -1013,14 +1036,13 @@ class CarlaCore:
         
         print('Crosswalks trimmed.')
 
-    def setup_scenario(self):
+    def configure_weather(self, weather):
         '''
-        Set up the scenario by configuring the weather, lights, and traffic.
-        '''
-        # Configure the weather.
-        print('Configuring the weather...')
+        Configure the weather randomly.
 
-        weather = self.world.get_weather()
+        Args:
+            weather: CARLA weather object to configure.
+        '''
 
         weather.cloudiness = 100 * random.betavariate(0.8, 1.0)
         
@@ -1055,39 +1077,105 @@ class CarlaCore:
         if self.map_name == 'Town12' or self.map_name == 'Town13' or self.map_name == 'Town15':
             if weather.fog_density > 10.0:
                 weather.fog_falloff = 0.01
-
-        if 'weather' in self.config:
-            for attribute in weather.__dir__():
-                if attribute in self.config['weather']:
-                    weather.__setattr__(attribute, self.config['weather'][attribute])
         
-        self.world.set_weather(weather)
+        return weather
+    
+    def setup_scenario(self):
+        '''
+        Set up the scenario by configuring the weather, lights, and traffic.
+        '''
+        # Configure the weather.
+        print('Configuring the weather...')
 
-        print(f'Cloudiness: {weather.cloudiness:.2f}%, '
-              f'precipitation: {weather.precipitation:4.2f}%, '
-              f'precipitation deposits: {weather.precipitation_deposits:.2f}%.')
-        print(f'Wind intensity: {weather.wind_intensity:.2f}%.')
-        print(f'Sun azimuth angle: {weather.sun_azimuth_angle:.2f}°, '
-              f'sun altitude angle: {weather.sun_altitude_angle:.2f}°.')
-        print(f'Wetness: {weather.wetness:.2f}%.')
-        print(f'Fog density: {weather.fog_density:.2f}%, '
-              f'fog distance: {weather.fog_distance:.2f} m, '
-              f'fog falloff: {weather.fog_falloff:.2f}.')
+        initial_weather = self.world.get_weather()
+
+        initial_weather = self.configure_weather(initial_weather)
+
+        if 'initial_weather' in self.config:
+            for attribute in initial_weather.__dir__():
+                if attribute in self.config['initial_weather']:
+                    initial_weather.__setattr__(attribute, self.config['initial_weather'][attribute])
+
+        if self.config['weather_shift']:
+            self.scene_info['weather_shift'] = True
+
+            final_weather = self.world.get_weather()
         
-        weather_parameters = {
-            'cloudiness': weather.cloudiness,
-            'precipitation': weather.precipitation,
-            'precipitation_deposits': weather.precipitation_deposits,
-            'wind_intensity': weather.wind_intensity,
-            'sun_azimuth_angle': weather.sun_azimuth_angle,
-            'sun_altitude_angle': weather.sun_altitude_angle,
-            'wetness': weather.wetness,
-            'fog_density': weather.fog_density,
-            'fog_distance': weather.fog_distance,
-            'fog_falloff': weather.fog_falloff
+            final_weather = self.configure_weather(final_weather)
+
+            if 'final_weather' in self.config:
+                for attribute in final_weather.__dir__():
+                    if attribute in self.config['final_weather']:
+                        final_weather.__setattr__(attribute, self.config['final_weather'][attribute])
+
+            self.weather_increment = self.world.get_weather()
+
+            num_steps = round(self.scene_duration / self.config['timestep'])
+
+            for attribute in self.weather_increment.__dir__():
+                if attribute in WEATHER_ATTRIBUTES:
+                    self.weather_increment.__setattr__(
+                        attribute,
+                        (final_weather.__getattribute__(attribute) - initial_weather.__getattribute__(attribute)) \
+                            / num_steps
+                    )
+
+        self.world.set_weather(initial_weather)
+
+        print(f'Initial weather...')
+        print(f'Cloudiness: {initial_weather.cloudiness:.2f}%, '
+              f'precipitation: {initial_weather.precipitation:4.2f}%, '
+              f'precipitation deposits: {initial_weather.precipitation_deposits:.2f}%.')
+        print(f'Wind intensity: {initial_weather.wind_intensity:.2f}%.')
+        print(f'Sun azimuth angle: {initial_weather.sun_azimuth_angle:.2f}°, '
+              f'sun altitude angle: {initial_weather.sun_altitude_angle:.2f}°.')
+        print(f'Wetness: {initial_weather.wetness:.2f}%.')
+        print(f'Fog density: {initial_weather.fog_density:.2f}%, '
+              f'fog distance: {initial_weather.fog_distance:.2f} m, '
+              f'fog falloff: {initial_weather.fog_falloff:.2f}.')
+
+        initial_weather_parameters = {
+            'cloudiness': initial_weather.cloudiness,
+            'precipitation': initial_weather.precipitation,
+            'precipitation_deposits': initial_weather.precipitation_deposits,
+            'wind_intensity': initial_weather.wind_intensity,
+            'sun_azimuth_angle': initial_weather.sun_azimuth_angle,
+            'sun_altitude_angle': initial_weather.sun_altitude_angle,
+            'wetness': initial_weather.wetness,
+            'fog_density': initial_weather.fog_density,
+            'fog_distance': initial_weather.fog_distance,
+            'fog_falloff': initial_weather.fog_falloff
         }
 
-        self.scene_info['weather_parameters'] = weather_parameters
+        self.scene_info['initial_weather_parameters'] = initial_weather_parameters
+
+        if self.config['weather_shift']:
+            print(f'Final weather...')
+            print(f'Cloudiness: {final_weather.cloudiness:.2f}%, '
+                  f'precipitation: {final_weather.precipitation:4.2f}%, '
+                  f'precipitation deposits: {final_weather.precipitation_deposits:.2f}%.')
+            print(f'Wind intensity: {final_weather.wind_intensity:.2f}%.')
+            print(f'Sun azimuth angle: {final_weather.sun_azimuth_angle:.2f}°, '
+                  f'sun altitude angle: {final_weather.sun_altitude_angle:.2f}°.')
+            print(f'Wetness: {final_weather.wetness:.2f}%.')
+            print(f'Fog density: {final_weather.fog_density:.2f}%, '
+                  f'fog distance: {final_weather.fog_distance:.2f} m, '
+                  f'fog falloff: {final_weather.fog_falloff:.2f}.')
+            
+            final_weather_parameters = {
+                'cloudiness': final_weather.cloudiness,
+                'precipitation': final_weather.precipitation,
+                'precipitation_deposits': final_weather.precipitation_deposits,
+                'wind_intensity': final_weather.wind_intensity,
+                'sun_azimuth_angle': final_weather.sun_azimuth_angle,
+                'sun_altitude_angle': final_weather.sun_altitude_angle,
+                'wetness': final_weather.wetness,
+                'fog_density': final_weather.fog_density,
+                'fog_distance': final_weather.fog_distance,
+                'fog_falloff': final_weather.fog_falloff
+            }
+
+            self.scene_info['final_weather_parameters'] = final_weather_parameters
 
         print('Weather configured.')
 
@@ -1100,60 +1188,8 @@ class CarlaCore:
 
         self.scene_info['street_light_intensity_change'] = 0.0
 
-        if weather.sun_altitude_angle < 0.0:
-            street_lights = self.light_manager.get_all_lights(carla.LightGroup.Street)
-            building_lights = self.light_manager.get_all_lights(carla.LightGroup.Building)
-
-            if self.config['random_building_light_colors'] and self.map_name not in ['Town12', 'Town13', 'Town15']:
-                for light in list(building_lights):
-                    color = carla.Color(r=random.randint(0, 255), g=random.randint(0, 255), b=random.randint(0, 255))
-
-                    self.light_manager.set_color([light], color)
-                
-            self.light_manager.turn_on(building_lights)
-
-            self.scene_info['building_lights_on'] = True
-            
-            if self.config['change_street_light_intensity']:
-                if 'street_light_intensity_change' in self.config:
-                    intensity_change = self.config['street_light_intensity_change']
-                else:
-                    intensity_change = random.uniform(
-                        -np.mean(self.street_light_intensity),
-                        np.mean(self.street_light_intensity)
-                    )
-
-                print(f'Change in street light intensity: {intensity_change:.2f} lumens.')
-
-                self.scene_info['street_light_intensity_change'] = intensity_change
-                
-                new_street_light_intensity = list(
-                    np.maximum(np.array(self.street_light_intensity) + intensity_change,
-                               self.config['min_street_light_intensity'])
-                    )
-                
-                self.light_manager.set_intensities(street_lights, new_street_light_intensity)
-                
-            self.light_manager.turn_on(street_lights)
-
-            self.scene_info['street_lights_on'] = True
-
-            if self.config['random_street_light_failure']:
-                p = self.config['street_light_failure_percentage'] / 100.0
-
-                new_street_light_status = np.random.choice(2, len(street_lights), p=[p, 1 - p]).astype(bool).tolist()
-
-                self.light_manager.set_active(street_lights, new_street_light_status)
-            
-            if self.config['turn_off_building_lights']:
-                self.light_manager.turn_off(building_lights)
-
-                self.scene_info['building_lights_on'] = False
-            
-            if self.config['turn_off_street_lights']:
-                self.light_manager.turn_off(street_lights)
-
-                self.scene_info['street_lights_on'] = False
+        if initial_weather.sun_altitude_angle < 0.0:
+            self.configure_lights()
         
         print('Lights configured.')
         
@@ -1194,6 +1230,64 @@ class CarlaCore:
 
         print('NPCs spawned.')
 
+    def configure_lights(self):
+        '''
+        Configure the lights.
+        '''
+        street_lights = self.light_manager.get_all_lights(carla.LightGroup.Street)
+        building_lights = self.light_manager.get_all_lights(carla.LightGroup.Building)
+
+        if self.config['random_building_light_colors'] and self.map_name not in ['Town12', 'Town13', 'Town15']:
+            for light in list(building_lights):
+                color = carla.Color(r=random.randint(0, 255), g=random.randint(0, 255), b=random.randint(0, 255))
+
+                self.light_manager.set_color([light], color)
+            
+        self.light_manager.turn_on(building_lights)
+
+        self.scene_info['building_lights_on'] = True
+        
+        if self.config['change_street_light_intensity']:
+            if 'street_light_intensity_change' in self.config:
+                intensity_change = self.config['street_light_intensity_change']
+            else:
+                intensity_change = random.uniform(
+                    -np.mean(self.street_light_intensity),
+                    np.mean(self.street_light_intensity)
+                )
+
+            print(f'Change in street light intensity: {intensity_change:.2f} lumens.')
+
+            self.scene_info['street_light_intensity_change'] = intensity_change
+            
+            new_street_light_intensity = list(
+                np.maximum(np.array(self.street_light_intensity) + intensity_change,
+                            self.config['min_street_light_intensity'])
+                )
+            
+            self.light_manager.set_intensities(street_lights, new_street_light_intensity)
+            
+        self.light_manager.turn_on(street_lights)
+
+        self.scene_info['street_lights_on'] = True
+
+        if self.config['random_street_light_failure']:
+            p = self.config['street_light_failure_percentage'] / 100.0
+
+            new_street_light_status = np.random.choice(2, len(street_lights), p=[p, 1 - p]).astype(bool).tolist()
+
+            self.light_manager.set_active(street_lights, new_street_light_status)
+        
+        if self.config['turn_off_building_lights']:
+            self.light_manager.turn_off(building_lights)
+
+            self.scene_info['building_lights_on'] = False
+        
+        if self.config['turn_off_street_lights']:
+            self.light_manager.turn_off(street_lights)
+
+            self.scene_info['street_lights_on'] = False
+    
     def spawn_npcs(self, n_vehicles, n_walkers):
         '''
         Spawn background vehicles and pedestrians.
@@ -1535,6 +1629,35 @@ class CarlaCore:
                 
                 elif role_name in self.tried_to_open_door_list and vehicle.get_velocity().length() > 1.0:
                     self.tried_to_open_door_list.remove(role_name)
+        
+        # Change the weather if configured to do so.
+        if self.config['weather_shift'] and scene is not None:
+            weather = self.world.get_weather()
+
+            old_sun_altitude_angle = weather.sun_altitude_angle
+
+            for attribute in weather.__dir__():
+                if attribute in WEATHER_ATTRIBUTES:
+                    weather.__setattr__(
+                        attribute,
+                        weather.__getattribute__(attribute) + self.weather_increment.__getattribute__(attribute)
+                    )
+            
+            new_sun_altitude_angle = weather.sun_altitude_angle
+
+            if self.light_change:
+                self.light_manager.set_day_night_cycle(True)
+                
+                self.light_change = False
+            
+            if old_sun_altitude_angle >= 0.0 and new_sun_altitude_angle < 0.0:
+                self.configure_lights()
+                
+                self.light_manager.set_day_night_cycle(False)
+                
+                self.light_change = True
+            
+            self.world.set_weather(weather)
         
         # Proceed for one time step.
         self.world.tick()
