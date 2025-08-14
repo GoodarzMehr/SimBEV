@@ -820,6 +820,9 @@ class CarlaCore:
             self.counter = 0
             self.warning_flag = False
 
+            self.termination_counter = 0
+            self.terminate_scene = False
+
             self.scene_info['map'] = self.map_name
             self.scene_info['vehicle'] = self.bp.id
             
@@ -1626,6 +1629,16 @@ class CarlaCore:
             ) as f:
                 json.dump(self.hd_map_info, f, indent=4)
 
+        # Decide whether to terminate the scene.
+        if scene is not None and self.config['early_scene_termination']:
+            if self.vehicle.get_velocity().length() < 0.1:
+                self.termination_counter += 1
+            else:
+                self.termination_counter = 0
+            
+            if self.termination_counter * self.config['timestep'] >= self.config['termination_timeout']:
+                self.terminate_scene = True
+    
     def trim_waypoints(self):
         '''
         Trim the list of waypoints and only leave those within the ego
