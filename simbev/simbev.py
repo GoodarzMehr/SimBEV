@@ -270,6 +270,13 @@ def main():
 
                             for _ in range(args.config[f'{split}_scene_config'][town]):
                                 print(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
+
+                                scene_duration = round(np.random.uniform(
+                                    args.config['min_scene_duration'],
+                                    args.config['max_scene_duration']
+                                ))
+
+                                print(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                                 
                                 if vehicle_moved:
                                     core.move_vehicle()
@@ -288,8 +295,12 @@ def main():
                                         True
                                     )
 
-                                for j in range(round(args.config['scene_duration'] / args.config['timestep'])):
-                                    core.tick(args.path, scene_counter, j, args.render, args.save)
+                                for j in range(round(scene_duration / args.config['timestep'])):
+                                    if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
+                                        core.tick(args.path, scene_counter, j, args.render, args.save)
+                                    else:
+                                        print('Termination conditions met. Ending scene early.')
+                                        break
 
                                 if args.save:
                                     # Stop logging the scene.
@@ -356,6 +367,13 @@ def main():
                                 core.load_map(town)
 
                             print(f'Replacing scene {scene_counter:04d} in {town} for the {split} set...')
+
+                            scene_duration = round(np.random.uniform(
+                                args.config['min_scene_duration'],
+                                args.config['max_scene_duration']
+                            ))
+
+                            print(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                             
                             core.spawn_vehicle()
                             
@@ -369,8 +387,12 @@ def main():
                                 True
                             )
 
-                            for j in range(round(args.config['scene_duration'] / args.config['timestep'])):
-                                core.tick(args.path, scene_counter, j, args.render, args.save)
+                            for j in range(round(scene_duration / args.config['timestep'])):
+                                if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
+                                    core.tick(args.path, scene_counter, j, args.render, args.save)
+                                else:
+                                    print('Termination conditions met. Ending scene early.')
+                                    break
 
                             core.client.stop_recorder()
 
