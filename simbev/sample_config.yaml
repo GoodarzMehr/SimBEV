@@ -70,13 +70,13 @@ show_debug_telemetry: False
 # rest of the scene. Data collection duration is selected randomly between the
 # minimum and maximum values.
 warmup_duration: 4 # warmup duration in seconds
-min_scene_duration: 4 # minimum scene duration in seconds
-max_scene_duration: 28 # maximum scene duration in seconds
+min_scene_duration: 8 # minimum scene duration in seconds
+max_scene_duration: 32 # maximum scene duration in seconds
 
 # The following settings control whether to terminate the scene early if the
 # ego vehicle is stationary for a certain period of time.
 early_scene_termination: True
-termination_timeout: 4
+termination_timeout: 8
 
 # Basic CARLA settings.
 host: 'localhost' # IP address of the CARLA server

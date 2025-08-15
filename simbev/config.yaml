@@ -52,11 +52,11 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 4
-max_scene_duration: 28
+min_scene_duration: 8
+max_scene_duration: 32
 
 early_scene_termination: True
-termination_timeout: 4
+termination_timeout: 8
 
 host: 'localhost'
 timeout: 80.0

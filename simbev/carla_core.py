@@ -845,6 +845,7 @@ class CarlaCore:
             self.scene_info['map'] = self.map_name
             self.scene_info['vehicle'] = self.bp.id
 
+            self.scene_info['expected_scene_duration'] = self.scene_duration
             self.scene_info['terminated_early'] = False
 
             self.light_change = False
@@ -2365,11 +2366,11 @@ class CarlaCore:
 
         self.hd_map_info['transform'] = {
             'x': wp.transform.location.x,
-            'y': wp.transform.location.y,
+            'y': -wp.transform.location.y,
             'z': wp.transform.location.z,
             'roll': wp.transform.rotation.roll,
-            'pitch': wp.transform.rotation.pitch,
-            'yaw': wp.transform.rotation.yaw
+            'pitch': -wp.transform.rotation.pitch,
+            'yaw': -wp.transform.rotation.yaw
         }
 
         left_lane_wp = wp.get_left_lane()
