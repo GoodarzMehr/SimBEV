@@ -48,6 +48,11 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 ## News
 **[2025/8/15]** SimBEV 2.0 is released, with support for new 3D and BEV classes, continuous weather shifts, and more.
 
+<p align="middle">
+  <img src="assets/V2_3D_Sample.jpg" width="63%" />
+  <img src="assets/V2_BEV_Sample.jpg" width="35.4%" />
+</p> 
+
 **[2025/4/15]** [Our implementation](https://github.com/GoodarzMehr/UniTR) of [UniTR](https://github.com/Haiyang-W/UniTR) trained on the SimBEV dataset is released.
 
 **[2025/2/9]** [Our implementation](https://github.com/GoodarzMehr/bevfusion) of [BEVFusion](https://github.com/mit-han-lab/bevfusion) trained on the SimBEV dataset is released.
