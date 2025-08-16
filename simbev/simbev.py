@@ -271,10 +271,10 @@ def main():
                             for _ in range(args.config[f'{split}_scene_config'][town]):
                                 print(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
 
-                                scene_duration = round(np.random.uniform(
+                                scene_duration = max(round(np.random.uniform(
                                     args.config['min_scene_duration'],
                                     args.config['max_scene_duration']
-                                ))
+                                )), 1)
 
                                 core.scene_duration = scene_duration
 
@@ -373,10 +373,10 @@ def main():
 
                             print(f'Replacing scene {scene_counter:04d} in {town} for the {split} set...')
 
-                            scene_duration = round(np.random.uniform(
+                            scene_duration = max(round(np.random.uniform(
                                 args.config['min_scene_duration'],
                                 args.config['max_scene_duration']
-                            ))
+                            )), 1)
 
                             core.scene_duration = scene_duration
 
