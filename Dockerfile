@@ -5,9 +5,9 @@
 # This script performs all the necessary steps for creating a SimBEV Docker
 # image.
 #
-# The base Docker image is Ubuntu 22.04 with CUDA 12.4 and Vulkan SDK
+# The base Docker image is Ubuntu 20.04 with CUDA 11.3 and Vulkan SDK
 # 1.3.204.1. If you want to use a different base image, you may have to modify
-# "ubuntu2204/x86_64" when fetching keys, based on your Ubuntu release and
+# "ubuntu2004/x86_64" when fetching keys, based on your Ubuntu release and
 # system architecture.
 
 # Build Arguments (Case Sensitive):
@@ -38,7 +38,7 @@
 # Use "nvidia-smi" to ensure your graphics card is visible inside the
 # container.
 
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+FROM nvidia/cuda:11.3.1-devel-ubuntu20.04
 
 # Define build arguments and environment variables.
 
@@ -50,7 +50,7 @@ ENV TZ=America/New_York
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CARLA_VERSION=$CARLA_VERSION
 ENV CARLA_ROOT=/home/carla
-ENV PYTHONPATH=${CARLA_ROOT}/PythonAPI/carla/dist/carla-${CARLA_VERSION}-py3.10-linux-x86_64.egg
+ENV PYTHONPATH=${CARLA_ROOT}/PythonAPI/carla/dist/carla-${CARLA_VERSION}-py3.7-linux-x86_64.egg
 
 # Add new user and install prerequisite packages.
 
@@ -59,14 +59,14 @@ WORKDIR /home
 RUN useradd -m ${USER}
 
 RUN set -xue && apt-key del 7fa2af80 \
-&& apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub \
+&& apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub \
 && apt-get update \
 && apt-get install -y build-essential cmake debhelper git wget xdg-user-dirs xserver-xorg libvulkan1 libsdl2-2.0-0 \
 libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc gdb \
-libglib2.0-0 libgtk2.0-dev libnvidia-gl-550 libnvidia-common-550 libvulkan-dev vulkan-tools python-is-python3 \
+libglib2.0-0 libgtk2.0-dev libnvidia-gl-550 libnvidia-common-550 libvulkan-dev vulkan-utils python-is-python3 \
 mesa-utils
 
-RUN pip install --no-cache-dir numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion networkx \
-torch psutil
+RUN pip install --no-cache-dir numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
+networkx==2.7.1 torch==1.10.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
 
 USER ${USER}
