@@ -52,6 +52,11 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
   <img src="assets/V2_3D_Sample.jpg" width="63%" />
   <img src="assets/V2_BEV_Sample.jpg" width="35.4%" />
 </p> 
+<p align="middle">
+  <img src="https://github.com/GoodarzMehr/SimBEV/blob/main/assets/rain.gif" width="32%" />
+ <img src="https://github.com/GoodarzMehr/SimBEV/blob/main/assets/daynight.gif" width="32%" />
+ <img src="https://github.com/GoodarzMehr/SimBEV/blob/main/assets/fog.gif" width="32%" />
+</p> 
 
 **[2025/4/15]** [Our implementation](https://github.com/GoodarzMehr/UniTR) of [UniTR](https://github.com/Haiyang-W/UniTR) trained on the SimBEV dataset is released.
 
