@@ -5,10 +5,14 @@ import yaml
 import time
 import json
 import copy
+import logging
 import argparse
 import traceback
+import logging.handlers
 
 import numpy as np
+
+from datetime import datetime
 
 from carla_core import CarlaCore, kill_all_servers
 
@@ -93,6 +97,64 @@ argparser.add_argument(
 argparser.set_defaults(save=True)
 
 args = argparser.parse_args()
+
+def setup_logger(name=None, log_level=logging.INFO, log_dir='logs'):
+    '''
+    Set up a logger with both console and file handlers.
+    
+    Args:
+        name: logger name (if None, uses root logger)
+        log_level: logging level (default: INFO)
+        log_dir: directory to store log files
+        
+    Returns:
+        logger: configured logger instance
+    '''
+    os.makedirs(log_dir, exist_ok=True)
+
+    logger = logging.getLogger(name)
+    
+    logger.setLevel(log_level)
+    
+    # Avoid adding handlers multiple times.
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    # Create formatter.
+    formatter = logging.Formatter(
+        '%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Create the console handler.
+    console_handler = logging.StreamHandler()
+    
+    console_handler.setLevel(log_level)
+    console_handler.setFormatter(formatter)
+    
+    logger.addHandler(console_handler)
+
+    # Create the file handler.
+    log_filename = os.path.join(log_dir, f'SimBEV_{datetime.now().strftime("%Y%m%d%H%M%S")}.log')
+
+    file_handler = logging.handlers.RotatingFileHandler(log_filename, maxBytes=100*1024*1024, backupCount=5)
+
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(file_handler)
+    
+    # Create the error file handler.
+    error_filename = os.path.join(log_dir, f'SimBEV_Errors_{datetime.now().strftime("%Y%m%d%H%M%S")}.log')
+
+    error_handler = logging.handlers.RotatingFileHandler(error_filename, maxBytes=100*1024*1024, backupCount=5)
+
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(formatter)
+    
+    logger.addHandler(error_handler)
+    
+    return logger
 
 def parse_config(args):
     '''
@@ -212,6 +274,8 @@ def main():
             os.makedirs(f'{args.path}/simbev/configs', exist_ok=True)
 
         if args.config['mode'] == 'create':
+            logger.info('Setting things up...')
+            
             scene_counter = 0
 
             core = CarlaCore(args.config)
@@ -269,7 +333,7 @@ def main():
                             vehicle_moved = False
 
                             for _ in range(args.config[f'{split}_scene_config'][town]):
-                                print(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
+                                logger.info(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
 
                                 scene_duration = max(round(np.random.uniform(
                                     args.config['min_scene_duration'],
@@ -278,7 +342,7 @@ def main():
 
                                 core.scene_duration = scene_duration
 
-                                print(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
+                                logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                                 
                                 if vehicle_moved:
                                     core.move_vehicle()
@@ -301,7 +365,7 @@ def main():
                                     if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
                                         core.tick(args.path, scene_counter, j, args.render, args.save)
                                     else:
-                                        print('Termination conditions met. Ending scene early.')
+                                        logger.warning('Termination conditions met. Ending scene early.')
                                         
                                         core.scene_info['terminated_early'] = True
                                         
@@ -338,6 +402,8 @@ def main():
                             core.destroy_vehicle()
         
         elif args.config['mode'] == 'replace' and args.save:
+            logger.info('Setting things up...')
+
             core = CarlaCore(args.config)
 
             # Load Town01 once to get around a bug in CARLA where the
@@ -371,7 +437,7 @@ def main():
                                 
                                 core.load_map(town)
 
-                            print(f'Replacing scene {scene_counter:04d} in {town} for the {split} set...')
+                            logger.info(f'Replacing scene {scene_counter:04d} in {town} for the {split} set...')
 
                             scene_duration = max(round(np.random.uniform(
                                 args.config['min_scene_duration'],
@@ -380,7 +446,7 @@ def main():
 
                             core.scene_duration = scene_duration
 
-                            print(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
+                            logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                             
                             core.spawn_vehicle()
                             
@@ -398,7 +464,7 @@ def main():
                                 if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
                                     core.tick(args.path, scene_counter, j, args.render, args.save)
                                 else:
-                                    print('Termination conditions met. Ending scene early.')
+                                    logger.warning('Termination conditions met. Ending scene early.')
 
                                     core.scene_info['terminated_early'] = True
                                     
@@ -427,14 +493,14 @@ def main():
 
                             core.destroy_vehicle()
         
-        print('Killing all servers...')
+        logger.warning('Killing all servers...')
         
         kill_all_servers()
 
     except Exception:
-        print(traceback.format_exc())
+        logger.error(traceback.format_exc())
 
-        print('Killing all servers...')
+        logger.warning('Killing all servers...')
 
         kill_all_servers()
 
@@ -442,12 +508,14 @@ def main():
 
 if __name__ == '__main__':
     try:
+        logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs')
+        
         main()
     except KeyboardInterrupt:
-        print('Killing all servers...')
+        logger.warning('Killing all servers...')
         
         kill_all_servers()
 
         time.sleep(3.0)
     finally:
-        print('Done.')
+        logger.info('Done.')

@@ -15,6 +15,7 @@ import carla
 import random
 import signal
 import psutil
+import logging
 import subprocess
 
 import numpy as np
@@ -25,6 +26,8 @@ from sensors import *
 from sensor_manager import SensorManager
 
 from skimage.morphology import binary_closing, binary_opening, binary_dilation
+
+logger = logging.getLogger(__name__)
 
 MAP_PALETTE = {
     'road': (196, 80, 196),
@@ -190,7 +193,7 @@ class CarlaCore:
         self.connect_client()
 
     def __getstate__(self):
-        print('No pickles for CARLA! Copyright © 2025 Goodarz Mehr')
+        logger.warning('No pickles for CARLA! Copyright © 2025 Goodarz Mehr')
     
     def init_server(self):
         '''
@@ -208,10 +211,10 @@ class CarlaCore:
         # port number and check again.
         while server_port_used or stream_port_used:
             if server_port_used:
-                print(f'Server port {self.server_port} is already being used.')
+                logger.warning(f'Server port {self.server_port} is already being used.')
             if stream_port_used:
-                print(f'Stream port {self.server_port + 1} is already being used.')
-            
+                logger.warning(f'Stream port {self.server_port + 1} is already being used.')
+
             self.server_port += 2
             
             server_port_used = is_used(self.server_port)
@@ -240,7 +243,7 @@ class CarlaCore:
 
         server_command_text = ' '.join(map(str, server_command))
         
-        print(server_command_text)
+        logger.debug(server_command_text)
         
         server_process = subprocess.Popen(
             server_command_text,
@@ -258,19 +261,19 @@ class CarlaCore:
         # Try connecting a client to the server.
         for i in range(self.config['retries_on_error']):
             try:
-                print(f'Connecting to server on port {self.server_port}...')
+                logger.debug(f'Connecting to server on port {self.server_port}...')
                 
                 self.client = carla.Client(self.config['host'], self.server_port)
                 
                 self.client.set_timeout(self.config['timeout'])
 
-                print('Connected to server.')
+                logger.debug('Connected to server.')
 
                 return
 
             except Exception as e:
-                print(f'Waiting for server to be ready: {e}, attempt {i + 1} of '
-                      f'{self.config["retries_on_error"]}.')
+                logger.warning(f'Waiting for server to be ready: {e}, attempt {i + 1} of '
+                               f'{self.config["retries_on_error"]}.')
                 
                 time.sleep(3.0)
 
@@ -283,7 +286,7 @@ class CarlaCore:
         Args:
             map_name: name of the map to load.
         '''
-        print(f'Loading {map_name}...')
+        logger.info(f'Loading {map_name}...')
         
         self.client.load_world(map_name)
         
@@ -316,12 +319,12 @@ class CarlaCore:
         
         self.world.tick()
 
-        print(f'{map_name} loaded.')
-        
+        logger.info(f'{map_name} loaded.')
+    
         # Some objects obstruct the overhead or bottom-up view that is
         # necessary for collection of accurate ground truth data, so they are
         # removed from the map.
-        print(f'Removing objects obstructing the overhead or bottom-up view from {map_name}...')
+        logger.debug(f'Removing objects obstructing the overhead or bottom-up view from {map_name}...')
 
         if map_name == 'Town02':
             obstructing = [
@@ -409,10 +412,10 @@ class CarlaCore:
 
         self.world.tick()
 
-        print(f'Objects obstructing the overhead or bottom-up view were removed from {map_name}.')
+        logger.debug(f'Objects obstructing the overhead or bottom-up view were removed from {map_name}.')
         
         # Generate waypoints.
-        print('Generating waypoints...')
+        logger.debug('Generating waypoints...')
 
         self.map_name = map_name
 
@@ -422,24 +425,24 @@ class CarlaCore:
 
         self.world.tick()
 
-        print('Waypoints generated.')
+        logger.debug('Waypoints generated.')
 
         # Set up the Traffic Manager.
-        print('Setting up Traffic Manager...')
+        logger.debug('Setting up Traffic Manager...')
 
         self.tm_port = self.server_port // 10 + self.server_port % 10
 
         while is_used(self.tm_port):
-            print(f'Traffic Manager port {self.tm_port} is already being used. Checking the next one...')
+            logger.warning(f'Traffic Manager port {self.tm_port} is already being used. Checking the next one...')
             self.tm_port += 1
         
         self.traffic_manager = self.client.get_trafficmanager(self.tm_port)
         self.traffic_manager.set_synchronous_mode(True)
 
-        print(f'Traffic Manager is connected to port {self.tm_port}.')
+        logger.debug(f'Traffic Manager is connected to port {self.tm_port}.')
 
         # Get the ego vehicle blueprint and spawn points.
-        print('Getting agent blueprint and spawn points...')
+        logger.debug('Getting agent blueprint and spawn points...')
 
         self.bp = self.world.get_blueprint_library().filter(self.config['vehicle'])[0]
 
@@ -473,9 +476,9 @@ class CarlaCore:
 
                     self.spawn_points.append(carla.Transform(location, rotation))
         
-        print(f'{len(self.spawn_points)} spawn points available.')
+        logger.debug(f'{len(self.spawn_points)} spawn points available.')
 
-        print('Got agent blueprint and spawn points.')
+        logger.debug('Got agent blueprint and spawn points.')
 
         # Set data type, since calculations for larger maps require more
         # precision.
@@ -485,7 +488,7 @@ class CarlaCore:
             self.dType = torch.float
         
         # Get the Light Manager.
-        print('Getting the Light Manager...')
+        logger.debug('Getting the Light Manager...')
 
         self.light_manager = self.world.get_lightmanager()
 
@@ -493,7 +496,7 @@ class CarlaCore:
             self.light_manager.get_all_lights(carla.LightGroup.Street)
         )
 
-        print('Got Light Manager.')
+        logger.debug('Got Light Manager.')
     
     def spawn_vehicle(self):
         '''
@@ -508,7 +511,7 @@ class CarlaCore:
             self.config['bev_properties'] = {'fov': str(bev_fov)}
             
             # Instantiate the vehicle.
-            print('Spawning the ego vehicle...')
+            logger.debug('Spawning the ego vehicle...')
             self.vehicle = None
 
             while self.vehicle is None:
@@ -520,11 +523,11 @@ class CarlaCore:
 
             self.traffic_manager.update_vehicle_lights(self.vehicle, True)
 
-            print('Ego vehicle spawned.')
+            logger.debug('Ego vehicle spawned.')
 
             # Set the percentage of time the ego vehicle ignores traffic
             # lights, traffic signs, other vehicles, and walkers.
-            print('Configuring ego vehicle behavior...')
+            logger.debug('Configuring ego vehicle behavior...')
 
             self.traffic_manager.ignore_lights_percentage(self.vehicle, self.config['ignore_lights_percentage'])
             self.traffic_manager.ignore_signs_percentage(self.vehicle, self.config['ignore_signs_percentage'])
@@ -539,7 +542,7 @@ class CarlaCore:
                 p = self.config['reckless_ego_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
-                    print('Ego vehicle is reckless!')
+                    logger.warning('Ego vehicle is reckless!')
 
                     self.traffic_manager.ignore_lights_percentage(self.vehicle, 100.0)
                     self.traffic_manager.ignore_signs_percentage(self.vehicle, 100.0)
@@ -547,11 +550,11 @@ class CarlaCore:
                     self.traffic_manager.ignore_walkers_percentage(self.vehicle, 100.0)
 
                     self.scene_info['reckless_ego'] = True
-            
-            print('Ego vehicle behavior configured.')
-            
+
+            logger.debug('Ego vehicle behavior configured.')
+
             # Instantiate the Sensor Manager.
-            print('Creating sensors...')
+            logger.debug('Creating sensors...')
 
             self.sensor_manager = SensorManager(self, self.vehicle)
 
@@ -738,11 +741,11 @@ class CarlaCore:
             
             self.world.tick()
 
-            print('Sensors created.')
+            logger.debug('Sensors created.')
 
         except Exception as e:
-            print(f'Error while spawning the vehicle: {e}')
-            
+            logger.error(f'Error while spawning the vehicle: {e}')
+
             kill_all_servers()
 
             time.sleep(3.0)
@@ -759,7 +762,7 @@ class CarlaCore:
             self.scene_info = {}
             
             # Move the vehicle.
-            print('Moving the ego vehicle...')
+            logger.debug('Moving the ego vehicle...')
 
             self.vehicle.set_autopilot(False, self.tm_port)
             self.vehicle.enable_constant_velocity(carla.Vector3D(0.0, 0.0, 0.0))
@@ -782,17 +785,17 @@ class CarlaCore:
 
             time.sleep(1.0)
 
-            print('Ego vehicle moved.')
+            logger.debug('Ego vehicle moved.')
 
             # Determine whether the ego vehicle is reckless (ignores all
             # traffic rules).
-            print('Configuring ego vehicle behavior...')
+            logger.debug('Configuring ego vehicle behavior...')
 
             if self.config['reckless_ego']:
                 p = self.config['reckless_ego_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
-                    print('The ego vehicle is reckless!')
+                    logger.warning('The ego vehicle is reckless!')
 
                     self.traffic_manager.ignore_lights_percentage(self.vehicle, 100.0)
                     self.traffic_manager.ignore_signs_percentage(self.vehicle, 100.0)
@@ -820,11 +823,11 @@ class CarlaCore:
 
             self.world.tick()
 
-            print('Ego vehicle behavior configured.')
+            logger.debug('Ego vehicle behavior configured.')
 
         except Exception as e:
-            print(f'Error while moving the vehicle: {e}')
-            
+            logger.error(f'Error while moving the vehicle: {e}')
+
             kill_all_servers()
 
             time.sleep(3.0)
@@ -856,8 +859,8 @@ class CarlaCore:
             self.set_spectator_view()
         
         except Exception as e:
-            print(f'Error while starting the scene: {e}')
-            
+            logger.error(f'Error while starting the scene: {e}')
+
             kill_all_servers()
 
             time.sleep(3.0)
@@ -1025,7 +1028,7 @@ class CarlaCore:
         '''
         self.trimmed_crosswalks = []
 
-        print('Trimming crosswalks...')
+        logger.debug('Trimming crosswalks...')
 
         vehicle_location = self.vehicle.get_location()
         
@@ -1034,8 +1037,8 @@ class CarlaCore:
                 if self.crosswalks[i].distance(self.crosswalks[j]) < 0.02 and \
                     self.crosswalks[i].distance(vehicle_location) < self.config['mapping_area_radius']:
                     self.trimmed_crosswalks.append(self.crosswalks[i:j + 1])
-        
-        print('Crosswalks trimmed.')
+
+        logger.debug('Crosswalks trimmed.')
 
     def configure_weather(self, weather):
         '''
@@ -1086,7 +1089,7 @@ class CarlaCore:
         Set up the scenario by configuring the weather, lights, and traffic.
         '''
         # Configure the weather.
-        print('Configuring the weather...')
+        logger.debug('Configuring the weather...')
 
         initial_weather = self.world.get_weather()
 
@@ -1123,17 +1126,17 @@ class CarlaCore:
 
         self.world.set_weather(initial_weather)
 
-        print(f'Initial weather...')
-        print(f'Cloudiness: {initial_weather.cloudiness:.2f}%, '
-              f'precipitation: {initial_weather.precipitation:4.2f}%, '
-              f'precipitation deposits: {initial_weather.precipitation_deposits:.2f}%.')
-        print(f'Wind intensity: {initial_weather.wind_intensity:.2f}%.')
-        print(f'Sun azimuth angle: {initial_weather.sun_azimuth_angle:.2f}°, '
-              f'sun altitude angle: {initial_weather.sun_altitude_angle:.2f}°.')
-        print(f'Wetness: {initial_weather.wetness:.2f}%.')
-        print(f'Fog density: {initial_weather.fog_density:.2f}%, '
-              f'fog distance: {initial_weather.fog_distance:.2f} m, '
-              f'fog falloff: {initial_weather.fog_falloff:.2f}.')
+        logger.info(f'Initial weather...')
+        logger.info(f'Cloudiness: {initial_weather.cloudiness:.2f}%, '
+                    f'precipitation: {initial_weather.precipitation:4.2f}%, '
+                    f'precipitation deposits: {initial_weather.precipitation_deposits:.2f}%.')
+        logger.info(f'Wind intensity: {initial_weather.wind_intensity:.2f}%.')
+        logger.info(f'Sun azimuth angle: {initial_weather.sun_azimuth_angle:.2f}°, '
+                    f'sun altitude angle: {initial_weather.sun_altitude_angle:.2f}°.')
+        logger.info(f'Wetness: {initial_weather.wetness:.2f}%.')
+        logger.info(f'Fog density: {initial_weather.fog_density:.2f}%, '
+                    f'fog distance: {initial_weather.fog_distance:.2f} m, '
+                    f'fog falloff: {initial_weather.fog_falloff:.2f}.')
 
         initial_weather_parameters = {
             'cloudiness': initial_weather.cloudiness,
@@ -1151,17 +1154,17 @@ class CarlaCore:
         self.scene_info['initial_weather_parameters'] = initial_weather_parameters
 
         if self.config['weather_shift']:
-            print(f'Final weather...')
-            print(f'Cloudiness: {final_weather.cloudiness:.2f}%, '
-                  f'precipitation: {final_weather.precipitation:4.2f}%, '
-                  f'precipitation deposits: {final_weather.precipitation_deposits:.2f}%.')
-            print(f'Wind intensity: {final_weather.wind_intensity:.2f}%.')
-            print(f'Sun azimuth angle: {final_weather.sun_azimuth_angle:.2f}°, '
-                  f'sun altitude angle: {final_weather.sun_altitude_angle:.2f}°.')
-            print(f'Wetness: {final_weather.wetness:.2f}%.')
-            print(f'Fog density: {final_weather.fog_density:.2f}%, '
-                  f'fog distance: {final_weather.fog_distance:.2f} m, '
-                  f'fog falloff: {final_weather.fog_falloff:.2f}.')
+            logger.info(f'Final weather...')
+            logger.info(f'Cloudiness: {final_weather.cloudiness:.2f}%, '
+                        f'precipitation: {final_weather.precipitation:4.2f}%, '
+                        f'precipitation deposits: {final_weather.precipitation_deposits:.2f}%.')
+            logger.info(f'Wind intensity: {final_weather.wind_intensity:.2f}%.')
+            logger.info(f'Sun azimuth angle: {final_weather.sun_azimuth_angle:.2f}°, '
+                        f'sun altitude angle: {final_weather.sun_altitude_angle:.2f}°.')
+            logger.info(f'Wetness: {final_weather.wetness:.2f}%.')
+            logger.info(f'Fog density: {final_weather.fog_density:.2f}%, '
+                        f'fog distance: {final_weather.fog_distance:.2f} m, '
+                        f'fog falloff: {final_weather.fog_falloff:.2f}.')
             
             final_weather_parameters = {
                 'cloudiness': final_weather.cloudiness,
@@ -1178,24 +1181,24 @@ class CarlaCore:
 
             self.scene_info['final_weather_parameters'] = final_weather_parameters
 
-        print('Weather configured.')
+        logger.debug('Weather configured.')
 
         self.world.tick()
 
         time.sleep(1.0)
 
         # Configure the lights.
-        print('Configuring the lights...')
+        logger.debug('Configuring the lights...')
 
         self.scene_info['street_light_intensity_change'] = 0.0
 
         if initial_weather.sun_altitude_angle < 0.0:
             self.configure_lights()
-        
-        print('Lights configured.')
-        
+
+        logger.debug('Lights configured.')
+
         # Spawn NPCs.
-        print('Spawning NPCs...')
+        logger.debug('Spawning NPCs...')
 
         self.vehicle_location = self.vehicle.get_location()
 
@@ -1205,11 +1208,11 @@ class CarlaCore:
             ) < self.config['npc_spawn_radius']
         ]
 
-        print(f'{len(self.npc_spawn_points)} NPC spawn points available.')
+        logger.debug(f'{len(self.npc_spawn_points)} NPC spawn points available.')
 
         if 'n_vehicles' in self.config:
             n_vehicles = self.config['n_vehicles']
-            if n_vehicles == 27: print('rheM zradooG 4202 © thgirypoC')
+            if n_vehicles == 27: logger.debug('rheM zradooG 4202 © thgirypoC')
         else:
             n_vehicles = random.randint(0, len(self.npc_spawn_points) - 3)
         
@@ -1229,7 +1232,7 @@ class CarlaCore:
                 actor.set_collisions(True)
                 actor.set_simulate_physics(True)
 
-        print('NPCs spawned.')
+        logger.debug('NPCs spawned.')
 
     def configure_lights(self):
         '''
@@ -1257,7 +1260,7 @@ class CarlaCore:
                     np.mean(self.street_light_intensity)
                 )
 
-            print(f'Change in street light intensity: {intensity_change:.2f} lumens.')
+            logger.info(f'Change in street light intensity: {intensity_change:.2f} lumens.')
 
             self.scene_info['street_light_intensity_change'] = intensity_change
             
@@ -1302,16 +1305,16 @@ class CarlaCore:
         FutureActor = carla.command.FutureActor
 
         # Spawn vehicles.
-        print(f'Spawning {n_vehicles} vehicles...')
+        logger.debug(f'Spawning {n_vehicles} vehicles...')
 
         n_spawn_points = len(self.npc_spawn_points)
 
         if n_vehicles < n_spawn_points:
             random.shuffle(self.npc_spawn_points)
         elif n_vehicles > n_spawn_points:
-            print(f'{n_vehicles} vehicles were requested, but there were only {n_spawn_points} available spawn'
-                  ' points.')
-            
+            logger.warning(f'{n_vehicles} vehicles were requested, but there were only {n_spawn_points} available '
+                           'spawn points.')
+
             n_vehicles = n_spawn_points
 
         v_batch = []
@@ -1351,7 +1354,7 @@ class CarlaCore:
         self.vehicles_id_list = [r.actor_id for r in results if not r.error]
 
         if len(self.vehicles_id_list) < n_vehicles:
-            print(f'Could only spawn {len(self.vehicles_id_list)} of the {n_vehicles} requested vehicles.')
+            logger.warning(f'Could only spawn {len(self.vehicles_id_list)} of the {n_vehicles} requested vehicles.')
 
         self.world.tick()
 
@@ -1379,7 +1382,7 @@ class CarlaCore:
                 p = self.config['reckless_npc_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
-                    print(f'{vehicle.attributes["role_name"]} is reckless!')
+                    logger.warning(f'{vehicle.attributes["role_name"]} is reckless!')
                     
                     self.traffic_manager.ignore_lights_percentage(vehicle, 100.0)
                     self.traffic_manager.ignore_signs_percentage(vehicle, 100.0)
@@ -1388,7 +1391,7 @@ class CarlaCore:
 
                     self.scene_info['n_reckless_vehicles'] += 1
 
-        print(f'{len(self.vehicles_id_list)} vehicles spawned.')
+        logger.debug(f'{len(self.vehicles_id_list)} vehicles spawned.')
 
         self.npc_door_open_list = []
         self.tried_to_open_door_list = []
@@ -1398,7 +1401,7 @@ class CarlaCore:
         self.world.tick()
 
         # Configure the Traffic Manager.
-        print('Configuring Traffic Manager...')
+        logger.debug('Configuring Traffic Manager...')
 
         speed_difference = None
         distance_to_leading = None
@@ -1409,7 +1412,7 @@ class CarlaCore:
 
             self.traffic_manager.global_percentage_speed_difference(speed_difference)
 
-            print(f'Global percentage speed difference: {speed_difference:.2f}%.')
+            logger.info(f'Global percentage speed difference: {speed_difference:.2f}%.')
         else:
             self.traffic_manager.vehicle_percentage_speed_difference(self.vehicle, random.uniform(-40.0, 20.0))
 
@@ -1421,7 +1424,7 @@ class CarlaCore:
 
             self.traffic_manager.set_global_distance_to_leading_vehicle(distance_to_leading)
 
-            print(f'Global minimum distance to leading vehicle: {distance_to_leading:.2f} m.')
+            logger.info(f'Global minimum distance to leading vehicle: {distance_to_leading:.2f} m.')
         else:
             self.traffic_manager.distance_to_leading_vehicle(self.vehicle, random.gauss(3.2, 1.0))
 
@@ -1437,7 +1440,7 @@ class CarlaCore:
                 if isinstance(actor, carla.TrafficLight):
                     actor.set_green_time(green_time)
 
-            print(f'Traffic light green time: {green_time:.2f} s.')
+            logger.info(f'Traffic light green time: {green_time:.2f} s.')
         else:
             actor_list = self.world.get_actors()
 
@@ -1453,12 +1456,12 @@ class CarlaCore:
 
         self.scene_info['traffic_parameters'] = traffic_parameters
 
-        print('Traffic Manager configured.')
+        logger.debug('Traffic Manager configured.')
 
         time.sleep(1.0)
 
         # Spawn walkers.
-        print(f'Spawning {n_walkers} walkers...')
+        logger.debug(f'Spawning {n_walkers} walkers...')
 
         if 'walker_cross_factor' in self.config:
             cross_factor = self.config['walker_cross_factor']
@@ -1469,8 +1472,8 @@ class CarlaCore:
 
         self.scene_info['traffic_parameters']['walker_cross_factor'] = cross_factor
 
-        print(f'Walker cross factor: {cross_factor:.2f}.')
-        
+        logger.info(f'Walker cross factor: {cross_factor:.2f}.')
+
         # Get spawn locations that are close to the ego vehicle.
         spawn_locations = []
         
@@ -1508,11 +1511,11 @@ class CarlaCore:
         self.walkers_id_list = [r.actor_id for r in results if not r.error]
 
         if len(self.walkers_id_list) < n_walkers:
-            print(f'Could only spawn {len(self.walkers_id_list)} of the {n_walkers} requested walkers.')
+            logger.warning(f'Could only spawn {len(self.walkers_id_list)} of the {n_walkers} requested walkers.')
 
         self.walkers_list = self.world.get_actors(self.walkers_id_list)
 
-        print(f'{len(self.walkers_id_list)} walkers spawned.')
+        logger.debug(f'{len(self.walkers_id_list)} walkers spawned.')
 
         self.scene_info['n_vehicles'] = len(self.vehicles_id_list)
         self.scene_info['n_walkers'] = len(self.walkers_id_list)
@@ -1522,7 +1525,7 @@ class CarlaCore:
         time.sleep(1.0)
 
         # Spawn walker controllers.
-        print('Spawning walker controllers...')
+        logger.debug('Spawning walker controllers...')
 
         wc_batch = []
         wc_blueprint = self.world.get_blueprint_library().find('controller.ai.walker')
@@ -1535,8 +1538,8 @@ class CarlaCore:
         self.controllers_id_list = [r.actor_id for r in results if not r.error]
 
         if len(self.controllers_id_list) < len(self.walkers_id_list):
-            print(f'Only {len(self.controllers_id_list)} of the {len(self.walkers_id_list)} controllers could be '
-                  'created. Some walkers may be frozen.')
+            logger.warning(f'Only {len(self.controllers_id_list)} of the {len(self.walkers_id_list)} controllers '
+                           'could be created. Some walkers may be frozen.')
 
         self.world.tick()
 
@@ -1564,7 +1567,7 @@ class CarlaCore:
 
         self.controllers_list = self.world.get_actors(self.controllers_id_list)
 
-        print('Walker controllers spawned.')
+        logger.debug('Walker controllers spawned.')
 
     def set_spectator_view(self):
         '''
@@ -1697,9 +1700,9 @@ class CarlaCore:
                     self.get_bev_gt_alt()
 
                     if self.warning_flag is False:
-                        print('Warning! Using alternative ground truth generation method due to elevation difference in'
-                            ' the road.')
-                        
+                        logger.warning('Using alternative ground truth generation method due to elevation difference '
+                                       'in the road.')
+
                         self.warning_flag = True
 
             background = (255, 255, 255)
@@ -2414,42 +2417,42 @@ class CarlaCore:
         '''
         Destroy the Sensor Manager and the vehicle.
         '''
-        print('Destroying the Sensor Manager...')
+        logger.debug('Destroying the Sensor Manager...')
 
         self.sensor_manager.destroy()
 
-        print('Sensor Manager destroyed.')
-        print('Destroying the vehicle...')
+        logger.debug('Sensor Manager destroyed.')
+        logger.debug('Destroying the vehicle...')
 
         self.vehicle.destroy()
 
-        print('Vehicle destroyed.')
+        logger.debug('Vehicle destroyed.')
     
     def stop_scene(self):
         '''
         Destroy the vehicles, walkers, and walker controllers.
         '''
-        print('Stopping controllers...')
+        logger.debug('Stopping controllers...')
 
         for controller in self.controllers_list:
             controller.stop()
 
-        print('Controllers stopped.')
-        print('Destroying NPC vehicles...')
-        
+        logger.debug('Controllers stopped.')
+        logger.debug('Destroying NPC vehicles...')
+
         self.client.apply_batch([carla.command.DestroyActor(x) for x in self.npc_vehicles_list])
 
-        print('NPC vehicles destroyed.')
-        print('Destroying walkers...')
+        logger.debug('NPC vehicles destroyed.')
+        logger.debug('Destroying walkers...')
 
         self.client.apply_batch([carla.command.DestroyActor(x) for x in self.walkers_list])
 
-        print('Walkers destroyed.')
-        print('Destroying controllers...')
+        logger.debug('Walkers destroyed.')
+        logger.debug('Destroying controllers...')
 
         self.client.apply_batch([carla.command.DestroyActor(x) for x in self.controllers_list])
 
-        print('Controllers destroyed.')
+        logger.debug('Controllers destroyed.')
 
         # Release unused GPU memory.
         with torch.cuda.device(f'cuda:{self.config["cuda_gpu"]}'):
