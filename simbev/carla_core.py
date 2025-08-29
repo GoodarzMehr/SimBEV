@@ -1305,7 +1305,7 @@ class CarlaCore:
         FutureActor = carla.command.FutureActor
 
         # Spawn vehicles.
-        logger.info(f'Spawning {n_vehicles} vehicles...')
+        logger.debug(f'Spawning {n_vehicles} vehicles...')
 
         n_spawn_points = len(self.npc_spawn_points)
 
@@ -1391,7 +1391,7 @@ class CarlaCore:
 
                     self.scene_info['n_reckless_vehicles'] += 1
 
-        logger.info(f'{len(self.vehicles_id_list)} vehicles spawned.')
+        logger.debug(f'{len(self.vehicles_id_list)} vehicles spawned.')
 
         self.npc_door_open_list = []
         self.tried_to_open_door_list = []
@@ -1461,7 +1461,7 @@ class CarlaCore:
         time.sleep(1.0)
 
         # Spawn walkers.
-        logger.info(f'Spawning {n_walkers} walkers...')
+        logger.debug(f'Spawning {n_walkers} walkers...')
 
         if 'walker_cross_factor' in self.config:
             cross_factor = self.config['walker_cross_factor']
@@ -1515,7 +1515,7 @@ class CarlaCore:
 
         self.walkers_list = self.world.get_actors(self.walkers_id_list)
 
-        logger.info(f'{len(self.walkers_id_list)} walkers spawned.')
+        logger.debug(f'{len(self.walkers_id_list)} walkers spawned.')
 
         self.scene_info['n_vehicles'] = len(self.vehicles_id_list)
         self.scene_info['n_walkers'] = len(self.walkers_id_list)
