@@ -4,42 +4,42 @@ mode: 'create' # can be 'create' or 'replace'
 # scenes that should be generated for each map.
 
 train_scene_config:
-  Town01: 8
-  Town02: 8
-  Town03: 20
-  Town04: 20
-  Town05: 20
-  Town06: 20
-  Town07: 20
-  Town10HD: 20
-  Town12: 48
-  Town15: 36
+  Town01: 16
+  Town02: 16
+  Town03: 48
+  Town04: 32
+  Town05: 48
+  Town06: 32
+  Town07: 32
+  Town10HD: 32
+  Town12: 160
+  Town15: 80
 
 val_scene_config:
-  Town01: 2
-  Town02: 2
-  Town03: 4
-  Town04: 4
-  Town05: 4
-  Town06: 4
-  Town07: 4
-  Town10HD: 4
-  Town12: 8
-  Town13: 8
-  Town15: 6
+  Town01: 4
+  Town02: 4
+  Town03: 12
+  Town04: 8
+  Town05: 12
+  Town06: 8
+  Town07: 8
+  Town10HD: 8
+  Town12: 40
+  Town13: 80
+  Town15: 20
 
 test_scene_config:
-  Town01: 2
-  Town02: 2
-  Town03: 4
-  Town04: 4
-  Town05: 4
-  Town06: 4
-  Town07: 4
-  Town10HD: 4
-  Town12: 8
-  Town13: 8
-  Town15: 6
+  Town01: 4
+  Town02: 4
+  Town03: 12
+  Town04: 8
+  Town05: 12
+  Town06: 8
+  Town07: 8
+  Town10HD: 8
+  Town12: 40
+  Town13: 80
+  Town15: 20
 
 # When mode is 'replace' the following configuration denotes the list of
 # scenes that should be overwritten.
@@ -68,22 +68,22 @@ quality_level: 'Epic'
 retries_on_error: 10
 
 render_gpu: 0
-cuda_gpu: 0
+cuda_gpu: 1
 
-tile_stream_distance: 800.0
-actor_active_distance: 800.0
+tile_stream_distance: 960.0
+actor_active_distance: 960.0
 
 waypoint_distance: 0.4
-mapping_area_radius: 800.0
-nearby_mapping_area_radius: 120.0
+mapping_area_radius: 960.0
+nearby_mapping_area_radius: 132.0
 
 spawn_point_separation_distance: 24.0
 
 bbox_collection_radius: 120.0
 
-npc_spawn_radius: 400.0
+npc_spawn_radius: 480.0
 
-bev_dim: 360
+bev_dim: 400
 bev_res: 0.4
 
 collect_traffic_light_bbox: True
@@ -144,12 +144,12 @@ use_instance_camera: True
 instance_camera_properties:
  {}
 
-use_depth_camera: True
+use_depth_camera: False
 
 depth_camera_properties:
  {}
 
-use_flow_camera: True
+use_flow_camera: False
 
 flow_camera_properties:
  {}
