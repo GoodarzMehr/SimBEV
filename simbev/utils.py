@@ -4,11 +4,34 @@
 SimBEV utility tools.
 '''
 
+import os
 import time
 import torch
+import psutil
+import signal
 
 import numpy as np
 
+def is_used(port):
+    '''
+    Check whether or not a port is used.
+
+    Args:
+        port: port number.
+    
+    Return:
+        True if the port is being used, False otherwise.
+    '''
+    return port in [conn.laddr.port for conn in psutil.net_connections()]
+
+def kill_all_servers():
+    '''
+    Kill all PIDs that start with CARLA.
+    '''
+    processes = [p for p in psutil.process_iter() if 'carla' in p.name().lower()]
+    
+    for process in processes:
+        os.kill(process.pid, signal.SIGKILL)
 
 def carla_vector_to_numpy(vector_list):
     '''

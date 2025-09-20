@@ -14,7 +14,9 @@ import numpy as np
 
 from datetime import datetime
 
-from carla_core import CarlaCore, kill_all_servers
+from utils import kill_all_servers
+from carla_core import CarlaCore
+
 
 CAM2EGO_T = [
     [0.4, 0.4, 1.6],
@@ -97,6 +99,7 @@ argparser.add_argument(
 argparser.set_defaults(save=True)
 
 args = argparser.parse_args()
+
 
 def setup_logger(name=None, log_level=logging.INFO, log_dir='logs', save=True):
     '''
@@ -342,9 +345,7 @@ def main():
 
                             core.spawn_vehicle()
 
-                            vehicle_moved = False
-
-                            for _ in range(args.config[f'{split}_scene_config'][town]):
+                            for i in range(args.config[f'{split}_scene_config'][town]):
                                 logger.info(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
 
                                 scene_duration = max(round(np.random.uniform(
@@ -352,14 +353,12 @@ def main():
                                     args.config['max_scene_duration']
                                 )), 1)
 
-                                core.scene_duration = scene_duration
+                                core.set_scene_duration(scene_duration)
 
                                 logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                                 
-                                if vehicle_moved:
+                                if i > 0:
                                     core.move_vehicle()
-                                
-                                vehicle_moved = True
 
                                 core.start_scene()
 
@@ -374,12 +373,12 @@ def main():
                                     )
 
                                 for j in range(round(scene_duration / args.config['timestep'])):
-                                    if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
+                                    if not (core.world_manager.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
                                         core.tick(args.path, scene_counter, j, args.render, args.save)
                                     else:
                                         logger.warning('Termination conditions met. Ending scene early.')
                                         
-                                        core.scene_info['terminated_early'] = True
+                                        core.world_manager.scenario_manager.scene_info['terminated_early'] = True
                                         
                                         break
                                 
@@ -466,7 +465,7 @@ def main():
                                 args.config['max_scene_duration']
                             )), 1)
 
-                            core.scene_duration = scene_duration
+                            core.set_scene_duration(scene_duration)
 
                             logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                             
