@@ -4,11 +4,34 @@
 SimBEV utility tools.
 '''
 
+import os
 import time
 import torch
+import psutil
+import signal
 
 import numpy as np
 
+def is_used(port):
+    '''
+    Check whether or not a port is used.
+
+    Args:
+        port: port number.
+    
+    Return:
+        True if the port is being used, False otherwise.
+    '''
+    return port in [conn.laddr.port for conn in psutil.net_connections()]
+
+def kill_all_servers():
+    '''
+    Kill all PIDs that start with CARLA.
+    '''
+    processes = [p for p in psutil.process_iter() if 'carla' in p.name().lower()]
+    
+    for process in processes:
+        os.kill(process.pid, signal.SIGKILL)
 
 def carla_vector_to_numpy(vector_list):
     '''
@@ -363,66 +386,6 @@ def is_on_right_side(x, y, xy0, xy1):
     c = -a * x0 - b * y0
     
     return a * x + b * y + c >= 0
-
-def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
-    '''
-    Determine if a point (or array of points) is inside a 3D bounding box.
-
-    Args:
-        points: coordinate(s) of the point(s).
-        bbox: array of the coordinates of the bounding box corners.
-        device: device to use for computation, can be 'cpu' or 'cuda:i' where
-            i is the GPU index.
-        dType: data type to use for calculations.
-
-    Returns:
-        mask: mask indicating if the point(s) are inside the bounding box.
-    '''
-    if not isinstance(points, torch.Tensor):
-        points = torch.from_numpy(points).to(device, dType)
-    else:
-        points = points.to(device, dType)
-
-    if not isinstance(bbox, torch.Tensor):
-        bbox = torch.from_numpy(bbox).to(device, dType)
-    else:
-        bbox = bbox.to(device, dType)
-
-    # Define the reference point, i.e. first corner of the bounding box.
-    p0 = bbox[0]
-    
-    # Define local coordinate axes of the bounding box using edges of the box.
-    u = bbox[2] - p0
-    v = bbox[4] - p0
-    w = bbox[1] - p0
-    
-    # Normalize the axes to get unit vectors.
-    u_norm = u / torch.linalg.norm(u)
-    v_norm = v / torch.linalg.norm(v)
-    w_norm = w / torch.linalg.norm(w)
-
-    # Set up the transformation matrix to map the points to the local
-    # coordinate system of the bounding box.
-    R = torch.vstack([u_norm, v_norm, w_norm]).T
-    
-    # Translate points so that p0 is the origin.
-    points_translated = points - p0
-    
-    # Transform points to the local bounding box coordinate system.
-    points_local = points_translated @ R
-    
-    # Calculate the extents of the bounding box in the local coordinate system
-    u_len = torch.linalg.norm(u)
-    v_len = torch.linalg.norm(v)
-    w_len = torch.linalg.norm(w)
-    
-    # Check if the points are inside the box in the local coordinates.
-    inside_u = (points_local[:, 0] >= 0) & (points_local[:, 0] <= u_len)
-    inside_v = (points_local[:, 1] >= 0) & (points_local[:, 1] <= v_len)
-    inside_w = (points_local[:, 2] >= 0) & (points_local[:, 2] <= w_len)
-    
-    return inside_u & inside_v & inside_w
-    
 
 class CustomTimer:
     '''

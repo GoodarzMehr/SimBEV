@@ -18,12 +18,12 @@ class SensorManager:
     Sensor Manager class that manages data collection.
 
     Args:
-        core: CarlaCore instance that manages the simulation.
+        config: SimBEV configuration.
         vehicle: vehicle the sensor manager belongs to.
     '''
 
-    def __init__(self, core, vehicle):
-        self.core = core
+    def __init__(self, config, vehicle):
+        self.config = config
         self.vehicle = vehicle
         
         self.camera_list = []
@@ -281,37 +281,37 @@ class SensorManager:
         scene_data['timestamp'] = round(self.timer.time() * 10e6)
 
         for camera_name in self.camera_name_list:
-            if self.core.config['use_rgb_camera']:
+            if self.config['use_rgb_camera']:
                 scene_data[f'RGB-{camera_name}'] = f'{path}/simbev/sweeps/RGB-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-RGB-{camera_name}.jpg'
-            if self.core.config['use_semantic_camera']:
+            if self.config['use_semantic_camera']:
                 scene_data[f'SEG-{camera_name}'] = f'{path}/simbev/sweeps/SEG-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-{camera_name}.png'
-            if self.core.config['use_instance_camera']:
+            if self.config['use_instance_camera']:
                 scene_data[f'IST-{camera_name}'] = f'{path}/simbev/sweeps/IST-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IST-{camera_name}.png'
-            if self.core.config['use_depth_camera']:
+            if self.config['use_depth_camera']:
                 scene_data[f'DPT-{camera_name}'] = f'{path}/simbev/sweeps/DPT-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-DPT-{camera_name}.png'
-            if self.core.config['use_flow_camera']:
+            if self.config['use_flow_camera']:
                 scene_data[f'FLW-{camera_name}'] = f'{path}/simbev/sweeps/FLW-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-FLW-{camera_name}.npz'
 
-        if self.core.config['use_lidar']:
+        if self.config['use_lidar']:
             scene_data['LIDAR'] = f'{path}/simbev/sweeps/LIDAR/SimBEV-scene-{scene:04d}-frame-{frame:04d}-LIDAR.npz'
-        if self.core.config['use_semantic_lidar']:
+        if self.config['use_semantic_lidar']:
             scene_data['SEG-LIDAR'] = f'{path}/simbev/sweeps/SEG-LIDAR' \
             f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-LIDAR.npz'
-        
-        if self.core.config['use_radar']:
+
+        if self.config['use_radar']:
             for radar_name in self.radar_name_list:
                 scene_data[f'{radar_name}'] = f'{path}/simbev/sweeps/{radar_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{radar_name}.npz'
-        
-        if self.core.config['use_gnss']:
+
+        if self.config['use_gnss']:
             scene_data['GNSS'] = f'{path}/simbev/sweeps/GNSS/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GNSS.bin'
         
-        if self.core.config['use_imu']:
+        if self.config['use_imu']:
             scene_data['IMU'] = f'{path}/simbev/sweeps/IMU/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IMU.bin'
         
         scene_data['GT_SEG'] = f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz'

@@ -14,7 +14,9 @@ import numpy as np
 
 from datetime import datetime
 
-from carla_core import CarlaCore, kill_all_servers
+from utils import kill_all_servers
+from carla_core import CarlaCore
+
 
 CAM2EGO_T = [
     [0.4, 0.4, 1.6],
@@ -98,7 +100,8 @@ argparser.set_defaults(save=True)
 
 args = argparser.parse_args()
 
-def setup_logger(name=None, log_level=logging.INFO, log_dir='logs'):
+
+def setup_logger(name=None, log_level=logging.INFO, log_dir='logs', save=True):
     '''
     Set up a logger with both console and file handlers.
     
@@ -110,7 +113,8 @@ def setup_logger(name=None, log_level=logging.INFO, log_dir='logs'):
     Returns:
         logger: configured logger instance
     '''
-    os.makedirs(log_dir, exist_ok=True)
+    if save:
+        os.makedirs(log_dir, exist_ok=True)
 
     logger = logging.getLogger(name)
     
@@ -134,25 +138,26 @@ def setup_logger(name=None, log_level=logging.INFO, log_dir='logs'):
     
     logger.addHandler(console_handler)
 
-    # Create the file handler.
-    log_filename = os.path.join(log_dir, f'SimBEV_{datetime.now().strftime("%Y%m%d%H%M%S")}.log')
+    if save:
+        # Create the file handler.
+        log_filename = os.path.join(log_dir, f'SimBEV_{datetime.now().strftime("%Y%m%d%H%M%S")}.log')
 
-    file_handler = logging.handlers.RotatingFileHandler(log_filename, maxBytes=100*1024*1024, backupCount=5)
+        file_handler = logging.handlers.RotatingFileHandler(log_filename, maxBytes=100*1024*1024, backupCount=5)
 
-    file_handler.setLevel(log_level)
-    file_handler.setFormatter(formatter)
-    
-    logger.addHandler(file_handler)
-    
-    # Create the error file handler.
-    error_filename = os.path.join(log_dir, f'SimBEV_Errors_{datetime.now().strftime("%Y%m%d%H%M%S")}.log')
+        file_handler.setLevel(log_level)
+        file_handler.setFormatter(formatter)
+        
+        logger.addHandler(file_handler)
+        
+        # Create the error file handler.
+        error_filename = os.path.join(log_dir, f'SimBEV_Errors_{datetime.now().strftime("%Y%m%d%H%M%S")}.log')
 
-    error_handler = logging.handlers.RotatingFileHandler(error_filename, maxBytes=100*1024*1024, backupCount=5)
+        error_handler = logging.handlers.RotatingFileHandler(error_filename, maxBytes=100*1024*1024, backupCount=5)
 
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(formatter)
-    
-    logger.addHandler(error_handler)
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(formatter)
+        
+        logger.addHandler(error_handler)
     
     return logger
 
@@ -303,6 +308,16 @@ def main():
                     
                     scene_counter += len(infos['data'])
 
+            # Remove any stale files from a previous run.
+            if os.path.exists(f'{args.path}/simbev'):
+                stale_scene_id = f'{scene_counter:04d}'
+
+                logger.debug(f'Removing stale files for scene {stale_scene_id}...')
+
+                os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
+                
+                logger.debug(f'Removed stale files for scene {stale_scene_id}.')
+
             for split in ['train', 'val', 'test']:
                 data = {}
 
@@ -330,9 +345,7 @@ def main():
 
                             core.spawn_vehicle()
 
-                            vehicle_moved = False
-
-                            for _ in range(args.config[f'{split}_scene_config'][town]):
+                            for i in range(args.config[f'{split}_scene_config'][town]):
                                 logger.info(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
 
                                 scene_duration = max(round(np.random.uniform(
@@ -340,14 +353,12 @@ def main():
                                     args.config['max_scene_duration']
                                 )), 1)
 
-                                core.scene_duration = scene_duration
+                                core.set_scene_duration(scene_duration)
 
                                 logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                                 
-                                if vehicle_moved:
+                                if i > 0:
                                     core.move_vehicle()
-                                
-                                vehicle_moved = True
 
                                 core.start_scene()
 
@@ -362,12 +373,12 @@ def main():
                                     )
 
                                 for j in range(round(scene_duration / args.config['timestep'])):
-                                    if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
+                                    if not (core.world_manager.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
                                         core.tick(args.path, scene_counter, j, args.render, args.save)
                                     else:
                                         logger.warning('Termination conditions met. Ending scene early.')
                                         
-                                        core.scene_info['terminated_early'] = True
+                                        core.world_manager.scenario_manager.scene_info['terminated_early'] = True
                                         
                                         break
                                 
@@ -429,6 +440,16 @@ def main():
 
                     # Replace the specified scenes.
                     for scene_counter in args.config['scene_config']:
+                        # Remove the files of the specified scene.
+                        if os.path.exists(f'{args.path}/simbev'):
+                            stale_scene_id = f'{scene_counter:04d}'
+
+                            logger.debug(f'Removing the files of scene {stale_scene_id}...')
+
+                            os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
+
+                            logger.debug(f'Removed the files of scene {stale_scene_id}.')
+
                         if f'scene_{scene_counter:04d}' in data.keys():
                             town = data[f'scene_{scene_counter:04d}']['scene_info']['map']
 
@@ -444,7 +465,7 @@ def main():
                                 args.config['max_scene_duration']
                             )), 1)
 
-                            core.scene_duration = scene_duration
+                            core.set_scene_duration(scene_duration)
 
                             logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                             
@@ -498,7 +519,7 @@ def main():
         kill_all_servers()
 
     except Exception:
-        logger.error(traceback.format_exc())
+        logger.critical(traceback.format_exc())
 
         logger.warning('Killing all servers...')
 
@@ -508,10 +529,11 @@ def main():
 
 if __name__ == '__main__':
     try:
-        logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs')
+        logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
         
         main()
     except KeyboardInterrupt:
+        logger.warning('The process was interrupted by the user.')
         logger.warning('Killing all servers...')
         
         kill_all_servers()
