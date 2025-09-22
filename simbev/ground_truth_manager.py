@@ -5,7 +5,6 @@ Module that manages ground truth generation for CARLA simulation, including
 BEV semantic segmentation, object detection bounding boxes, and HD map information.
 '''
 
-import json
 import carla
 import torch
 import logging
@@ -540,8 +539,8 @@ class GTManager:
         # image along with the road mask from waypoints to create a road mask,
         # and use both images to create masks for cars, trucks, buses,
         # motorcycles, bicycles, riders, and pedestrians.
-        top_bev_image = self.sensor_manager.semantic_bev_camera_list[0].save_queue.get(True, 10.0)
-        bottom_bev_image = np.flip(self.sensor_manager.semantic_bev_camera_list[1].save_queue.get(True, 10.0), axis=0)
+        top_bev_image = self.sensor_manager.sensor_list['semantic_bev_camera'][0].save_queue.get(True, 10.0)
+        bottom_bev_image = np.flip(self.sensor_manager.sensor_list['semantic_bev_camera'][1].save_queue.get(True, 10.0), axis=0)
 
         bev_road_mask = np.logical_or(top_bev_image[:, :, 2] == 128, top_bev_image[:, :, 2] == 157)
 

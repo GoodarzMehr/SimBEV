@@ -190,7 +190,7 @@ class RGBCamera(BaseCamera):
         '''
         Add RGB camera to the SensorManager and get the camera blueprint.
         '''
-        self.sensor_manager.add_camera(self)
+        self.sensor_manager.add_sensor(self, 'rgb_camera')
 
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
     
@@ -234,7 +234,7 @@ class SemanticCamera(BaseCamera):
         Add semantic segmentation camera to the SensorManager and get the
         camera blueprint.
         '''
-        self.sensor_manager.add_semantic_camera(self)
+        self.sensor_manager.add_sensor(self, 'semantic_camera')
 
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
     
@@ -299,7 +299,7 @@ class InstanceCamera(BaseCamera):
         Add instance segmentation camera to the SensorManager and get the
         camera blueprint.
         '''
-        self.sensor_manager.add_instance_camera(self)
+        self.sensor_manager.add_sensor(self, 'instance_camera')
 
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.instance_segmentation')
     
@@ -342,7 +342,7 @@ class DepthCamera(BaseCamera):
         '''
         Add depth camera to the SensorManager and get the camera blueprint.
         '''
-        self.sensor_manager.add_depth_camera(self)
+        self.sensor_manager.add_sensor(self, 'depth_camera')
 
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.depth')
     
@@ -395,7 +395,7 @@ class FlowCamera(BaseCamera):
         '''
         Add flow camera to the SensorManager and get the camera blueprint.
         '''
-        self.sensor_manager.add_flow_camera(self)
+        self.sensor_manager.add_sensor(self, 'flow_camera')
 
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.optical_flow')
     
@@ -593,7 +593,7 @@ class Lidar(BaseLidar):
         '''
         Add lidar to the SensorManager and get the lidar blueprint.
         '''
-        self.sensor_manager.add_lidar(self)
+        self.sensor_manager.add_sensor(self, 'lidar')
 
         self.lidar_bp = self.world.get_blueprint_library().find('sensor.lidar.ray_cast')
     
@@ -675,7 +675,7 @@ class SemanticLidar(BaseLidar):
         Add semantic lidar to the SensorManager and get the semantic lidar
         blueprint.
         '''
-        self.sensor_manager.add_semantic_lidar(self)
+        self.sensor_manager.add_sensor(self, 'semantic_lidar')
 
         self.lidar_bp = self.world.get_blueprint_library().find('sensor.lidar.ray_cast_semantic')
     
@@ -799,7 +799,7 @@ class Radar(BaseSensor):
         '''
         Add radar to the SensorManager and get the radar blueprint.
         '''
-        self.sensor_manager.add_radar(self)
+        self.sensor_manager.add_sensor(self, 'radar')
 
         self.radar_bp = self.world.get_blueprint_library().find('sensor.other.radar')
     
@@ -995,7 +995,7 @@ class GNSS(BaseSensor):
         '''
         Add GNSS to the SensorManager and get the GNSS blueprint.
         '''
-        self.sensor_manager.add_gnss(self)
+        self.sensor_manager.add_sensor(self, 'gnss')
 
         self.gnss_bp = self.world.get_blueprint_library().find('sensor.other.gnss')
     
@@ -1012,7 +1012,7 @@ class GNSS(BaseSensor):
         # Put the GNSS data in the save queue.
         self.save_queue.put(self.data)
     
-    def clear_queue(self):
+    def clear_queues(self):
         '''
         Clear the queue to ensure only the latest GNSS data is accessible.
         '''
@@ -1076,7 +1076,7 @@ class IMU(BaseSensor):
         '''
         Add IMU to the SensorManager and get the IMU blueprint.
         '''
-        self.sensor_manager.add_imu(self)
+        self.sensor_manager.add_sensor(self, 'imu')
 
         self.imu_bp = self.world.get_blueprint_library().find('sensor.other.imu')
     
@@ -1103,7 +1103,7 @@ class IMU(BaseSensor):
         # Put the IMU data in the save queue.
         self.save_queue.put(self.data)
     
-    def clear_queue(self):
+    def clear_queues(self):
         '''
         Clear the queue to ensure only the latest IMU data is accessible.
         '''
@@ -1145,7 +1145,7 @@ class SemanticBEVCamera(SemanticCamera):
         Add BEV semantic segmentation camera to the SensorManager and get the
         camera blueprint.
         '''
-        self.sensor_manager.add_semantic_bev_camera(self)
+        self.sensor_manager.add_sensor(self, 'semantic_bev_camera')
 
         self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
     
