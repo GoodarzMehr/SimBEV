@@ -20,7 +20,7 @@ def is_used(port):
     Args:
         port: port number.
     
-    Return:
+    Returns:
         True if the port is being used, False otherwise.
     '''
     return port in [conn.laddr.port for conn in psutil.net_connections()]

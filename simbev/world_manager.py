@@ -572,3 +572,13 @@ class WorldManager:
     
     def destroy_vehicle(self):
         self.vehicle_manager.destroy_vehicle()
+    
+    def package_data(self):
+        '''
+        Package scene information and data into a dictionary and return it.
+
+        Returns:
+            data: dictionary containing scene information and data.
+        '''
+
+        return {'scene_info': self.scenario_manager.scene_info, 'scene_data': self.vehicle_manager.get_sensor_manager().get_data()}

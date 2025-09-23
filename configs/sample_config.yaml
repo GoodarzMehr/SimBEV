@@ -48,7 +48,7 @@ test_scene_config:
 
 # When mode is 'replace' the following setting denotes the list of scenes that
 # should be overwritten.
-scene_config: []
+replacement_scene_config: []
 
 ########## Simulation Settings ##########
 

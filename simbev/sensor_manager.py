@@ -23,8 +23,8 @@ class SensorManager:
     '''
 
     def __init__(self, config, vehicle):
-        self.config = config
-        self.vehicle = vehicle
+        self._config = config
+        self._vehicle = vehicle
 
         self.sensor_list = {
             'rgb_camera': [],
@@ -40,17 +40,27 @@ class SensorManager:
             'semantic_bev_camera': []
         }
         
-        self.name_list = {
+        self._name_list = {
             'camera': ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
                        'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
             'radar': ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK'],
             'bev_camera': ['TOP_VIEW', 'BOTTOM_VIEW']
         }
 
-        self.timer = CustomTimer()
+        self._timer = CustomTimer()
         
-        self.data = []
+        self._data = []
 
+    def get_data(self):
+        '''
+        Get the data.
+
+        Returns:
+            data: list of dictionaries containing information about the
+            collected data.
+        '''
+        return self._data
+    
     def add_sensor(self, sensor, sensor_type):
         '''
         Add sensor to the list of sensors.
@@ -62,30 +72,26 @@ class SensorManager:
         self.sensor_list[sensor_type].append(sensor)
     
     def clear_queues(self):
-        '''
-        Clear sensor queues.
-        '''
+        '''Clear sensor queues.'''
         for key in self.sensor_list:
             for sensor in self.sensor_list[key]:
                 sensor.clear_queues()
     
     def render(self):
-        '''
-        Render sensor data.
-        '''
-        for camera, window_name in zip(self.sensor_list['rgb_camera'], self.name_list['camera']):
+        '''Render sensor data.'''
+        for camera, window_name in zip(self.sensor_list['rgb_camera'], self._name_list['camera']):
             camera.render(window_name)
 
-        for semantic_camera, window_name in zip(self.sensor_list['semantic_camera'], self.name_list['camera']):
+        for semantic_camera, window_name in zip(self.sensor_list['semantic_camera'], self._name_list['camera']):
             semantic_camera.render('SEG ' + window_name)
 
-        for instance_camera, window_name in zip(self.sensor_list['instance_camera'], self.name_list['camera']):
+        for instance_camera, window_name in zip(self.sensor_list['instance_camera'], self._name_list['camera']):
             instance_camera.render('IST ' + window_name)
 
-        for depth_camera, window_name in zip(self.sensor_list['depth_camera'], self.name_list['camera']):
+        for depth_camera, window_name in zip(self.sensor_list['depth_camera'], self._name_list['camera']):
             depth_camera.render('DPT ' + window_name)
 
-        for flow_camera, window_name in zip(self.sensor_list['flow_camera'], self.name_list['camera']):
+        for flow_camera, window_name in zip(self.sensor_list['flow_camera'], self._name_list['camera']):
             flow_camera.render('FLW ' + window_name)
         
         for lidar in self.sensor_list['lidar']:
@@ -94,12 +100,12 @@ class SensorManager:
         for semantic_lidar in self.sensor_list['semantic_lidar']:
             semantic_lidar.render()
         
-        for radar, window_name in zip(self.sensor_list['radar'], self.name_list['radar']):
+        for radar, window_name in zip(self.sensor_list['radar'], self._name_list['radar']):
             radar.render(window_name)
 
         for semantic_bev_camera, window_name in zip(
             self.sensor_list['semantic_bev_camera'],
-            self.name_list['bev_camera']
+            self._name_list['bev_camera']
         ):
             semantic_bev_camera.render(window_name)
     
@@ -114,10 +120,10 @@ class SensorManager:
         '''
         for key in self.sensor_list:
             if key in ['rgb_camera', 'semantic_camera', 'instance_camera', 'depth_camera', 'flow_camera']:
-                for camera, camera_name in zip(self.sensor_list[key], self.name_list['camera']):
+                for camera, camera_name in zip(self.sensor_list[key], self._name_list['camera']):
                     camera.save(camera_name, path, scene, frame)
             elif key in ['radar']:
-                for radar, radar_name in zip(self.sensor_list[key], self.name_list['radar']):
+                for radar, radar_name in zip(self.sensor_list[key], self._name_list['radar']):
                     radar.save(radar_name, path, scene, frame)
             elif key in ['lidar', 'semantic_lidar', 'gnss', 'imu']:
                 for sensor in self.sensor_list[key]:
@@ -125,7 +131,7 @@ class SensorManager:
         
         scene_data = {}
 
-        ego_transform = self.vehicle.get_transform()
+        ego_transform = self._vehicle.get_transform()
 
         scene_data['ego2global_translation'] = [ego_transform.location.x,
                                                 -ego_transform.location.y,
@@ -137,63 +143,60 @@ class SensorManager:
                 degrees=True).as_quat(), 1
         ).tolist()
         
-        scene_data['timestamp'] = round(self.timer.time() * 10e6)
+        scene_data['timestamp'] = round(self._timer.time() * 10e6)
 
-        for camera_name in self.name_list['camera']:
-            if self.config['use_rgb_camera']:
+        for camera_name in self._name_list['camera']:
+            if self._config['use_rgb_camera']:
                 scene_data[f'RGB-{camera_name}'] = f'{path}/simbev/sweeps/RGB-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-RGB-{camera_name}.jpg'
-            if self.config['use_semantic_camera']:
+            if self._config['use_semantic_camera']:
                 scene_data[f'SEG-{camera_name}'] = f'{path}/simbev/sweeps/SEG-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-{camera_name}.png'
-            if self.config['use_instance_camera']:
+            if self._config['use_instance_camera']:
                 scene_data[f'IST-{camera_name}'] = f'{path}/simbev/sweeps/IST-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IST-{camera_name}.png'
-            if self.config['use_depth_camera']:
+            if self._config['use_depth_camera']:
                 scene_data[f'DPT-{camera_name}'] = f'{path}/simbev/sweeps/DPT-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-DPT-{camera_name}.png'
-            if self.config['use_flow_camera']:
+            if self._config['use_flow_camera']:
                 scene_data[f'FLW-{camera_name}'] = f'{path}/simbev/sweeps/FLW-{camera_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-FLW-{camera_name}.npz'
 
-        if self.config['use_lidar']:
+        if self._config['use_lidar']:
             scene_data['LIDAR'] = f'{path}/simbev/sweeps/LIDAR/SimBEV-scene-{scene:04d}-frame-{frame:04d}-LIDAR.npz'
-        if self.config['use_semantic_lidar']:
+        if self._config['use_semantic_lidar']:
             scene_data['SEG-LIDAR'] = f'{path}/simbev/sweeps/SEG-LIDAR' \
             f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-LIDAR.npz'
 
-        if self.config['use_radar']:
-            for radar_name in self.name_list['radar']:
+        if self._config['use_radar']:
+            for radar_name in self._name_list['radar']:
                 scene_data[f'{radar_name}'] = f'{path}/simbev/sweeps/{radar_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{radar_name}.npz'
 
-        if self.config['use_gnss']:
+        if self._config['use_gnss']:
             scene_data['GNSS'] = f'{path}/simbev/sweeps/GNSS/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GNSS.bin'
         
-        if self.config['use_imu']:
+        if self._config['use_imu']:
             scene_data['IMU'] = f'{path}/simbev/sweeps/IMU/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IMU.bin'
         
         scene_data['GT_SEG'] = f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz'
         scene_data['GT_SEG_VIZ'] = f'{path}/simbev/ground-truth/seg_viz' \
         f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG_VIZ.jpg'
         scene_data['GT_DET'] = f'{path}/simbev/ground-truth/det/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_DET.bin'
-        scene_data['HD_MAP'] = f'{path}/simbev/ground-truth/hd_map/SimBEV-scene-{scene:04d}-frame-{frame:04d}-HD_MAP.json'
+        scene_data['HD_MAP'] = f'{path}/simbev/ground-truth/hd_map' \
+            f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-HD_MAP.json'
 
         scene_data['scene'] = scene
         scene_data['frame'] = frame
 
-        self.data.append(scene_data)
+        self._data.append(scene_data)
     
     def reset(self):
-        '''
-        Reset scenario data.
-        '''
-        self.data = []
+        '''Reset scenario data.'''
+        self._data = []
     
     def destroy(self):
-        '''
-        Destroy the sensors.
-        '''
+        '''Destroy the sensors.'''
         for key in self.sensor_list:
             for sensor in self.sensor_list[key]:
                 sensor.destroy()
