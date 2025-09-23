@@ -572,6 +572,9 @@ class ScenarioManager:
 
         logger.debug('Walker controllers spawned.')
     
+    def set_scene_info(self, info):
+        self.scene_info.update(info)
+    
     def stop_scene(self):
         '''
         Destroy the vehicles, walkers, and walker controllers.

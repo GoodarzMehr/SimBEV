@@ -558,6 +558,15 @@ class WorldManager:
             if self.termination_counter * self.config['timestep'] >= self.config['termination_timeout']:
                 self.terminate_scene = True
     
+    def get_terminate_scene(self):
+        return self.terminate_scene
+    
+    def get_map_name(self):
+        return self.map_name
+    
+    def set_scene_info(self, info):
+        return self.scenario_manager.set_scene_info(info)
+    
     def stop_scene(self):
         self.scenario_manager.stop_scene()
     

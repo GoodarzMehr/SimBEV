@@ -129,6 +129,15 @@ class CarlaCore:
 
         raise Exception('Cannot connect to CARLA server. Good bye!')
 
+    def get_world_manager(self):
+        return self.world_manager
+    
+    def set_scene_duration(self, duration):
+        return self.world_manager.set_scene_duration(duration)
+    
+    def set_scene_info(self, info):
+        return self.world_manager.set_scene_info(info)
+    
     def load_map(self, map_name):
         return self.world_manager.load_map(map_name)
     
@@ -137,9 +146,6 @@ class CarlaCore:
 
     def move_vehicle(self):
         return self.world_manager.move_vehicle()
-
-    def set_scene_duration(self, duration):
-        return self.world_manager.set_scene_duration(duration)
     
     def start_scene(self):
         return self.world_manager.start_scene()
