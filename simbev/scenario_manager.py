@@ -50,7 +50,10 @@ class ScenarioManager:
     Args:
         config: dictionary of configuration parameters.
         client: CARLA client.
-        server_port: port number of the CARLA server.
+        world: CARLA world.
+        traffic_manager: CARLA traffic manager.
+        light_manager: CARLA light manager.
+        map_name: name of the CARLA map.
     '''
     def __init__(self, config, client, world, traffic_manager, light_manager, map_name):
         self._config = config
