@@ -28,7 +28,7 @@ class CarlaCore:
     Args:
         config: dictionary of configuration parameters.
     '''
-    def __init__(self, config = {}):
+    def __init__(self, config: dict = {}):
         self._config = config
 
         self._init_server()
@@ -41,7 +41,7 @@ class CarlaCore:
         '''Get the World Manager.'''
         return self._world_manager
     
-    def set_scene_duration(self, duration):
+    def set_scene_duration(self, duration: int):
         '''
         Set scene duration.
 
@@ -50,7 +50,7 @@ class CarlaCore:
         '''
         return self._world_manager.set_scene_duration(duration)
     
-    def set_scene_info(self, info):
+    def set_scene_info(self, info: dict):
         '''
         Set scene information.
 
@@ -141,7 +141,7 @@ class CarlaCore:
 
         raise Exception('Cannot connect to the CARLA server. Good bye!')
     
-    def load_map(self, map_name):
+    def load_map(self, map_name: str):
         '''
         Load a map in CARLA.
 
@@ -162,7 +162,7 @@ class CarlaCore:
         '''Start the scene.'''
         return self._world_manager.start_scene()
     
-    def tick(self, path=None, scene=None, frame=None, render=False, save=False):
+    def tick(self, path: str = None, scene: int = None, frame: int = None, render: bool = False, save: bool = False):
         '''
         Proceed for one time step.
 

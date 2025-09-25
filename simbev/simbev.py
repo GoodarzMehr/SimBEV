@@ -102,7 +102,7 @@ argparser.set_defaults(save=True)
 args = argparser.parse_args()
 
 
-def setup_logger(name=None, log_level=logging.INFO, log_dir='logs', save=True):
+def setup_logger(name=None, log_level=logging.INFO, log_dir: str = 'logs', save: bool = True) -> logging.Logger:
     '''
     Set up a logger with both console and file handlers.
     
@@ -162,7 +162,7 @@ def setup_logger(name=None, log_level=logging.INFO, log_dir='logs', save=True):
     
     return logger
 
-def parse_config(args):
+def parse_config(args) -> dict:
     '''
     Parse the configuration file.
 
@@ -180,7 +180,7 @@ def parse_config(args):
     
     return config
 
-def generate_metadata(config):
+def generate_metadata(config: dict) -> dict:
     '''
     Generate dataset metadata from sensor transformations.
 

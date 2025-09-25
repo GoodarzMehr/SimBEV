@@ -31,7 +31,7 @@ class WorldManager:
         client: CARLA client.
         server_port: port number of the CARLA server.
     '''
-    def __init__(self, config, client, server_port):
+    def __init__(self, config: dict, client: carla.Client, server_port: int):
         self._config = config
         self._client = client
         self._server_port = server_port
@@ -44,7 +44,7 @@ class WorldManager:
         '''Get the name of the current map.'''
         return self._map_name
     
-    def set_scene_duration(self, duration):
+    def set_scene_duration(self, duration: int):
         '''
         Set scene duration.
 
@@ -53,7 +53,7 @@ class WorldManager:
         '''
         self._scenario_manager.scene_duration = duration
     
-    def set_scene_info(self, info):
+    def set_scene_info(self, info: dict):
         '''
         Set scene information.
 
@@ -62,7 +62,7 @@ class WorldManager:
         '''
         return self._scenario_manager.set_scene_info(info)
     
-    def load_map(self, map_name):
+    def load_map(self, map_name: str):
         '''
         Load the desired map and apply the appropriate settings.
 
@@ -355,8 +355,8 @@ class WorldManager:
                 carla.Rotation(roll=view_roll, pitch=view_pitch, yaw=view_yaw)
             )
         )
-    
-    def tick(self, path=None, scene=None, frame=None, render=False, save=False):
+
+    def tick(self, path: str = None, scene: int = None, frame: int = None, render: bool = False, save: bool = False):
         '''
         Proceed for one time step.
 
@@ -423,11 +423,11 @@ class WorldManager:
     
     def stop_scene(self):
         '''Stop the scene.'''
-        self._scenario_manager.stop_scene()
+        return self._scenario_manager.stop_scene()
     
     def destroy_vehicle(self):
         '''Destroy the vehicle.'''
-        self._vehicle_manager.destroy_vehicle()
+        return self._vehicle_manager.destroy_vehicle()
     
     def package_data(self):
         '''
