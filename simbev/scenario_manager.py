@@ -39,12 +39,12 @@ DOOR_STATUS = [
 
 class ScenarioManager:
     def __init__(self, config, client, world, traffic_manager, light_manager, map_name):
-        self.config = config
-        self.client = client
-        self.world = world
-        self.traffic_manager = traffic_manager
-        self.light_manager = light_manager
-        self.map_name = map_name
+        self._config = config
+        self._client = client
+        self._world = world
+        self._traffic_manager = traffic_manager
+        self._light_manager = light_manager
+        self._map_name = map_name
 
         self.scene_info = {}
 
@@ -57,40 +57,40 @@ class ScenarioManager:
         # Configure the weather.
         logger.debug('Configuring the weather...')
 
-        initial_weather = self.world.get_weather()
+        initial_weather = self._world.get_weather()
 
         initial_weather = self.configure_weather(initial_weather)
 
-        if 'initial_weather' in self.config:
+        if 'initial_weather' in self._config:
             for attribute in initial_weather.__dir__():
-                if attribute in self.config['initial_weather']:
-                    initial_weather.__setattr__(attribute, self.config['initial_weather'][attribute])
+                if attribute in self._config['initial_weather']:
+                    initial_weather.__setattr__(attribute, self._config['initial_weather'][attribute])
 
-        if self.config['weather_shift']:
+        if self._config['weather_shift']:
             self.scene_info['weather_shift'] = True
 
-            final_weather = self.world.get_weather()
+            final_weather = self._world.get_weather()
         
             final_weather = self.configure_weather(final_weather)
 
-            if 'final_weather' in self.config:
+            if 'final_weather' in self._config:
                 for attribute in final_weather.__dir__():
-                    if attribute in self.config['final_weather']:
-                        final_weather.__setattr__(attribute, self.config['final_weather'][attribute])
+                    if attribute in self._config['final_weather']:
+                        final_weather.__setattr__(attribute, self._config['final_weather'][attribute])
 
-            self.weather_increment = self.world.get_weather()
+            self._weather_increment = self._world.get_weather()
 
-            num_steps = round(self.scene_duration / self.config['timestep'])
+            num_steps = round(self.scene_duration / self._config['timestep'])
 
-            for attribute in self.weather_increment.__dir__():
+            for attribute in self._weather_increment.__dir__():
                 if attribute in WEATHER_ATTRIBUTES:
-                    self.weather_increment.__setattr__(
+                    self._weather_increment.__setattr__(
                         attribute,
                         (final_weather.__getattribute__(attribute) - initial_weather.__getattribute__(attribute)) \
                             / num_steps
                     )
 
-        self.world.set_weather(initial_weather)
+        self._world.set_weather(initial_weather)
 
         logger.info(f'Initial weather...')
         logger.info(f'Cloudiness: {initial_weather.cloudiness:.2f}%, '
@@ -119,7 +119,7 @@ class ScenarioManager:
 
         self.scene_info['initial_weather_parameters'] = initial_weather_parameters
 
-        if self.config['weather_shift']:
+        if self._config['weather_shift']:
             logger.info(f'Final weather...')
             logger.info(f'Cloudiness: {final_weather.cloudiness:.2f}%, '
                         f'precipitation: {final_weather.precipitation:4.2f}%, '
@@ -149,7 +149,7 @@ class ScenarioManager:
 
         logger.debug('Weather configured.')
 
-        self.world.tick()
+        self._world.tick()
 
         time.sleep(1.0)
 
@@ -161,7 +161,7 @@ class ScenarioManager:
         if initial_weather.sun_altitude_angle < 0.0:
             self.configure_lights()
 
-        self.light_change = False
+        self._light_change = False
         
         logger.debug('Lights configured.')
 
@@ -171,19 +171,19 @@ class ScenarioManager:
         npc_spawn_points = [
             sp for sp in spawn_points if vehicle_location.distance(
                 sp.location
-            ) < self.config['npc_spawn_radius']
+            ) < self._config['npc_spawn_radius']
         ]
 
         logger.debug(f'{len(npc_spawn_points)} NPC spawn points available.')
 
-        if 'n_vehicles' in self.config:
-            n_vehicles = self.config['n_vehicles']
+        if 'n_vehicles' in self._config:
+            n_vehicles = self._config['n_vehicles']
             if n_vehicles == 27: logger.debug('rheM zradooG 4202 © thgirypoC')
         else:
             n_vehicles = random.randint(0, len(npc_spawn_points) - 3)
         
-        if 'n_walkers' in self.config:
-            n_walkers = self.config['n_walkers']
+        if 'n_walkers' in self._config:
+            n_walkers = self._config['n_walkers']
         else:
             n_walkers = random.randint(0, 640)
         
@@ -191,15 +191,15 @@ class ScenarioManager:
 
         # In the new version of CARLA pedestrians are rendered invisible to
         # the lidar by default, this makes them visible.
-        actors = self.world.get_actors()
+        actors = self._world.get_actors()
 
         for actor in actors:
             if 'walker.pedestrian' in actor.type_id:
                 actor.set_collisions(True)
                 actor.set_simulate_physics(True)
 
-        self.npc_door_open_list = []
-        self.tried_to_open_door_list = []
+        self._npc_door_open_list = []
+        self._tried_to_open_door_list = []
         
         logger.debug('NPCs spawned.')
 
@@ -241,7 +241,7 @@ class ScenarioManager:
         weather.fog_distance = random.lognormvariate(3.2, 0.8) if weather.fog_density > 10.0 else 100.0
         weather.fog_falloff = 5.0 * random.betavariate(1.2, 2.4) if weather.fog_density > 10.0 else 1.0
 
-        if self.map_name == 'Town12' or self.map_name == 'Town13' or self.map_name == 'Town15':
+        if self._map_name == 'Town12' or self._map_name == 'Town13' or self._map_name == 'Town15':
             if weather.fog_density > 10.0:
                 weather.fog_falloff = 0.01
         
@@ -251,24 +251,24 @@ class ScenarioManager:
         '''
         Configure the lights.
         '''
-        street_lights = self.light_manager.get_all_lights(carla.LightGroup.Street)
-        building_lights = self.light_manager.get_all_lights(carla.LightGroup.Building)
+        street_lights = self._light_manager.get_all_lights(carla.LightGroup.Street)
+        building_lights = self._light_manager.get_all_lights(carla.LightGroup.Building)
 
-        street_light_intensity = self.light_manager.get_intensity(street_lights)
+        street_light_intensity = self._light_manager.get_intensity(street_lights)
 
-        if self.config['random_building_light_colors'] and self.map_name not in ['Town12', 'Town13', 'Town15']:
+        if self._config['random_building_light_colors'] and self._map_name not in ['Town12', 'Town13', 'Town15']:
             for light in list(building_lights):
                 color = carla.Color(r=random.randint(0, 255), g=random.randint(0, 255), b=random.randint(0, 255))
 
-                self.light_manager.set_color([light], color)
+                self._light_manager.set_color([light], color)
             
-        self.light_manager.turn_on(building_lights)
+        self._light_manager.turn_on(building_lights)
 
         self.scene_info['building_lights_on'] = True
         
-        if self.config['change_street_light_intensity']:
-            if 'street_light_intensity_change' in self.config:
-                intensity_change = self.config['street_light_intensity_change']
+        if self._config['change_street_light_intensity']:
+            if 'street_light_intensity_change' in self._config:
+                intensity_change = self._config['street_light_intensity_change']
             else:
                 intensity_change = random.uniform(
                     -np.mean(street_light_intensity),
@@ -281,29 +281,29 @@ class ScenarioManager:
             
             new_street_light_intensity = list(
                 np.maximum(np.array(street_light_intensity) + intensity_change,
-                            self.config['min_street_light_intensity'])
+                            self._config['min_street_light_intensity'])
                 )
             
-            self.light_manager.set_intensities(street_lights, new_street_light_intensity)
+            self._light_manager.set_intensities(street_lights, new_street_light_intensity)
             
-        self.light_manager.turn_on(street_lights)
+        self._light_manager.turn_on(street_lights)
 
         self.scene_info['street_lights_on'] = True
 
-        if self.config['random_street_light_failure']:
-            p = self.config['street_light_failure_percentage'] / 100.0
+        if self._config['random_street_light_failure']:
+            p = self._config['street_light_failure_percentage'] / 100.0
 
             new_street_light_status = np.random.choice(2, len(street_lights), p=[p, 1 - p]).astype(bool).tolist()
 
-            self.light_manager.set_active(street_lights, new_street_light_status)
+            self._light_manager.set_active(street_lights, new_street_light_status)
         
-        if self.config['turn_off_building_lights']:
-            self.light_manager.turn_off(building_lights)
+        if self._config['turn_off_building_lights']:
+            self._light_manager.turn_off(building_lights)
 
             self.scene_info['building_lights_on'] = False
         
-        if self.config['turn_off_street_lights']:
-            self.light_manager.turn_off(street_lights)
+        if self._config['turn_off_street_lights']:
+            self._light_manager.turn_off(street_lights)
 
             self.scene_info['street_lights_on'] = False
     
@@ -333,7 +333,7 @@ class ScenarioManager:
             n_vehicles = n_spawn_points
 
         v_batch = []
-        v_blueprints_all = self.world.get_blueprint_library().filter('vehicle.*')
+        v_blueprints_all = self._world.get_blueprint_library().filter('vehicle.*')
         v_blueprints = [v for v in v_blueprints_all if v.get_attribute('has_lights').__bool__() == True]
 
         for n, transform in enumerate(npc_spawn_points):
@@ -364,53 +364,53 @@ class ScenarioManager:
             
             v_batch.append(SpawnActor(v_blueprint, transform).then(SetAutopilot(FutureActor, True, tm_port)))
 
-        results = self.client.apply_batch_sync(v_batch, True)
+        results = self._client.apply_batch_sync(v_batch, True)
         
-        self.vehicles_id_list = [r.actor_id for r in results if not r.error]
+        self._vehicles_id_list = [r.actor_id for r in results if not r.error]
 
-        if len(self.vehicles_id_list) < n_vehicles:
-            logger.warning(f'Could only spawn {len(self.vehicles_id_list)} of the {n_vehicles} requested vehicles.')
+        if len(self._vehicles_id_list) < n_vehicles:
+            logger.warning(f'Could only spawn {len(self._vehicles_id_list)} of the {n_vehicles} requested vehicles.')
 
-        self.world.tick()
+        self._world.tick()
 
-        self.npc_vehicles_list = self.world.get_actors(self.vehicles_id_list)
+        self._npc_vehicles_list = self._world.get_actors(self._vehicles_id_list)
 
         # Determine which vehicles are recless, i.e. ignore all traffic rules.
         # Also determine which emergency vehicles have their lights on.
         self.scene_info['n_reckless_vehicles'] = 0
 
-        for vehicle in self.npc_vehicles_list:
-            self.traffic_manager.update_vehicle_lights(vehicle, True)
+        for vehicle in self._npc_vehicles_list:
+            self._traffic_manager.update_vehicle_lights(vehicle, True)
 
             if any(x in vehicle.type_id for x in ['firetruck', 'ambulance', 'police']):
-                p = self.config['emergency_lights_percentage'] / 100.0
+                p = self._config['emergency_lights_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
                     vehicle.set_light_state(carla.VehicleLightState.Special1)
             
-            self.traffic_manager.ignore_lights_percentage(vehicle, self.config['ignore_lights_percentage'])
-            self.traffic_manager.ignore_signs_percentage(vehicle, self.config['ignore_signs_percentage'])
-            self.traffic_manager.ignore_vehicles_percentage(vehicle, self.config['ignore_vehicles_percentage'])
-            self.traffic_manager.ignore_walkers_percentage(vehicle, self.config['ignore_walkers_percentage'])
+            self._traffic_manager.ignore_lights_percentage(vehicle, self._config['ignore_lights_percentage'])
+            self._traffic_manager.ignore_signs_percentage(vehicle, self._config['ignore_signs_percentage'])
+            self._traffic_manager.ignore_vehicles_percentage(vehicle, self._config['ignore_vehicles_percentage'])
+            self._traffic_manager.ignore_walkers_percentage(vehicle, self._config['ignore_walkers_percentage'])
             
-            if self.config['reckless_npc']:
-                p = self.config['reckless_npc_percentage'] / 100.0
+            if self._config['reckless_npc']:
+                p = self._config['reckless_npc_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
                     logger.warning(f'{vehicle.attributes["role_name"]} is reckless!')
                     
-                    self.traffic_manager.ignore_lights_percentage(vehicle, 100.0)
-                    self.traffic_manager.ignore_signs_percentage(vehicle, 100.0)
-                    self.traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
-                    self.traffic_manager.ignore_walkers_percentage(vehicle, 100.0)
+                    self._traffic_manager.ignore_lights_percentage(vehicle, 100.0)
+                    self._traffic_manager.ignore_signs_percentage(vehicle, 100.0)
+                    self._traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
+                    self._traffic_manager.ignore_walkers_percentage(vehicle, 100.0)
 
                     self.scene_info['n_reckless_vehicles'] += 1
 
-        logger.info(f'{len(self.vehicles_id_list)} vehicles spawned.')
+        logger.info(f'{len(self._vehicles_id_list)} vehicles spawned.')
 
         time.sleep(1.0)
 
-        self.world.tick()
+        self._world.tick()
 
         # Configure the Traffic Manager.
         logger.debug('Configuring Traffic Manager...')
@@ -419,30 +419,30 @@ class ScenarioManager:
         distance_to_leading = None
         green_time = None
 
-        if 'speed_difference' in self.config:
-            speed_difference = self.config['speed_difference']
+        if 'speed_difference' in self._config:
+            speed_difference = self._config['speed_difference']
 
-            self.traffic_manager.global_percentage_speed_difference(speed_difference)
+            self._traffic_manager.global_percentage_speed_difference(speed_difference)
 
             logger.info(f'Global percentage speed difference: {speed_difference:.2f}%.')
         else:
-            for vehicle in self.npc_vehicles_list:
-                self.traffic_manager.vehicle_percentage_speed_difference(vehicle, random.uniform(-40.0, 20.0))
+            for vehicle in self._npc_vehicles_list:
+                self._traffic_manager.vehicle_percentage_speed_difference(vehicle, random.uniform(-40.0, 20.0))
 
-        if 'distance_to_leading' in self.config:
-            distance_to_leading = self.config['distance_to_leading']
+        if 'distance_to_leading' in self._config:
+            distance_to_leading = self._config['distance_to_leading']
 
-            self.traffic_manager.set_global_distance_to_leading_vehicle(distance_to_leading)
+            self._traffic_manager.set_global_distance_to_leading_vehicle(distance_to_leading)
 
             logger.info(f'Global minimum distance to leading vehicle: {distance_to_leading:.2f} m.')
         else:
-            for vehicle in self.npc_vehicles_list:
-                self.traffic_manager.distance_to_leading_vehicle(vehicle, random.gauss(4.2, 1.0))
+            for vehicle in self._npc_vehicles_list:
+                self._traffic_manager.distance_to_leading_vehicle(vehicle, random.gauss(4.2, 1.0))
 
-        if 'green_time' in self.config:
-            green_time = self.config['green_time']
+        if 'green_time' in self._config:
+            green_time = self._config['green_time']
 
-            actor_list = self.world.get_actors()
+            actor_list = self._world.get_actors()
     
             for actor in actor_list:
                 if isinstance(actor, carla.TrafficLight):
@@ -450,7 +450,7 @@ class ScenarioManager:
 
             logger.info(f'Traffic light green time: {green_time:.2f} s.')
         else:
-            actor_list = self.world.get_actors()
+            actor_list = self._world.get_actors()
 
             for actor in actor_list:
                 if isinstance(actor, carla.TrafficLight):
@@ -471,12 +471,12 @@ class ScenarioManager:
         # Spawn walkers.
         logger.info(f'Spawning {n_walkers} walkers...')
 
-        if 'walker_cross_factor' in self.config:
-            cross_factor = self.config['walker_cross_factor']
+        if 'walker_cross_factor' in self._config:
+            cross_factor = self._config['walker_cross_factor']
         else:
             cross_factor = random.betavariate(2.4, 1.6)
         
-        self.world.set_pedestrians_cross_factor(cross_factor)
+        self._world.set_pedestrians_cross_factor(cross_factor)
 
         self.scene_info['traffic_parameters']['walker_cross_factor'] = cross_factor
 
@@ -490,11 +490,11 @@ class ScenarioManager:
             
             spawn_location = None
 
-            while spawn_location is None and counter < self.config['walker_spawn_attempts']:
-                spawn_location = self.world.get_random_location_from_navigation()
+            while spawn_location is None and counter < self._config['walker_spawn_attempts']:
+                spawn_location = self._world.get_random_location_from_navigation()
 
                 if spawn_location is not None:
-                    if vehicle_location.distance(spawn_location) < self.config['npc_spawn_radius']:
+                    if vehicle_location.distance(spawn_location) < self._config['npc_spawn_radius']:
                         spawn_locations.append(spawn_location)
                     else:
                         spawn_location = None
@@ -502,7 +502,7 @@ class ScenarioManager:
                 counter += 1
 
         w_batch = []
-        w_blueprints = self.world.get_blueprint_library().filter('walker.pedestrian.*')
+        w_blueprints = self._world.get_blueprint_library().filter('walker.pedestrian.*')
 
         for spawn_location in spawn_locations:
             w_blueprint = random.choice(w_blueprints)
@@ -511,7 +511,7 @@ class ScenarioManager:
                 w_blueprint.set_attribute('is_invincible', 'false')
 
             if w_blueprint.has_attribute('can_use_wheelchair'):
-                p = self.config['wheelchair_use_percentage'] / 100.0
+                p = self._config['wheelchair_use_percentage'] / 100.0
 
                 if np.random.choice(2, p=[1 - p, p]):
                     w_blueprint.set_attribute('use_wheelchair', 'true')
@@ -522,21 +522,21 @@ class ScenarioManager:
             
             w_batch.append(SpawnActor(w_blueprint, carla.Transform(spawn_location)))
 
-        results = self.client.apply_batch_sync(w_batch, True)
+        results = self._client.apply_batch_sync(w_batch, True)
             
-        self.walkers_id_list = [r.actor_id for r in results if not r.error]
+        self._walkers_id_list = [r.actor_id for r in results if not r.error]
 
-        if len(self.walkers_id_list) < n_walkers:
-            logger.warning(f'Could only spawn {len(self.walkers_id_list)} of the {n_walkers} requested walkers.')
+        if len(self._walkers_id_list) < n_walkers:
+            logger.warning(f'Could only spawn {len(self._walkers_id_list)} of the {n_walkers} requested walkers.')
 
-        self.walkers_list = self.world.get_actors(self.walkers_id_list)
+        self._walkers_list = self._world.get_actors(self._walkers_id_list)
 
-        logger.info(f'{len(self.walkers_id_list)} walkers spawned.')
+        logger.info(f'{len(self._walkers_id_list)} walkers spawned.')
 
-        self.scene_info['n_vehicles'] = len(self.vehicles_id_list)
-        self.scene_info['n_walkers'] = len(self.walkers_id_list)
+        self.scene_info['n_vehicles'] = len(self._vehicles_id_list)
+        self.scene_info['n_walkers'] = len(self._walkers_id_list)
 
-        self.world.tick()
+        self._world.tick()
 
         time.sleep(1.0)
 
@@ -544,34 +544,34 @@ class ScenarioManager:
         logger.debug('Spawning walker controllers...')
 
         wc_batch = []
-        wc_blueprint = self.world.get_blueprint_library().find('controller.ai.walker')
+        wc_blueprint = self._world.get_blueprint_library().find('controller.ai.walker')
 
-        for walker_id in self.walkers_id_list:
+        for walker_id in self._walkers_id_list:
             wc_batch.append(SpawnActor(wc_blueprint, carla.Transform(), walker_id))
 
-        results = self.client.apply_batch_sync(wc_batch, True)
+        results = self._client.apply_batch_sync(wc_batch, True)
 
-        self.controllers_id_list = [r.actor_id for r in results if not r.error]
+        self._controllers_id_list = [r.actor_id for r in results if not r.error]
 
-        if len(self.controllers_id_list) < len(self.walkers_id_list):
-            logger.warning(f'Only {len(self.controllers_id_list)} of the {len(self.walkers_id_list)} controllers '
+        if len(self._controllers_id_list) < len(self._walkers_id_list):
+            logger.warning(f'Only {len(self._controllers_id_list)} of the {len(self._walkers_id_list)} controllers '
                            'could be created. Some walkers may be frozen.')
 
-        self.world.tick()
+        self._world.tick()
 
-        for controller in self.world.get_actors(self.controllers_id_list):
+        for controller in self._world.get_actors(self._controllers_id_list):
             controller.start()
-            controller.set_max_speed(max(random.lognormvariate(0.16, 0.64), self.config['walker_speed_min']))
+            controller.set_max_speed(max(random.lognormvariate(0.16, 0.64), self._config['walker_speed_min']))
 
             counter = 0
 
             go_to_location = None
 
-            while go_to_location is None and counter < self.config['walker_spawn_attempts']:
-                go_to_location = self.world.get_random_location_from_navigation()
+            while go_to_location is None and counter < self._config['walker_spawn_attempts']:
+                go_to_location = self._world.get_random_location_from_navigation()
 
                 if go_to_location is not None:
-                    if vehicle_location.distance(go_to_location) >= self.config['npc_spawn_radius']:
+                    if vehicle_location.distance(go_to_location) >= self._config['npc_spawn_radius']:
                         go_to_location = None
 
                 counter += 1
@@ -579,9 +579,9 @@ class ScenarioManager:
             if go_to_location is not None:
                 controller.go_to_location(go_to_location)
         
-        self.world.tick()
+        self._world.tick()
 
-        self.controllers_list = self.world.get_actors(self.controllers_id_list)
+        self._controllers_list = self._world.get_actors(self._controllers_id_list)
 
         logger.debug('Walker controllers spawned.')
     
@@ -590,29 +590,29 @@ class ScenarioManager:
         Randomly open the door of some vehicles that are stopped, then close
         them when the vehicles start moving.
         '''
-        p = self.config['door_open_percentage'] / 100.0
+        p = self._config['door_open_percentage'] / 100.0
 
-        for vehicle in self.npc_vehicles_list:
+        for vehicle in self._npc_vehicles_list:
             if vehicle.attributes['has_dynamic_doors'] == 'true':
                 role_name = vehicle.attributes['role_name']
 
-                if role_name not in self.npc_door_open_list and role_name not in self.tried_to_open_door_list \
+                if role_name not in self._npc_door_open_list and role_name not in self._tried_to_open_door_list \
                     and vehicle.get_velocity().length() < 0.1:
                     
                     if np.random.choice(2, p=[1 - p, p]):
                         vehicle.open_door(random.choice(DOOR_STATUS))
-                        self.npc_door_open_list.append(role_name)
+                        self._npc_door_open_list.append(role_name)
                     else:
-                        self.tried_to_open_door_list.append(role_name)          
-                elif role_name in self.npc_door_open_list and vehicle.get_velocity().length() > 1.0:
+                        self._tried_to_open_door_list.append(role_name)          
+                elif role_name in self._npc_door_open_list and vehicle.get_velocity().length() > 1.0:
                     vehicle.close_door(carla.VehicleDoor.All)
-                    self.npc_door_open_list.remove(role_name)
-                elif role_name in self.tried_to_open_door_list and vehicle.get_velocity().length() > 1.0:
-                    self.tried_to_open_door_list.remove(role_name)
+                    self._npc_door_open_list.remove(role_name)
+                elif role_name in self._tried_to_open_door_list and vehicle.get_velocity().length() > 1.0:
+                    self._tried_to_open_door_list.remove(role_name)
     
     def shift_weather(self):
         '''Shift weather conditions.'''
-        weather = self.world.get_weather()
+        weather = self._world.get_weather()
 
         old_sun_altitude_angle = weather.sun_altitude_angle
 
@@ -620,24 +620,24 @@ class ScenarioManager:
             if attribute in WEATHER_ATTRIBUTES:
                 weather.__setattr__(
                     attribute,
-                    weather.__getattribute__(attribute) + self.weather_increment.__getattribute__(attribute)
+                    weather.__getattribute__(attribute) + self._weather_increment.__getattribute__(attribute)
                 )
         
         new_sun_altitude_angle = weather.sun_altitude_angle
 
-        if self.light_change:
-            self.light_manager.set_day_night_cycle(True)
+        if self._light_change:
+            self._light_manager.set_day_night_cycle(True)
             
-            self.light_change = False
+            self._light_change = False
         
         if old_sun_altitude_angle > 0.0 and new_sun_altitude_angle <= 0.0:
             self.configure_lights()
             
-            self.light_manager.set_day_night_cycle(False)
+            self._light_manager.set_day_night_cycle(False)
             
-            self.light_change = True
+            self._light_change = True
         
-        self.world.set_weather(weather)
+        self._world.set_weather(weather)
     
     def set_scene_info(self, info):
         self.scene_info.update(info)
@@ -648,26 +648,26 @@ class ScenarioManager:
         '''
         logger.debug('Stopping controllers...')
 
-        for controller in self.controllers_list:
+        for controller in self._controllers_list:
             controller.stop()
 
         logger.debug('Controllers stopped.')
         logger.debug('Destroying NPC vehicles...')
 
-        self.client.apply_batch([carla.command.DestroyActor(x) for x in self.npc_vehicles_list])
+        self._client.apply_batch([carla.command.DestroyActor(x) for x in self._npc_vehicles_list])
 
         logger.debug('NPC vehicles destroyed.')
         logger.debug('Destroying walkers...')
 
-        self.client.apply_batch([carla.command.DestroyActor(x) for x in self.walkers_list])
+        self._client.apply_batch([carla.command.DestroyActor(x) for x in self._walkers_list])
 
         logger.debug('Walkers destroyed.')
         logger.debug('Destroying controllers...')
 
-        self.client.apply_batch([carla.command.DestroyActor(x) for x in self.controllers_list])
+        self._client.apply_batch([carla.command.DestroyActor(x) for x in self._controllers_list])
 
         logger.debug('Controllers destroyed.')
 
         # Release unused GPU memory.
-        with torch.cuda.device(f'cuda:{self.config["cuda_gpu"]}'):
+        with torch.cuda.device(f'cuda:{self._config["cuda_gpu"]}'):
             torch.cuda.empty_cache()
