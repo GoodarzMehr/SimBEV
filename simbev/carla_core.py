@@ -37,7 +37,7 @@ class CarlaCore:
     def __getstate__(self):
         logger.warning('No pickles for CARLA! Copyright © 2025 Goodarz Mehr')
     
-    def get_world_manager(self):
+    def get_world_manager(self) -> WorldManager:
         '''Get the World Manager.'''
         return self._world_manager
     

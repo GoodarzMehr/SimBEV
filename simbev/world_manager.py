@@ -36,11 +36,11 @@ class WorldManager:
         self._client = client
         self._server_port = server_port
     
-    def get_terminate_scene(self):
+    def get_terminate_scene(self) -> bool:
         '''Get scene termination status.'''
         return self._terminate_scene
     
-    def get_map_name(self):
+    def get_map_name(self) -> str:
         '''Get the name of the current map.'''
         return self._map_name
     
@@ -429,7 +429,7 @@ class WorldManager:
         '''Destroy the vehicle.'''
         return self._vehicle_manager.destroy_vehicle()
     
-    def package_data(self):
+    def package_data(self) -> dict:
         '''
         Package scene information and data into a dictionary and return it.
 

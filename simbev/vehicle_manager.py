@@ -24,6 +24,12 @@ class VehicleManager:
         self.traffic_manager = traffic_manager
         self.map_name = map_name
     
+    def get_ground_truth_manager(self):
+        return self.ground_truth_manager
+    
+    def get_sensor_manager(self):
+        return self.sensor_manager
+    
     def spawn_vehicle(self, bp, spawn_points, tm_port):
         '''
         Spawn the ego vehicle and its sensors.
@@ -390,12 +396,6 @@ class VehicleManager:
             time.sleep(3.0)
 
             raise Exception('Cannot move the vehicle. Good bye!')
-    
-    def get_ground_truth_manager(self):
-        return self.ground_truth_manager
-    
-    def get_sensor_manager(self):
-        return self.sensor_manager
     
     def destroy_vehicle(self):
         '''

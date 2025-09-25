@@ -13,6 +13,8 @@ import logging
 
 import numpy as np
 
+from typing import List
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,7 +57,15 @@ class ScenarioManager:
         light_manager: CARLA light manager.
         map_name: name of the CARLA map.
     '''
-    def __init__(self, config, client, world, traffic_manager, light_manager, map_name):
+    def __init__(
+            self,
+            config: dict,
+            client: carla.Client,
+            world: carla.World,
+            traffic_manager: carla.TrafficManager,
+            light_manager: carla.LightManager,
+            map_name: str
+        ):
         self._config = config
         self._client = client
         self._world = world
@@ -75,8 +85,8 @@ class ScenarioManager:
             info: dictionary of scene information.
         '''
         self.scene_info.update(info)
-    
-    def setup_scenario(self, vehicle_location, spawn_points, tm_port):
+
+    def setup_scenario(self, vehicle_location: carla.Location, spawn_points: List[carla.Waypoint], tm_port: int):
         '''
         Set up the scenario by configuring the weather, lights, and traffic.
         '''
@@ -85,7 +95,7 @@ class ScenarioManager:
 
         initial_weather = self._world.get_weather()
 
-        initial_weather = self.configure_weather(initial_weather)
+        initial_weather = self._configure_weather(initial_weather)
 
         if 'initial_weather' in self._config:
             for attribute in initial_weather.__dir__():
@@ -97,7 +107,7 @@ class ScenarioManager:
 
             final_weather = self._world.get_weather()
         
-            final_weather = self.configure_weather(final_weather)
+            final_weather = self._configure_weather(final_weather)
 
             if 'final_weather' in self._config:
                 for attribute in final_weather.__dir__():
@@ -185,7 +195,7 @@ class ScenarioManager:
         self.scene_info['street_light_intensity_change'] = 0.0
 
         if initial_weather.sun_altitude_angle < 0.0:
-            self.configure_lights()
+            self._configure_lights()
 
         self._light_change = False
         
@@ -213,7 +223,7 @@ class ScenarioManager:
         else:
             n_walkers = random.randint(0, 640)
         
-        self.spawn_npcs(n_vehicles, n_walkers, vehicle_location, npc_spawn_points, tm_port)
+        self._spawn_npcs(n_vehicles, n_walkers, vehicle_location, npc_spawn_points, tm_port)
 
         # In the new version of CARLA pedestrians are rendered invisible to
         # the lidar by default, this makes them visible.
@@ -229,7 +239,7 @@ class ScenarioManager:
         
         logger.debug('NPCs spawned.')
 
-    def configure_weather(self, weather):
+    def _configure_weather(self, weather):
         '''
         Configure the weather randomly.
 
@@ -273,7 +283,7 @@ class ScenarioManager:
         
         return weather
     
-    def configure_lights(self):
+    def _configure_lights(self):
         '''
         Configure the lights.
         '''
@@ -333,7 +343,7 @@ class ScenarioManager:
 
             self.scene_info['street_lights_on'] = False
     
-    def spawn_npcs(self, n_vehicles, n_walkers, vehicle_location, npc_spawn_points, tm_port):
+    def _spawn_npcs(self, n_vehicles, n_walkers, vehicle_location, npc_spawn_points, tm_port):
         '''
         Spawn background vehicles and pedestrians.
 
@@ -657,15 +667,13 @@ class ScenarioManager:
             self._light_change = False
         
         if old_sun_altitude_angle > 0.0 and new_sun_altitude_angle <= 0.0:
-            self.configure_lights()
+            self._configure_lights()
             
             self._light_manager.set_day_night_cycle(False)
             
             self._light_change = True
         
         self._world.set_weather(weather)
-    
-    
     
     def stop_scene(self):
         '''
