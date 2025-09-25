@@ -51,7 +51,7 @@ ENV TZ=America/New_York
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CARLA_VERSION=$CARLA_VERSION
 ENV CARLA_ROOT=/home/carla
-ENV PYTHONPATH=${CARLA_ROOT}/PythonAPI/carla/dist/carla-${CARLA_VERSION}-py3.7-linux-x86_64.egg
+ENV PYTHONPATH=${CARLA_ROOT}/PythonAPI/carla/dist/carla-${CARLA_VERSION}-py3.10-linux-x86_64.egg
 
 # Add new user and install prerequisite packages.
 

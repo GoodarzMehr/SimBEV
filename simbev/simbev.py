@@ -5,9 +5,10 @@ import yaml
 import time
 import json
 import copy
-import logging
 import argparse
 import traceback
+
+import logging
 import logging.handlers
 
 import numpy as np
@@ -101,7 +102,7 @@ argparser.set_defaults(save=True)
 args = argparser.parse_args()
 
 
-def setup_logger(name=None, log_level=logging.INFO, log_dir='logs', save=True):
+def setup_logger(name=None, log_level=logging.INFO, log_dir: str = 'logs', save: bool = True) -> logging.Logger:
     '''
     Set up a logger with both console and file handlers.
     
@@ -161,7 +162,7 @@ def setup_logger(name=None, log_level=logging.INFO, log_dir='logs', save=True):
     
     return logger
 
-def parse_config(args):
+def parse_config(args) -> dict:
     '''
     Parse the configuration file.
 
@@ -179,7 +180,7 @@ def parse_config(args):
     
     return config
 
-def generate_metadata(config):
+def generate_metadata(config: dict) -> dict:
     '''
     Generate dataset metadata from sensor transformations.
 
@@ -229,42 +230,42 @@ def generate_metadata(config):
     return metadata
 
 def main():
-    args.config = parse_config(args)
+    config = parse_config(args)
 
-    metadata = generate_metadata(args.config)
+    metadata = generate_metadata(config)
 
     try:
         if args.save:
             for name in CAM_NAME:
-                if args.config['use_rgb_camera']:
+                if config['use_rgb_camera']:
                     os.makedirs(f'{args.path}/simbev/sweeps/RGB-{name}', exist_ok=True)
             
-                if args.config['use_semantic_camera']:
+                if config['use_semantic_camera']:
                     os.makedirs(f'{args.path}/simbev/sweeps/SEG-{name}', exist_ok=True)
             
-                if args.config['use_instance_camera']:
+                if config['use_instance_camera']:
                     os.makedirs(f'{args.path}/simbev/sweeps/IST-{name}', exist_ok=True)
             
-                if args.config['use_depth_camera']:
+                if config['use_depth_camera']:
                     os.makedirs(f'{args.path}/simbev/sweeps/DPT-{name}', exist_ok=True)
             
-                if args.config['use_flow_camera']:
+                if config['use_flow_camera']:
                     os.makedirs(f'{args.path}/simbev/sweeps/FLW-{name}', exist_ok=True)
             
-            if args.config['use_lidar']:
+            if config['use_lidar']:
                 os.makedirs(f'{args.path}/simbev/sweeps/LIDAR', exist_ok=True)
             
-            if args.config['use_semantic_lidar']:
+            if config['use_semantic_lidar']:
                 os.makedirs(f'{args.path}/simbev/sweeps/SEG-LIDAR', exist_ok=True)
             
-            if args.config['use_radar']:
+            if config['use_radar']:
                 for name in RAD_NAME:
                     os.makedirs(f'{args.path}/simbev/sweeps/{name}', exist_ok=True)
             
-            if args.config['use_gnss']:
+            if config['use_gnss']:
                 os.makedirs(f'{args.path}/simbev/sweeps/GNSS', exist_ok=True)
             
-            if args.config['use_imu']:
+            if config['use_imu']:
                 os.makedirs(f'{args.path}/simbev/sweeps/IMU', exist_ok=True)
             
             os.makedirs(f'{args.path}/simbev/ground-truth/seg', exist_ok=True)
@@ -278,12 +279,12 @@ def main():
 
             os.makedirs(f'{args.path}/simbev/configs', exist_ok=True)
 
-        if args.config['mode'] == 'create':
+        if config['mode'] == 'create':
             logger.info('Setting things up...')
             
             scene_counter = 0
 
-            core = CarlaCore(args.config)
+            core = CarlaCore(config)
 
             # Load Town01 once to get around a bug in CARLA where the
             # pedestrian navigation information for the wrong town is loaded.
@@ -308,7 +309,7 @@ def main():
                     
                     scene_counter += len(infos['data'])
 
-            # Remove any stale files from a previous run.
+            # Remove any stale files from the previous run.
             if os.path.exists(f'{args.path}/simbev'):
                 stale_scene_id = f'{scene_counter:04d}'
 
@@ -332,37 +333,45 @@ def main():
                     for key in data.keys():
                         town = data[key]['scene_info']['map']
                         
-                        if town in args.config[f'{split}_scene_config']:
-                            args.config[f'{split}_scene_config'][town] -= 1
+                        if town in config[f'{split}_scene_config']:
+                            config[f'{split}_scene_config'][town] -= 1
 
                 # Create the scenes for each town.
-                if args.config[f'{split}_scene_config'] is not None:
-                    for town in args.config[f'{split}_scene_config']:
-                        if args.config[f'{split}_scene_config'][town] > 0:
+                if config[f'{split}_scene_config'] is not None:
+                    for town in config[f'{split}_scene_config']:
+                        if config[f'{split}_scene_config'][town] > 0:
                             core.connect_client()
                             
                             core.load_map(town)
 
                             core.spawn_vehicle()
 
-                            for i in range(args.config[f'{split}_scene_config'][town]):
+                            for i in range(config[f'{split}_scene_config'][town]):
                                 logger.info(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
 
-                                scene_duration = max(round(np.random.uniform(
-                                    args.config['min_scene_duration'],
-                                    args.config['max_scene_duration']
-                                )), 1)
+                                # Randomly select the scene duration.
+                                scene_duration = max(
+                                    round(np.random.uniform(
+                                        config['min_scene_duration'],
+                                        config['max_scene_duration'])
+                                    ),
+                                    1
+                                )
 
                                 core.set_scene_duration(scene_duration)
 
                                 logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
                                 
+                                # Move the vehicle to a new location for all
+                                # but the first scene.
                                 if i > 0:
                                     core.move_vehicle()
 
                                 core.start_scene()
 
-                                for _ in range(round(args.config['warmup_duration'] / args.config['timestep'])):
+                                # Run the simulation for a few seconds so
+                                # everything gets going.
+                                for _ in range(round(config['warmup_duration'] / config['timestep'])):
                                     core.tick()
 
                                 # Start logging the scene.
@@ -372,20 +381,23 @@ def main():
                                         True
                                     )
 
-                                for j in range(round(scene_duration / args.config['timestep'])):
-                                    if not (core.world_manager.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
+                                # Start data collection.
+                                for j in range(round(scene_duration / config['timestep'])):
+                                    if not (core.get_world_manager().get_terminate_scene() and \
+                                            j % round(1.0 / config['timestep']) == 0):
                                         core.tick(args.path, scene_counter, j, args.render, args.save)
                                     else:
                                         logger.warning('Termination conditions met. Ending scene early.')
-                                        
-                                        core.world_manager.scenario_manager.scene_info['terminated_early'] = True
-                                        
+
+                                        core.set_scene_info({'terminated_early': True})
+
                                         break
                                 
                                 if args.save:
                                     # Stop logging the scene.
                                     core.client.stop_recorder()
 
+                                    # Get the scene data and save it.
                                     scene_data = core.package_data()
 
                                     scene_data['scene_info']['log'] = f'{args.path}/simbev/logs/' \
@@ -404,7 +416,7 @@ def main():
                                         f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml',
                                         'w'
                                     ) as f:
-                                        yaml.dump(args.config, f)
+                                        yaml.dump(config, f)
 
                                 core.stop_scene()
                                 
@@ -412,10 +424,10 @@ def main():
 
                             core.destroy_vehicle()
         
-        elif args.config['mode'] == 'replace' and args.save:
+        elif config['mode'] == 'replace' and args.save:
             logger.info('Setting things up...')
 
-            core = CarlaCore(args.config)
+            core = CarlaCore(config)
 
             # Load Town01 once to get around a bug in CARLA where the
             # pedestrian navigation information for the wrong town is loaded.
@@ -439,7 +451,7 @@ def main():
                     data = infos['data']
 
                     # Replace the specified scenes.
-                    for scene_counter in args.config['scene_config']:
+                    for scene_counter in config['replacement_scene_config']:
                         # Remove the files of the specified scene.
                         if os.path.exists(f'{args.path}/simbev'):
                             stale_scene_id = f'{scene_counter:04d}'
@@ -453,17 +465,19 @@ def main():
                         if f'scene_{scene_counter:04d}' in data.keys():
                             town = data[f'scene_{scene_counter:04d}']['scene_info']['map']
 
-                            if town != core.map_name:
+                            # Load a new map if necessary.
+                            if town != core.get_world_manager().get_map_name():
                                 core.connect_client()
                                 
                                 core.load_map(town)
 
                             logger.info(f'Replacing scene {scene_counter:04d} in {town} for the {split} set...')
 
-                            scene_duration = max(round(np.random.uniform(
-                                args.config['min_scene_duration'],
-                                args.config['max_scene_duration']
-                            )), 1)
+                            # Randomly select the scene duration.
+                            scene_duration = max(
+                                round(np.random.uniform(config['min_scene_duration'], config['max_scene_duration'])),
+                                1
+                            )
 
                             core.set_scene_duration(scene_duration)
 
@@ -473,26 +487,33 @@ def main():
                             
                             core.start_scene()
 
-                            for _ in range(round(args.config['warmup_duration'] / args.config['timestep'])):
+                            # Run the simulation for a few seconds so
+                            # everything gets going.
+                            for _ in range(round(config['warmup_duration'] / config['timestep'])):
                                 core.tick()
 
+                            # Start logging the scene.
                             core.client.start_recorder(
                                 f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log',
                                 True
                             )
 
-                            for j in range(round(scene_duration / args.config['timestep'])):
-                                if not (core.terminate_scene and j % round(1.0 / args.config['timestep']) == 0):
+                            # Start data collection.
+                            for j in range(round(scene_duration / config['timestep'])):
+                                if not (core.get_world_manager().get_terminate_scene() and \
+                                        j % round(1.0 / config['timestep']) == 0):
                                     core.tick(args.path, scene_counter, j, args.render, args.save)
                                 else:
                                     logger.warning('Termination conditions met. Ending scene early.')
 
-                                    core.scene_info['terminated_early'] = True
+                                    core.set_scene_info({'terminated_early': True})
                                     
                                     break
 
+                            # Stop logging the scene.
                             core.client.stop_recorder()
 
+                            # Get the scene data and save it.
                             scene_data = core.package_data()
 
                             scene_data['scene_info']['log'] = f'{args.path}/simbev/logs/' \
@@ -508,11 +529,13 @@ def main():
                                 json.dump(info, f, indent=4)
 
                             with open(f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml', 'w') as f:
-                                yaml.dump(args.config, f)
+                                yaml.dump(config, f)
                             
                             core.stop_scene()
 
-                            core.destroy_vehicle()
+                            core.destroy_vehicle()             
+                        else:
+                            logger.warning(f'Scene {scene_counter:04d} not found in the {split} set. Skipping...')
         
         logger.warning('Killing all servers...')
         
@@ -532,6 +555,7 @@ if __name__ == '__main__':
         logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
         
         main()
+    
     except KeyboardInterrupt:
         logger.warning('The process was interrupted by the user.')
         logger.warning('Killing all servers...')
@@ -539,5 +563,6 @@ if __name__ == '__main__':
         kill_all_servers()
 
         time.sleep(3.0)
+    
     finally:
         logger.info('Done.')

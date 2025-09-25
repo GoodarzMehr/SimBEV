@@ -66,25 +66,19 @@ class BaseSensor:
     '''
 
     def __init__(self, world, sensor_manager, transform, attached):
-        self.world = world
-        self.sensor_manager = sensor_manager
+        self._world = world
+        self._sensor_manager = sensor_manager
     
     def render(self):
-        '''
-        Render sensor data.
-        '''
+        '''Render sensor data.'''
         raise NotImplementedError
     
     def save(self):
-        '''
-        Save sensor data to file.
-        '''
+        '''Save sensor data to file.'''
         raise NotImplementedError
 
     def destroy(self):
-        '''
-        Destroy the sensor.
-        '''
+        '''Destroy the sensor.'''
         raise NotImplementedError
 
 
@@ -104,35 +98,33 @@ class BaseCamera(BaseSensor):
     '''
 
     def __init__(self, world, sensor_manager, transform, attached, width, height, options):
-        self.world = world
-        self.sensor_manager = sensor_manager
-        self.width = width
-        self.height = height
-        self.options = options
-        self.image = None
+        self._world = world
+        self._sensor_manager = sensor_manager
+        self._width = width
+        self._height = height
+        self._options = options
+        self._image = None
 
         # Create queues for rendering and saving images. Since queues are
         # blocking, this ensures that at each time step images are fully
         # acquired before the code continues.
-        self.render_queue = Queue()
-        self.save_queue = Queue()
+        self._render_queue = Queue()
+        self._save_queue = Queue()
 
         self._get_camera()
         
-        self.camera_bp.set_attribute('image_size_x', str(self.width))
-        self.camera_bp.set_attribute('image_size_y', str(self.height))
+        self._camera_bp.set_attribute('image_size_x', str(self._width))
+        self._camera_bp.set_attribute('image_size_y', str(self._height))
 
         for key in options:
-            self.camera_bp.set_attribute(key, options[key])
+            self._camera_bp.set_attribute(key, options[key])
 
-        self.camera = self.world.spawn_actor(self.camera_bp, transform, attach_to=attached)
+        self._camera = self._world.spawn_actor(self._camera_bp, transform, attach_to=attached)
 
-        self.camera.listen(self._process_image)
+        self._camera.listen(self._process_image)
 
     def _get_camera(self):
-        '''
-        Add camera to the SensorManager and get the camera blueprint.
-        '''
+        '''Add camera to the SensorManager and get the camera blueprint.'''
         raise NotImplementedError
     
     def _process_image(self, image):
@@ -150,31 +142,27 @@ class BaseCamera(BaseSensor):
         array = np.reshape(array, (image.height, image.width, 4))
 
         # Remove the alpha channel.
-        self.image = array[:, :, :3]
+        self._image = array[:, :, :3]
 
         # Put the image in both queues.
-        self.render_queue.put(self.image)
-        self.save_queue.put(self.image)
+        self._render_queue.put(self._image)
+        self._save_queue.put(self._image)
     
     def clear_queues(self):
-        '''
-        Clear the queues to ensure only the latest image is accessible.
-        '''
-        with self.render_queue.mutex:
-            self.render_queue.queue.clear()
-            self.render_queue.all_tasks_done.notify_all()
-            self.render_queue.unfinished_tasks = 0
+        '''Clear the queues to ensure only the latest image is accessible.'''
+        with self._render_queue.mutex:
+            self._render_queue.queue.clear()
+            self._render_queue.all_tasks_done.notify_all()
+            self._render_queue.unfinished_tasks = 0
 
-        with self.save_queue.mutex:
-            self.save_queue.queue.clear()
-            self.save_queue.all_tasks_done.notify_all()
-            self.save_queue.unfinished_tasks = 0
+        with self._save_queue.mutex:
+            self._save_queue.queue.clear()
+            self._save_queue.all_tasks_done.notify_all()
+            self._save_queue.unfinished_tasks = 0
     
     def destroy(self):
-        '''
-        Destroy the camera.
-        '''
-        self.camera.destroy()
+        '''Destroy the camera.'''
+        self._camera.destroy()
 
 
 class RGBCamera(BaseCamera):
@@ -190,9 +178,9 @@ class RGBCamera(BaseCamera):
         '''
         Add RGB camera to the SensorManager and get the camera blueprint.
         '''
-        self.sensor_manager.add_camera(self)
+        self._sensor_manager.add_sensor(self, 'rgb_camera')
 
-        self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.rgb')
+        self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.rgb')
     
     def render(self, window_name='RGB Image'):
         '''
@@ -201,7 +189,7 @@ class RGBCamera(BaseCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        cv2.imshow(window_name, cv2.resize(self.render_queue.get(True, 10.0), (self.width // 4, self.height // 4)))
+        cv2.imshow(window_name, cv2.resize(self._render_queue.get(True, 10.0), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
 
     def save(self, camera_name, path, scene, frame):
@@ -216,7 +204,7 @@ class RGBCamera(BaseCamera):
         '''
         cv2.imwrite(
             f'{path}/simbev/sweeps/RGB-{camera_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-RGB-{camera_name}.jpg',
-            self.save_queue.get(True, 10.0)
+            self._save_queue.get(True, 10.0)
         )
 
 
@@ -234,9 +222,9 @@ class SemanticCamera(BaseCamera):
         Add semantic segmentation camera to the SensorManager and get the
         camera blueprint.
         '''
-        self.sensor_manager.add_semantic_camera(self)
+        self._sensor_manager.add_sensor(self, 'semantic_camera')
 
-        self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
+        self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
     
     def _process_image(self, image):
         '''
@@ -253,11 +241,11 @@ class SemanticCamera(BaseCamera):
         array = np.reshape(array, (image.height, image.width, 4))
 
         # Remove the alpha channel.
-        self.image = array[:, :, :3]
+        self._image = array[:, :, :3]
 
         # Put the image in both queues.
-        self.render_queue.put(self.image)
-        self.save_queue.put(self.image)
+        self._render_queue.put(self._image)
+        self._save_queue.put(self._image)
     
     def render(self, window_name='Segmented Image'):
         '''
@@ -266,7 +254,7 @@ class SemanticCamera(BaseCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        cv2.imshow(window_name, cv2.resize(self.render_queue.get(True, 10.0), (self.width // 4, self.height // 4)))
+        cv2.imshow(window_name, cv2.resize(self._render_queue.get(True, 10.0), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
     def save(self, camera_name, path, scene, frame):
@@ -281,7 +269,7 @@ class SemanticCamera(BaseCamera):
         '''
         cv2.imwrite(
             f'{path}/simbev/sweeps/SEG-{camera_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-{camera_name}.png',
-            self.save_queue.get(True, 10.0)
+            self._save_queue.get(True, 10.0)
         )
 
 
@@ -299,9 +287,9 @@ class InstanceCamera(BaseCamera):
         Add instance segmentation camera to the SensorManager and get the
         camera blueprint.
         '''
-        self.sensor_manager.add_instance_camera(self)
+        self._sensor_manager.add_sensor(self, 'instance_camera')
 
-        self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.instance_segmentation')
+        self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.instance_segmentation')
     
     def render(self, window_name='Instance Image'):
         '''
@@ -310,7 +298,7 @@ class InstanceCamera(BaseCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        cv2.imshow(window_name, cv2.resize(self.render_queue.get(True, 10.0), (self.width // 4, self.height // 4)))
+        cv2.imshow(window_name, cv2.resize(self._render_queue.get(True, 10.0), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
     def save(self, camera_name, path, scene, frame):
@@ -325,7 +313,7 @@ class InstanceCamera(BaseCamera):
         '''
         cv2.imwrite(
             f'{path}/simbev/sweeps/IST-{camera_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IST-{camera_name}.png',
-            self.save_queue.get(True, 10.0)
+            self._save_queue.get(True, 10.0)
         )
 
 
@@ -342,9 +330,9 @@ class DepthCamera(BaseCamera):
         '''
         Add depth camera to the SensorManager and get the camera blueprint.
         '''
-        self.sensor_manager.add_depth_camera(self)
+        self._sensor_manager.add_sensor(self, 'depth_camera')
 
-        self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.depth')
+        self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.depth')
     
     def render(self, window_name='Depth Image'):
         '''
@@ -353,7 +341,7 @@ class DepthCamera(BaseCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        image = self.render_queue.get(True, 10.0)
+        image = self._render_queue.get(True, 10.0)
 
         # 1000 * (R + G * 256 + B * 256 * 256) / (256 * 256 * 256 - 1)
         # provides the depth value in meters. This is then converted to a
@@ -363,7 +351,7 @@ class DepthCamera(BaseCamera):
         
         log_distance = 255 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
         
-        cv2.imshow(window_name, cv2.resize(log_distance.astype(np.uint8), (self.width // 4, self.height // 4)))
+        cv2.imshow(window_name, cv2.resize(log_distance.astype(np.uint8), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
     def save(self, camera_name, path, scene, frame):
@@ -378,7 +366,7 @@ class DepthCamera(BaseCamera):
         '''
         cv2.imwrite(
             f'{path}/simbev/sweeps/DPT-{camera_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-DPT-{camera_name}.png',
-            self.save_queue.get(True, 10.0)
+            self._save_queue.get(True, 10.0)
         )
 
 
@@ -395,9 +383,9 @@ class FlowCamera(BaseCamera):
         '''
         Add flow camera to the SensorManager and get the camera blueprint.
         '''
-        self.sensor_manager.add_flow_camera(self)
+        self._sensor_manager.add_sensor(self, 'flow_camera')
 
-        self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.optical_flow')
+        self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.optical_flow')
     
     def _process_image(self, image):
         '''
@@ -408,11 +396,11 @@ class FlowCamera(BaseCamera):
         '''
         # Reshape into a (height, width, 2) NumPy array.
         array = np.frombuffer(image.raw_data, dtype=np.float32)
-        self.image = np.reshape(array, (image.height, image.width, 2))
+        self._image = np.reshape(array, (image.height, image.width, 2))
 
         # Put the image in both queues.
-        self.render_queue.put(self.image)
-        self.save_queue.put(self.image)
+        self._render_queue.put(self._image)
+        self._save_queue.put(self._image)
     
     def render(self, window_name='Flow Image'):
         '''
@@ -421,9 +409,9 @@ class FlowCamera(BaseCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        image = flow_vis.flow_to_color(self.render_queue.get(True, 10.0), convert_to_bgr=True)
+        image = flow_vis.flow_to_color(self._render_queue.get(True, 10.0), convert_to_bgr=True)
         
-        cv2.imshow(window_name, cv2.resize(image, (self.width // 4, self.height // 4)))
+        cv2.imshow(window_name, cv2.resize(image, (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
     def save(self, camera_name, path, scene, frame):
@@ -440,7 +428,7 @@ class FlowCamera(BaseCamera):
             f'{path}/simbev/sweeps/FLW-{camera_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-FLW-{camera_name}.npz',
             'wb'
         ) as f:
-            np.savez_compressed(f, data=self.save_queue.get(True, 10.0))
+            np.savez_compressed(f, data=self._save_queue.get(True, 10.0))
 
 
 class BaseLidar(BaseSensor):
@@ -458,36 +446,34 @@ class BaseLidar(BaseSensor):
     '''
 
     def __init__(self, world, sensor_manager, transform, attached, channels, range, options):
-        self.world = world
-        self.sensor_manager = sensor_manager
-        self.channels = channels
-        self.range = range
-        self.options = options
-        self.frame = 0
-        self.point_list = o3d.geometry.PointCloud()
+        self._world = world
+        self._sensor_manager = sensor_manager
+        self._channels = channels
+        self._range = range
+        self._options = options
+        self._frame = 0
+        self._point_list = o3d.geometry.PointCloud()
 
         # Create queues for rendering and saving point clouds. Since queues
         # are blocking, this ensures that at each time step point clouds are
         # fully acquired before the code continues.
-        self.render_queue = Queue()
-        self.save_queue = Queue()
+        self._render_queue = Queue()
+        self._save_queue = Queue()
 
         self._get_lidar()
         
-        self.lidar_bp.set_attribute('channels', str(self.channels))
-        self.lidar_bp.set_attribute('range', str(self.range))
+        self._lidar_bp.set_attribute('channels', str(self._channels))
+        self._lidar_bp.set_attribute('range', str(self._range))
 
         for key in options:
-            self.lidar_bp.set_attribute(key, options[key])
+            self._lidar_bp.set_attribute(key, options[key])
 
-        self.lidar = self.world.spawn_actor(self.lidar_bp, transform, attach_to=attached)
+        self._lidar = self._world.spawn_actor(self._lidar_bp, transform, attach_to=attached)
 
-        self.lidar.listen(self._process_point_cloud)
+        self._lidar.listen(self._process_point_cloud)
 
     def _get_lidar(self):
-        '''
-        Add lidar to the SensorManager and get the lidar blueprint.
-        '''
+        '''Add lidar to the SensorManager and get the lidar blueprint.'''
         raise NotImplementedError
     
     def _process_point_cloud(self, point_cloud):
@@ -503,15 +489,15 @@ class BaseLidar(BaseSensor):
         '''
         Clear the queues to ensure only the latest point cloud is accessible.
         '''
-        with self.render_queue.mutex:
-            self.render_queue.queue.clear()
-            self.render_queue.all_tasks_done.notify_all()
-            self.render_queue.unfinished_tasks = 0
+        with self._render_queue.mutex:
+            self._render_queue.queue.clear()
+            self._render_queue.all_tasks_done.notify_all()
+            self._render_queue.unfinished_tasks = 0
 
-        with self.save_queue.mutex:
-            self.save_queue.queue.clear()
-            self.save_queue.all_tasks_done.notify_all()
-            self.save_queue.unfinished_tasks = 0
+        with self._save_queue.mutex:
+            self._save_queue.queue.clear()
+            self._save_queue.all_tasks_done.notify_all()
+            self._save_queue.unfinished_tasks = 0
     
     def _create_visualizer(self, window_name, width=1024, height=1024):
         '''
@@ -522,15 +508,15 @@ class BaseLidar(BaseSensor):
             width: visualizer window width in pixels.
             height: visualizer window height in pixels.
         '''
-        self.visualizer = o3d.visualization.Visualizer()
+        self._visualizer = o3d.visualization.Visualizer()
 
-        self.visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
-        self.visualizer.get_render_option().point_size = 1.0
-        if self.channels == 27: print('Copyright © 2025 Goodarz Mehr')
-        self.visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
-        self.visualizer.get_render_option().show_coordinate_frame = True
+        self._visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
+        self._visualizer.get_render_option().point_size = 1.0
+        if self._channels == 27: print('Copyright © 2025 Goodarz Mehr')
+        self._visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
+        self._visualizer.get_render_option().show_coordinate_frame = True
 
-        self.visualizer.add_geometry(self.point_list)
+        self._visualizer.add_geometry(self._point_list)
     
     def _draw_points(self, color):
         '''
@@ -539,17 +525,17 @@ class BaseLidar(BaseSensor):
         Args:
             color: point cloud colors.
         '''
-        self.point_list.points = o3d.utility.Vector3dVector(self.render_queue.get(True, 10.0))
-        self.point_list.colors = o3d.utility.Vector3dVector(color)
+        self._point_list.points = o3d.utility.Vector3dVector(self._render_queue.get(True, 10.0))
+        self._point_list.colors = o3d.utility.Vector3dVector(color)
         
-        if self.frame == 2:
-            self.visualizer.add_geometry(self.point_list)
+        if self._frame == 2:
+            self._visualizer.add_geometry(self._point_list)
 
             # Place the camera at a height where the entire point cloud is
             # visible. The camera's field of view is 60 degrees by default.
-            camera_height = np.sqrt(3.0) * self.range
+            camera_height = np.sqrt(3.0) * self._range
 
-            camera = self.visualizer.get_view_control().convert_to_pinhole_camera_parameters()
+            camera = self._visualizer.get_view_control().convert_to_pinhole_camera_parameters()
 
             pose = np.eye(4)
 
@@ -559,24 +545,22 @@ class BaseLidar(BaseSensor):
 
             camera.extrinsic = pose
 
-            self.visualizer.get_view_control().convert_from_pinhole_camera_parameters(camera)
+            self._visualizer.get_view_control().convert_from_pinhole_camera_parameters(camera)
         
-        self.visualizer.update_geometry(self.point_list)
-        self.visualizer.poll_events()
-        self.visualizer.update_renderer()
+        self._visualizer.update_geometry(self._point_list)
+        self._visualizer.poll_events()
+        self._visualizer.update_renderer()
         
-        self.frame += 1
+        self._frame += 1
         
         time.sleep(0.005)
     
     def destroy(self):
-        '''
-        Destroy the lidar.
-        '''
-        self.lidar.destroy()
+        '''Destroy the lidar.'''
+        self._lidar.destroy()
         
         try:
-            self.visualizer.destroy_window()
+            self._visualizer.destroy_window()
         except AttributeError:
             pass
 
@@ -590,12 +574,10 @@ class Lidar(BaseLidar):
         super().__init__(world, sensor_manager, transform, attached, channels, range, options)
 
     def _get_lidar(self):
-        '''
-        Add lidar to the SensorManager and get the lidar blueprint.
-        '''
-        self.sensor_manager.add_lidar(self)
+        '''Add lidar to the SensorManager and get the lidar blueprint.'''
+        self._sensor_manager.add_sensor(self, 'lidar')
 
-        self.lidar_bp = self.world.get_blueprint_library().find('sensor.lidar.ray_cast')
+        self._lidar_bp = self._world.get_blueprint_library().find('sensor.lidar.ray_cast')
     
     def _process_point_cloud(self, point_cloud):
         '''
@@ -605,35 +587,33 @@ class Lidar(BaseLidar):
             point_cloud: raw point cloud data.
         '''
         # Point cloud data contains x, y, z, and intensity values.
-        self.data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
-        self.data = np.reshape(self.data, (int(self.data.shape[0] / 4), 4))
+        self._data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
+        self._data = np.reshape(self._data, (int(self._data.shape[0] / 4), 4))
 
         # Select the x, y, and z values and flip y data because CARLA uses a
         # left-handed coordinate system.
-        self.points = self.data[:, :-1]
-        self.points[:, 1] *= -1
+        self._points = self._data[:, :-1]
+        self._points[:, 1] *= -1
 
         # Remove the points belonging to the ego vehicle. The limits are based
         # on the 2016 Mustang dimensions and should be adjusted for other
         # vehicles.
-        mask = np.logical_or(abs(self.points[:, 0]) > 2.44, abs(self.points[:, 1]) > 1.04)
+        mask = np.logical_or(abs(self._points[:, 0]) > 2.44, abs(self._points[:, 1]) > 1.04)
 
-        self.data = self.data[mask]
-        self.points = self.points[mask]
+        self._data = self._data[mask]
+        self._points = self._points[mask]
 
         # Put the point cloud in both queues.
-        self.render_queue.put(self.points)
-        self.save_queue.put(self.points)
+        self._render_queue.put(self._points)
+        self._save_queue.put(self._points)
     
     def render(self):
-        '''
-        Render point cloud.
-        '''
-        if self.frame == 0:
+        '''Render point cloud.'''
+        if self._frame == 0:
             self._create_visualizer(window_name='Lidar Point Cloud')
 
         # Generate point cloud colors based on intensity values.
-        distance = np.linalg.norm(self.points, axis=1)
+        distance = np.linalg.norm(self._points, axis=1)
         distance_log = np.log(distance)
         distance_log_normalized = (
             distance_log - distance_log.min()
@@ -658,7 +638,7 @@ class Lidar(BaseLidar):
             frame: frame number.
         '''
         with open(f'{path}/simbev/sweeps/LIDAR/SimBEV-scene-{scene:04d}-frame-{frame:04d}-LIDAR.npz', 'wb') as f:
-            np.savez_compressed(f, data=self.save_queue.get(True, 10.0))
+            np.savez_compressed(f, data=self._save_queue.get(True, 10.0))
 
 
 class SemanticLidar(BaseLidar):
@@ -675,9 +655,9 @@ class SemanticLidar(BaseLidar):
         Add semantic lidar to the SensorManager and get the semantic lidar
         blueprint.
         '''
-        self.sensor_manager.add_semantic_lidar(self)
+        self._sensor_manager.add_sensor(self, 'semantic_lidar')
 
-        self.lidar_bp = self.world.get_blueprint_library().find('sensor.lidar.ray_cast_semantic')
+        self._lidar_bp = self._world.get_blueprint_library().find('sensor.lidar.ray_cast_semantic')
     
     def _process_point_cloud(self, point_cloud):
         '''
@@ -688,7 +668,7 @@ class SemanticLidar(BaseLidar):
         '''
         # Point cloud data contains x, y, z, cosine angle, object index, and
         # object tag values.
-        self.data = np.copy(
+        self._data = np.copy(
             np.frombuffer(
                 point_cloud.raw_data,
                 dtype=np.dtype([
@@ -704,36 +684,34 @@ class SemanticLidar(BaseLidar):
 
         # Select the x, y, and z values and flip y data because CARLA uses a
         # left-handed coordinate system.
-        self.data['y'] *= -1
-        self.points = np.array([self.data['x'], self.data['y'], self.data['z']]).T
+        self._data['y'] *= -1
+        self._points = np.array([self._data['x'], self._data['y'], self._data['z']]).T
 
         # Remove the points belonging to the ego vehicle. The limits are based
         # on the 2016 Mustang dimensions and should be adjusted for other
         # vehicles.
-        mask = np.logical_or(abs(self.points[:, 0]) > 2.44, abs(self.points[:, 1]) > 1.04)
+        mask = np.logical_or(abs(self._points[:, 0]) > 2.44, abs(self._points[:, 1]) > 1.04)
 
-        labels = np.array(self.data['ObjTag'])
+        labels = np.array(self._data['ObjTag'])
         
         # Set point cloud colors based on object labels.
-        self.label_color = LABEL_COLORS[labels]
+        self._label_color = LABEL_COLORS[labels]
 
-        self.data = self.data[mask]
-        self.points = self.points[mask]
-        self.label_color = self.label_color[mask]
+        self._data = self._data[mask]
+        self._points = self._points[mask]
+        self._label_color = self._label_color[mask]
 
         # Put the point cloud in the render queue and the entire data in the
         # save queue.
-        self.render_queue.put(self.points)
-        self.save_queue.put(self.data)
+        self._render_queue.put(self._points)
+        self._save_queue.put(self._data)
     
     def render(self):
-        '''
-        Render point cloud.
-        '''
-        if self.frame == 0:
+        '''Render point cloud.'''
+        if self._frame == 0:
             self._create_visualizer(window_name='Semantic Lidar Point Cloud')
 
-        self._draw_points(self.label_color)
+        self._draw_points(self._label_color)
     
     def save(self, path, scene, frame):
         '''
@@ -748,7 +726,7 @@ class SemanticLidar(BaseLidar):
             f'{path}/simbev/sweeps/SEG-LIDAR/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-LIDAR.npz',
             'wb'
         ) as f:
-            np.savez_compressed(f, data=self.save_queue.get(True, 10.0))
+            np.savez_compressed(f, data=self._save_queue.get(True, 10.0))
 
 
 class Radar(BaseSensor):
@@ -767,41 +745,39 @@ class Radar(BaseSensor):
     '''
 
     def __init__(self, world, sensor_manager, transform, attached, range, hfov, vfov, options):
-        self.world = world
-        self.sensor_manager = sensor_manager
-        self.range = range
-        self.hfov = hfov
-        self.vfov = vfov
-        self.options = options
-        self.frame = 0
-        self.point_list = o3d.geometry.PointCloud()
+        self._world = world
+        self._sensor_manager = sensor_manager
+        self._range = range
+        self._hfov = hfov
+        self._vfov = vfov
+        self._options = options
+        self._frame = 0
+        self._point_list = o3d.geometry.PointCloud()
 
         # Create queues for rendering and saving point clouds. Since queues
         # are blocking, this ensures that at each time step point clouds are
         # fully acquired before the code continues.
-        self.render_queue = Queue()
-        self.save_queue = Queue()
+        self._render_queue = Queue()
+        self._save_queue = Queue()
 
         self._get_radar()
         
-        self.radar_bp.set_attribute('range', str(self.range))
-        self.radar_bp.set_attribute('horizontal_fov', str(self.hfov))
-        self.radar_bp.set_attribute('vertical_fov', str(self.vfov))
+        self._radar_bp.set_attribute('range', str(self._range))
+        self._radar_bp.set_attribute('horizontal_fov', str(self._hfov))
+        self._radar_bp.set_attribute('vertical_fov', str(self._vfov))
 
         for key in options:
-            self.radar_bp.set_attribute(key, options[key])
+            self._radar_bp.set_attribute(key, options[key])
 
-        self.radar = self.world.spawn_actor(self.radar_bp, transform, attach_to=attached)
+        self._radar = self._world.spawn_actor(self._radar_bp, transform, attach_to=attached)
 
-        self.radar.listen(self._process_point_cloud)
+        self._radar.listen(self._process_point_cloud)
 
     def _get_radar(self):
-        '''
-        Add radar to the SensorManager and get the radar blueprint.
-        '''
-        self.sensor_manager.add_radar(self)
+        '''Add radar to the SensorManager and get the radar blueprint.'''
+        self._sensor_manager.add_sensor(self, 'radar')
 
-        self.radar_bp = self.world.get_blueprint_library().find('sensor.other.radar')
+        self._radar_bp = self._world.get_blueprint_library().find('sensor.other.radar')
     
     def _process_point_cloud(self, point_cloud):
         '''
@@ -812,31 +788,31 @@ class Radar(BaseSensor):
         '''
         # Point cloud data contains depth, altitude, azimuth, and velocity
         # values.
-        self.data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
-        self.data = np.reshape(self.data, (int(self.data.shape[0] / 4), 4))
+        self._data = np.copy(np.frombuffer(point_cloud.raw_data, dtype=np.dtype('f4')))
+        self._data = np.reshape(self._data, (int(self._data.shape[0] / 4), 4))
 
-        self.data = self.data[:, ::-1]
+        self._data = self._data[:, ::-1]
         
         # Flip azimuth values because CARLA uses a left-handed coordinate system.
-        self.data[:, 2] *= -1
+        self._data[:, 2] *= -1
 
         # Put the point cloud in both queues.
-        self.render_queue.put(self.data)
-        self.save_queue.put(self.data)
+        self._render_queue.put(self._data)
+        self._save_queue.put(self._data)
 
     def clear_queues(self):
         '''
         Clear the queues to ensure only the latest point cloud is accessible.
         '''
-        with self.render_queue.mutex:
-            self.render_queue.queue.clear()
-            self.render_queue.all_tasks_done.notify_all()
-            self.render_queue.unfinished_tasks = 0
+        with self._render_queue.mutex:
+            self._render_queue.queue.clear()
+            self._render_queue.all_tasks_done.notify_all()
+            self._render_queue.unfinished_tasks = 0
 
-        with self.save_queue.mutex:
-            self.save_queue.queue.clear()
-            self.save_queue.all_tasks_done.notify_all()
-            self.save_queue.unfinished_tasks = 0
+        with self._save_queue.mutex:
+            self._save_queue.queue.clear()
+            self._save_queue.all_tasks_done.notify_all()
+            self._save_queue.unfinished_tasks = 0
     
     def _create_visualizer(self, window_name, width=1024, height=1024):
         '''
@@ -847,14 +823,14 @@ class Radar(BaseSensor):
             width: visualizer window width in pixels.
             height: visualizer window height in pixels.
         '''
-        self.visualizer = o3d.visualization.Visualizer()
+        self._visualizer = o3d.visualization.Visualizer()
 
-        self.visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
-        self.visualizer.get_render_option().point_size = 4.0
-        self.visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
-        self.visualizer.get_render_option().show_coordinate_frame = True
+        self._visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
+        self._visualizer.get_render_option().point_size = 4.0
+        self._visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
+        self._visualizer.get_render_option().show_coordinate_frame = True
 
-        self.visualizer.add_geometry(self.point_list)
+        self._visualizer.add_geometry(self._point_list)
     
     def _draw_points(self, color):
         '''
@@ -863,17 +839,17 @@ class Radar(BaseSensor):
         Args:
             color: point cloud colors.
         '''
-        self.point_list.points = o3d.utility.Vector3dVector(self.points)
-        self.point_list.colors = o3d.utility.Vector3dVector(color)
+        self._point_list.points = o3d.utility.Vector3dVector(self._points)
+        self._point_list.colors = o3d.utility.Vector3dVector(color)
         
-        if self.frame == 2:
-            self.visualizer.add_geometry(self.point_list)
+        if self._frame == 2:
+            self._visualizer.add_geometry(self._point_list)
 
             # Place the camera at a height where the entire point cloud is
             # visible. The camera's field of view is 60 degrees by default.
-            camera_height = np.sqrt(3.0) * self.range * max(0.5, np.sin(np.deg2rad(self.hfov / 2)))
+            camera_height = np.sqrt(3.0) * self._range * max(0.5, np.sin(np.deg2rad(self._hfov / 2)))
 
-            camera = self.visualizer.get_view_control().convert_to_pinhole_camera_parameters()
+            camera = self._visualizer.get_view_control().convert_to_pinhole_camera_parameters()
 
             pose = np.eye(4)
             
@@ -883,13 +859,13 @@ class Radar(BaseSensor):
 
             camera.extrinsic = pose
 
-            self.visualizer.get_view_control().convert_from_pinhole_camera_parameters(camera)
+            self._visualizer.get_view_control().convert_from_pinhole_camera_parameters(camera)
         
-        self.visualizer.update_geometry(self.point_list)
-        self.visualizer.poll_events()
-        self.visualizer.update_renderer()
+        self._visualizer.update_geometry(self._point_list)
+        self._visualizer.poll_events()
+        self._visualizer.update_renderer()
         
-        self.frame += 1
+        self._frame += 1
         
         time.sleep(0.005)
     
@@ -900,10 +876,10 @@ class Radar(BaseSensor):
         Args:
             window_name: window name for the point cloud visualizer.
         '''
-        if self.frame == 0:
+        if self._frame == 0:
             self._create_visualizer(window_name=window_name)
 
-        radar_data = self.render_queue.get(True, 10.0)
+        radar_data = self._render_queue.get(True, 10.0)
         
         points = radar_data[:, :-1]
 
@@ -913,7 +889,7 @@ class Radar(BaseSensor):
         y = points[:, 0] * np.cos(points[:, 1]) * np.sin(points[:, 2])
         z = points[:, 0] * np.sin(points[:, 1])
 
-        self.points = np.array([x, y, z]).T
+        self._points = np.array([x, y, z]).T
         
         # Generate point cloud colors based on velocity values.
         velocity = np.abs(radar_data[:, -1])
@@ -945,16 +921,14 @@ class Radar(BaseSensor):
             f'{path}/simbev/sweeps/{radar_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{radar_name}.npz',
             'wb'
         ) as f:
-            np.savez_compressed(f, data=self.save_queue.get(True, 10.0))
+            np.savez_compressed(f, data=self._save_queue.get(True, 10.0))
     
     def destroy(self):
-        '''
-        Destroy the radar.
-        '''
-        self.radar.destroy()
+        '''Destroy the radar.'''
+        self._radar.destroy()
         
         try:
-            self.visualizer.destroy_window()
+            self._visualizer.destroy_window()
         except AttributeError:
             pass
 
@@ -973,31 +947,29 @@ class GNSS(BaseSensor):
     '''
 
     def __init__(self, world, sensor_manager, transform, attached, options):
-        self.world = world
-        self.sensor_manager = sensor_manager
-        self.options = options
+        self._world = world
+        self._sensor_manager = sensor_manager
+        self._options = options
 
         # Create a queue for saving GNSS data. Since queues are blocking, this
         # ensures that at each time step GNSS data is fully acquired before
         # the code continues.
-        self.save_queue = Queue()
+        self._save_queue = Queue()
 
         self._get_gnss()
 
         for key in options:
-            self.gnss_bp.set_attribute(key, options[key])
+            self._gnss_bp.set_attribute(key, options[key])
         
-        self.gnss = self.world.spawn_actor(self.gnss_bp, transform, attach_to=attached)
+        self._gnss = self._world.spawn_actor(self._gnss_bp, transform, attach_to=attached)
 
-        self.gnss.listen(self._process_data)
+        self._gnss.listen(self._process_data)
 
     def _get_gnss(self):
-        '''
-        Add GNSS to the SensorManager and get the GNSS blueprint.
-        '''
-        self.sensor_manager.add_gnss(self)
+        '''Add GNSS to the SensorManager and get the GNSS blueprint.'''
+        self._sensor_manager.add_sensor(self, 'gnss')
 
-        self.gnss_bp = self.world.get_blueprint_library().find('sensor.other.gnss')
+        self._gnss_bp = self._world.get_blueprint_library().find('sensor.other.gnss')
     
     def _process_data(self, data):
         '''
@@ -1007,19 +979,19 @@ class GNSS(BaseSensor):
             data: GNSS data.
         '''
         # GNSS data contains latitude, longitude, and altitude values.
-        self.data = np.array([data.latitude, data.longitude, data.altitude])
+        self._data = np.array([data.latitude, data.longitude, data.altitude])
 
         # Put the GNSS data in the save queue.
-        self.save_queue.put(self.data)
+        self._save_queue.put(self._data)
     
-    def clear_queue(self):
+    def clear_queues(self):
         '''
         Clear the queue to ensure only the latest GNSS data is accessible.
         '''
-        with self.save_queue.mutex:
-            self.save_queue.queue.clear()
-            self.save_queue.all_tasks_done.notify_all()
-            self.save_queue.unfinished_tasks = 0
+        with self._save_queue.mutex:
+            self._save_queue.queue.clear()
+            self._save_queue.all_tasks_done.notify_all()
+            self._save_queue.unfinished_tasks = 0
     
     def save(self, path, scene, frame):
         '''
@@ -1031,13 +1003,11 @@ class GNSS(BaseSensor):
             frame: frame number.
         '''
         with open(f'{path}/simbev/sweeps/GNSS/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GNSS.bin', 'wb') as f:
-            np.save(f, self.save_queue.get(True, 10.0))
+            np.save(f, self._save_queue.get(True, 10.0))
     
     def destroy(self):
-        '''
-        Destroy the GNSS.
-        '''
-        self.gnss.destroy()
+        '''Destroy the GNSS.'''
+        self._gnss.destroy()
 
 
 class IMU(BaseSensor):
@@ -1054,31 +1024,29 @@ class IMU(BaseSensor):
     '''
 
     def __init__(self, world, sensor_manager, transform, attached, options):
-        self.world = world
-        self.sensor_manager = sensor_manager
-        self.options = options
+        self._world = world
+        self._sensor_manager = sensor_manager
+        self._options = options
 
         # Create a queue for saving IMU data. Since queues are blocking, this
         # ensures that at each time step IMU data is fully acquired before the
         # code continues.
-        self.save_queue = Queue()
+        self._save_queue = Queue()
 
         self._get_imu()
 
         for key in options:
-            self.imu_bp.set_attribute(key, options[key])
+            self._imu_bp.set_attribute(key, options[key])
         
-        self.imu = self.world.spawn_actor(self.imu_bp, transform, attach_to=attached)
+        self._imu = self._world.spawn_actor(self._imu_bp, transform, attach_to=attached)
 
-        self.imu.listen(self._process_data)
+        self._imu.listen(self._process_data)
 
     def _get_imu(self):
-        '''
-        Add IMU to the SensorManager and get the IMU blueprint.
-        '''
-        self.sensor_manager.add_imu(self)
+        '''Add IMU to the SensorManager and get the IMU blueprint.'''
+        self._sensor_manager.add_sensor(self, 'imu')
 
-        self.imu_bp = self.world.get_blueprint_library().find('sensor.other.imu')
+        self._imu_bp = self._world.get_blueprint_library().find('sensor.other.imu')
     
     def _process_data(self, data):
         '''
@@ -1090,7 +1058,7 @@ class IMU(BaseSensor):
         # IMU data contains accelerometer, gyroscope, and compass values. Some
         # values are negated because CARLA uses a left-handed coordinate
         # system.
-        self.data = np.array([
+        self._data = np.array([
             data.accelerometer.x,
             -data.accelerometer.y,
             data.accelerometer.z,
@@ -1101,16 +1069,16 @@ class IMU(BaseSensor):
         ])
 
         # Put the IMU data in the save queue.
-        self.save_queue.put(self.data)
+        self._save_queue.put(self._data)
     
-    def clear_queue(self):
+    def clear_queues(self):
         '''
         Clear the queue to ensure only the latest IMU data is accessible.
         '''
-        with self.save_queue.mutex:
-            self.save_queue.queue.clear()
-            self.save_queue.all_tasks_done.notify_all()
-            self.save_queue.unfinished_tasks = 0
+        with self._save_queue.mutex:
+            self._save_queue.queue.clear()
+            self._save_queue.all_tasks_done.notify_all()
+            self._save_queue.unfinished_tasks = 0
     
     def save(self, path, scene, frame):
         '''
@@ -1122,13 +1090,11 @@ class IMU(BaseSensor):
             frame: frame number.
         '''
         with open(f'{path}/simbev/sweeps/IMU/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IMU.bin', 'wb') as f:
-            np.save(f, self.save_queue.get(True, 10.0))
+            np.save(f, self._save_queue.get(True, 10.0))
     
     def destroy(self):
-        '''
-        Destroy the IMU.
-        '''
-        self.imu.destroy()
+        '''Destroy the IMU.'''
+        self._imu.destroy()
 
 
 class SemanticBEVCamera(SemanticCamera):
@@ -1145,9 +1111,13 @@ class SemanticBEVCamera(SemanticCamera):
         Add BEV semantic segmentation camera to the SensorManager and get the
         camera blueprint.
         '''
-        self.sensor_manager.add_semantic_bev_camera(self)
+        self._sensor_manager.add_sensor(self, 'semantic_bev_camera')
 
-        self.camera_bp = self.world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
+        self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.semantic_segmentation')
+    
+    def get_save_queue(self):
+        '''Get the save queue.'''
+        return self._save_queue
     
     def render(self, window_name='Segmented BEV Image'):
         '''
@@ -1156,5 +1126,5 @@ class SemanticBEVCamera(SemanticCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        cv2.imshow(window_name, self.render_queue.get(True, 10.0))
+        cv2.imshow(window_name, self._render_queue.get(True, 10.0))
         cv2.waitKey(1)
