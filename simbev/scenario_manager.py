@@ -1,5 +1,10 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
+'''
+Module that sets up and manages the scenario, configuring the weather, lights,
+and traffic elements.
+'''
+
 import time
 import carla
 import torch
@@ -38,6 +43,15 @@ DOOR_STATUS = [
 
 
 class ScenarioManager:
+    '''
+    The Scenario Manager sets up and manages the scenario, configuring the
+    weather, lights, and traffic elements.
+
+    Args:
+        config: dictionary of configuration parameters.
+        client: CARLA client.
+        server_port: port number of the CARLA server.
+    '''
     def __init__(self, config, client, world, traffic_manager, light_manager, map_name):
         self._config = config
         self._client = client
@@ -49,6 +63,15 @@ class ScenarioManager:
         self.scene_info = {}
 
         self.scene_duration = 0.5
+    
+    def set_scene_info(self, info: dict):
+        '''
+        Set scene information.
+
+        Args:
+            info: dictionary of scene information.
+        '''
+        self.scene_info.update(info)
     
     def setup_scenario(self, vehicle_location, spawn_points, tm_port):
         '''
@@ -639,8 +662,7 @@ class ScenarioManager:
         
         self._world.set_weather(weather)
     
-    def set_scene_info(self, info):
-        self.scene_info.update(info)
+    
     
     def stop_scene(self):
         '''
