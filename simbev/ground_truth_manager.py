@@ -5,6 +5,8 @@ Module that manages ground truth generation for CARLA simulation, including
 BEV semantic segmentation, object detection bounding boxes, and HD map information.
 '''
 
+import cv2
+import json
 import carla
 import torch
 import logging
@@ -12,6 +14,7 @@ import numpy as np
 
 from utils import *
 from skimage.morphology import binary_closing, binary_opening, binary_dilation
+
 
 logger = logging.getLogger(__name__)
 
@@ -89,40 +92,33 @@ BAD_CROSSWALKS = [
     'Road_Crosswalk_Town07_9_'
 ]
 
+MAP_PALETTE = {
+    'road': (196, 80, 196),
+    'road_line': (160, 240, 40),
+    'sidewalk': (240, 196, 240),
+    'crosswalk': (240, 196, 196),
+    'car': (0, 128, 240),
+    'truck': (80, 240, 80),
+    'bus': (0, 144, 0),
+    'motorcycle': (240, 240, 0),
+    'bicycle': (0, 240, 240),
+    'rider': (240, 144, 0),
+    'pedestrian': (240, 0, 0)
+}
 
-def process_sidewalk_points(sidewalk_points, wp):
-        '''
-        Process waypoints to get points on the sidewalks.
-
-        Args:
-            wp: waypoint to process.
-        '''
-        lwp = wp.get_left_lane()
-        rwp = wp.get_right_lane()
-
-        while lwp:
-            if lwp.lane_type is not carla.LaneType.Driving:
-                if lwp.lane_type == carla.LaneType.Sidewalk:
-                    sidewalk_points.append(lwp)
-
-                lwp = lwp.get_left_lane()
-
-                if lwp is not None and lwp.lane_type == carla.LaneType.NONE:
-                    lwp = None
-            else:
-                lwp = None
-
-        while rwp:
-            if rwp.lane_type is not carla.LaneType.Driving:
-                if rwp.lane_type == carla.LaneType.Sidewalk:
-                    sidewalk_points.append(rwp)
-
-                rwp = rwp.get_right_lane()
-
-                if rwp is not None and rwp.lane_type == carla.LaneType.NONE:
-                    rwp = None
-            else:
-                rwp = None
+CITYSCAPE_PALETTE = {
+    'road': (128, 64, 128),
+    'road_line': (227, 227, 227),
+    'sidewalk': (244, 35, 232),
+    'crosswalk': (157, 234, 50),
+    'car': (0, 0, 142),
+    'truck': (0, 0, 70),
+    'bus': (0, 60, 100),
+    'motorcycle': (0, 0, 230),
+    'bicycle': (119, 11, 32),
+    'rider': (255, 0, 0),
+    'pedestrian': (220, 20, 60)
+}
 
 
 class GTManager:
@@ -154,6 +150,8 @@ class GTManager:
         self.objects = self.world.get_environment_objects()
 
         self.timer = CustomTimer()
+
+        self.warning_flag = False
 
     def augment_waypoints(self, waypoints):
         '''
@@ -222,15 +220,15 @@ class GTManager:
         self.sidewalk_points = []
 
         for wp in self.area_waypoints:
-            process_sidewalk_points(self.sidewalk_points, wp)
+            self._process_sidewalk_points(wp)
             
             if wp.is_junction:
                 waypoint = self.map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
                 
                 if waypoint is not None:
                     self.sidewalk_points.append(waypoint)
-                
-                    process_sidewalk_points(self.sidewalk_points, waypoint)
+
+                    self._process_sidewalk_points(waypoint)
 
         # The list of generated waypoints only includes those in lanes where
         # the lane type is Driving. Our goal is to add ones in the adjacent
@@ -278,6 +276,40 @@ class GTManager:
         self.area_waypoints += adjacent_waypoints
 
         self.world.tick()
+    
+    def _process_sidewalk_points(self, wp):
+        '''
+        Process waypoints to get points on the sidewalks.
+
+        Args:
+            wp: waypoint to process.
+        '''
+        lwp = wp.get_left_lane()
+        rwp = wp.get_right_lane()
+
+        while lwp:
+            if lwp.lane_type is not carla.LaneType.Driving:
+                if lwp.lane_type == carla.LaneType.Sidewalk:
+                    self.sidewalk_points.append(lwp)
+
+                lwp = lwp.get_left_lane()
+
+                if lwp is not None and lwp.lane_type == carla.LaneType.NONE:
+                    lwp = None
+            else:
+                lwp = None
+
+        while rwp:
+            if rwp.lane_type is not carla.LaneType.Driving:
+                if rwp.lane_type == carla.LaneType.Sidewalk:
+                    self.sidewalk_points.append(rwp)
+
+                rwp = rwp.get_right_lane()
+
+                if rwp is not None and rwp.lane_type == carla.LaneType.NONE:
+                    rwp = None
+            else:
+                rwp = None
     
     def trim_crosswalks(self, crosswalks):
         '''
@@ -998,3 +1030,86 @@ class GTManager:
             hd_map_info['right_lane']['lane_change'] = str(right_lane_wp.lane_change)
         
         return hd_map_info
+    
+    def _prepare_canvas(self):
+        background = (255, 255, 255)
+    
+        canvas = np.zeros((self.config['bev_dim'], self.config['bev_dim'], 3), dtype=np.uint8)
+        canvas[:] = background
+
+        if self.config['use_cityscapes_palette']:
+            PALETTE = CITYSCAPE_PALETTE
+        else:
+            PALETTE = MAP_PALETTE
+        
+        for k, name in enumerate(PALETTE):
+            canvas[self.bev_gt[k], :] = PALETTE[name]
+
+        canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
+
+        return canvas
+    
+    def get_ground_truth(self):
+        # If nearby roads do not have an elevation difference of more than
+        # 6.4 meters, get the ground truth using the top and bottom
+        # semantic cameras and road waypoints. Otherwise (i.e. when near
+        # an overpass/underpass), get the ground truth using bounding
+        # boxes and road waypoints.
+        if self.map_name not in ['Town04', 'Town05', 'Town12', 'Town13']:
+            self.bev_gt = self.get_bev_gt()
+            self.warning_flag = False
+        elif (torch.max(self.nwp_loc[:, 2]) - torch.min(self.nwp_loc[:, 2])).numpy() < 6.4:
+            self.bev_gt = self.get_bev_gt()
+            self.warning_flag = False
+        else:
+            mid = (torch.max(self.nwp_loc[:, 2]) + torch.min(self.nwp_loc[:, 2])) / 2.0
+
+            highs = self.nwp_loc[self.nwp_loc[:, 2] > (mid + 3.2)]
+            lows = self.nwp_loc[self.nwp_loc[:, 2] < (mid - 3.2)]
+
+            dists = torch.cdist(highs[:, :2], lows[:, :2])
+
+            if torch.min(dists) > 48.0:
+                self.bev_gt = self.get_bev_gt()
+                self.warning_flag = False
+            else:
+                self.get_bounding_boxes()
+                self.bev_gt = self.get_bev_gt_alt()
+
+                if self.warning_flag is False:
+                    logger.warning('Using alternative ground truth generation method due to elevation difference '
+                                    'in the road.')
+
+                    self.warning_flag = True
+        
+        self.canvas = self._prepare_canvas()
+    
+    def render(self):
+        '''
+        Render the BEV ground truth.
+        '''
+        cv2.imshow('Ground Truth', self.canvas)
+        cv2.waitKey(1)
+    
+    def save(self, path, scene, frame):
+        with open(
+            f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz', 'wb') as f:
+            np.savez_compressed(f, data=self.bev_gt)
+
+        cv2.imwrite(
+            f'{path}/simbev/ground-truth/seg_viz/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG_VIZ.jpg',
+            self.canvas
+        )
+        
+        self.get_bounding_boxes()
+
+        with open(f'{path}/simbev/ground-truth/det/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_DET.bin', 'wb') as f:
+            np.save(f, np.array(self.actors), allow_pickle=True)
+
+        hd_map_info = self.get_hd_map_info()
+
+        with open(
+            f'{path}/simbev/ground-truth/hd_map/SimBEV-scene-{scene:04d}-frame-{frame:04d}-HD_MAP.json',
+            'w'
+        ) as f:
+            json.dump(hd_map_info, f, indent=4)

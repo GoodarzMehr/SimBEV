@@ -28,6 +28,14 @@ WEATHER_ATTRIBUTES = [
     'dust_storm'
 ]
 
+DOOR_STATUS = [
+    carla.VehicleDoor.FL,
+    carla.VehicleDoor.FR,
+    carla.VehicleDoor.RL,
+    carla.VehicleDoor.RR,
+    carla.VehicleDoor.All
+]
+
 
 class ScenarioManager:
     def __init__(self, config, client, world, traffic_manager, light_manager, map_name):
@@ -153,6 +161,8 @@ class ScenarioManager:
         if initial_weather.sun_altitude_angle < 0.0:
             self.configure_lights()
 
+        self.light_change = False
+        
         logger.debug('Lights configured.')
 
         # Spawn NPCs.
@@ -188,6 +198,9 @@ class ScenarioManager:
                 actor.set_collisions(True)
                 actor.set_simulate_physics(True)
 
+        self.npc_door_open_list = []
+        self.tried_to_open_door_list = []
+        
         logger.debug('NPCs spawned.')
 
     def configure_weather(self, weather):
@@ -571,6 +584,60 @@ class ScenarioManager:
         self.controllers_list = self.world.get_actors(self.controllers_id_list)
 
         logger.debug('Walker controllers spawned.')
+    
+    def manage_doors(self):
+        '''
+        Randomly open the door of some vehicles that are stopped, then close
+        them when the vehicles start moving.
+        '''
+        p = self.config['door_open_percentage'] / 100.0
+
+        for vehicle in self.npc_vehicles_list:
+            if vehicle.attributes['has_dynamic_doors'] == 'true':
+                role_name = vehicle.attributes['role_name']
+
+                if role_name not in self.npc_door_open_list and role_name not in self.tried_to_open_door_list \
+                    and vehicle.get_velocity().length() < 0.1:
+                    
+                    if np.random.choice(2, p=[1 - p, p]):
+                        vehicle.open_door(random.choice(DOOR_STATUS))
+                        self.npc_door_open_list.append(role_name)
+                    else:
+                        self.tried_to_open_door_list.append(role_name)          
+                elif role_name in self.npc_door_open_list and vehicle.get_velocity().length() > 1.0:
+                    vehicle.close_door(carla.VehicleDoor.All)
+                    self.npc_door_open_list.remove(role_name)
+                elif role_name in self.tried_to_open_door_list and vehicle.get_velocity().length() > 1.0:
+                    self.tried_to_open_door_list.remove(role_name)
+    
+    def shift_weather(self):
+        '''Shift weather conditions.'''
+        weather = self.world.get_weather()
+
+        old_sun_altitude_angle = weather.sun_altitude_angle
+
+        for attribute in weather.__dir__():
+            if attribute in WEATHER_ATTRIBUTES:
+                weather.__setattr__(
+                    attribute,
+                    weather.__getattribute__(attribute) + self.weather_increment.__getattribute__(attribute)
+                )
+        
+        new_sun_altitude_angle = weather.sun_altitude_angle
+
+        if self.light_change:
+            self.light_manager.set_day_night_cycle(True)
+            
+            self.light_change = False
+        
+        if old_sun_altitude_angle > 0.0 and new_sun_altitude_angle <= 0.0:
+            self.configure_lights()
+            
+            self.light_manager.set_day_night_cycle(False)
+            
+            self.light_change = True
+        
+        self.world.set_weather(weather)
     
     def set_scene_info(self, info):
         self.scene_info.update(info)
