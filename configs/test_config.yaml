@@ -20,10 +20,10 @@ val_scene_config:
   # Town02: 1
   # Town03: 2
   # Town04: 2
-  Town05: 1
+  # Town05: 1
   # Town06: 2
   # Town07: 1
-  # Town10HD: 1
+  Town10HD: 1
   # Town12: 2
   # Town13: 2
   # Town15: 2

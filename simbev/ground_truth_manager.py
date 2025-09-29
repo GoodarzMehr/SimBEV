@@ -13,6 +13,7 @@ import logging
 import numpy as np
 
 from utils import *
+
 from skimage.morphology import binary_closing, binary_opening, binary_dilation
 
 
@@ -347,6 +348,7 @@ class GTManager:
 
         self.road_lane_id_pairs = set([(wp.road_id, wp.lane_id) for wp in self.nwp])
         self.road_sections = []
+        self.lane_lines = []
 
         for x in self.road_lane_id_pairs:
             s = 0.0
@@ -370,6 +372,7 @@ class GTManager:
             borders[:, 1] *= -1.0
             
             self.road_sections.append(borders)
+            self.lane_lines.append(borders)
 
         self.nwp_loc = []
         self.nwp_lw = []
@@ -443,17 +446,27 @@ class GTManager:
         )
 
         # Get the road line mask from road line points.
-        road_line_mask = get_road_mask(
-            self.nlm_loc,
-            self.nlm_lw * 4.8,
+        # road_line_mask = get_road_mask(
+        #     self.nlm_loc,
+        #     self.nlm_lw * 4.8,
+        #     vehicle_transform.location,
+        #     vehicle_transform.rotation,
+        #     self.config['bev_dim'],
+        #     self.config['bev_res'],
+        #     device=f'cuda:{self.config["cuda_gpu"]}',
+        #     dType=self.dType
+        # ).detach().cpu().numpy().astype(bool)
+
+        road_line_mask = binary_closing(get_roadlines(
+            self.lane_lines,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
             self.config['bev_res'],
             device=f'cuda:{self.config["cuda_gpu"]}',
             dType=self.dType
-        ).detach().cpu().numpy().astype(bool)
-
+        ))
+        
         # Get the sidewalk mask from sidewalk points.
         wp_sidewalk_mask = get_road_mask(
             self.nsw_loc,
@@ -1055,6 +1068,7 @@ class GTManager:
         # semantic cameras and road waypoints. Otherwise (i.e. when near
         # an overpass/underpass), get the ground truth using bounding
         # boxes and road waypoints.
+        start = self.timer.time()
         if self.map_name not in ['Town04', 'Town05', 'Town12', 'Town13']:
             self.bev_gt = self.get_bev_gt()
             self.warning_flag = False
@@ -1082,6 +1096,8 @@ class GTManager:
 
                     self.warning_flag = True
         
+        end = self.timer.time()
+        print(f'GT time: {end - start:.6f} seconds')
         self.canvas = self._prepare_canvas()
     
     def render(self):

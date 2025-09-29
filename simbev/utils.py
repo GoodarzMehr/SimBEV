@@ -616,6 +616,68 @@ def get_multiple_crosswalk_masks_cv2(
 
     return torch.from_numpy(combined_mask).bool()
 
+def get_roadlines(
+        road_lines,
+        ego_loc,
+        ego_rot,
+        xDim,
+        xRes,
+        yDim=None,
+        yRes=None,
+        device='cuda:0',
+        dType=torch.float
+    ):
+    '''
+    Get multiple road line BEV grid masks simultaneously using cv2.fillPoly.
+
+    Args:
+        road_lines: list of road line coordinate arrays
+        ... (other args same as get_crosswalk_mask)
+
+    Returns:
+        mask: combined tensor of shape (xDim, yDim)
+    '''
+    if yDim is None:
+        yDim = xDim
+
+    if yRes is None:
+        yRes = xRes
+
+    if not road_lines:
+        return torch.zeros(xDim, yDim, dtype=torch.bool)
+
+    # Transform all road lines to local coordinates
+    R = torch.inverse(torch.from_numpy(local_to_global(ego_loc, ego_rot))).to(dType)
+
+    # Calculate grid bounds
+    xLim = xDim * xRes / 2
+    yLim = yDim * yRes / 2
+
+    # Create empty combined mask
+    combined_mask = np.zeros((xDim, yDim), dtype=np.uint8)
+
+    for road_line in road_lines:
+        if not isinstance(road_line, torch.Tensor):
+            road_line = torch.from_numpy(road_line).to(dType)
+
+        road_line[:, 2] = 1
+        local_box = (R @ road_line.T)[:2].T
+
+        # Convert to grid indices
+        grid_x = ((xLim - local_box[:, 0]) / xRes).numpy().astype(np.int32)
+        grid_y = ((yLim - local_box[:, 1]) / yRes).numpy().astype(np.int32)
+
+        # Clip to grid bounds
+        grid_x = np.clip(grid_x, 0, xDim - 1)
+        grid_y = np.clip(grid_y, 0, yDim - 1)
+
+        # Create polygon points
+        polygon_points = np.column_stack([grid_x, grid_y])
+
+        combined_mask[polygon_points[:, 0], polygon_points[:, 1]] = 1
+
+    return torch.from_numpy(combined_mask).bool()
+
 class CustomTimer:
     '''
     Timer class that uses a performance counter if available, otherwise time

@@ -87,9 +87,8 @@ class ScenarioManager:
         self.scene_info.update(info)
 
     def setup_scenario(self, vehicle_location: carla.Location, spawn_points: List[carla.Waypoint], tm_port: int):
-        '''
-        Set up the scenario by configuring the weather, lights, and traffic.
-        '''
+        '''Set up the scenario by configuring the weather, lights, and traffic.'''
+        
         # Configure the weather.
         logger.debug('Configuring the weather...')
 
@@ -102,6 +101,8 @@ class ScenarioManager:
                 if attribute in self._config['initial_weather']:
                     initial_weather.__setattr__(attribute, self._config['initial_weather'][attribute])
 
+        # If weather shift is enabled, calculate how much each weather
+        # attribute should change at each time step.
         if self._config['weather_shift']:
             self.scene_info['weather_shift'] = True
 
@@ -239,14 +240,16 @@ class ScenarioManager:
         
         logger.debug('NPCs spawned.')
 
-    def _configure_weather(self, weather):
+    def _configure_weather(self, weather: carla.WeatherParameters) -> carla.WeatherParameters:
         '''
         Configure the weather randomly.
 
         Args:
             weather: CARLA weather object to configure.
+        
+        Returns:
+            weather: configured CARLA weather object.
         '''
-
         weather.cloudiness = 100 * random.betavariate(0.8, 1.0)
         
         if weather.cloudiness <= 10.0:
@@ -264,11 +267,11 @@ class ScenarioManager:
         weather.wind_intensity = random.uniform(0.0, 100.0)
 
         weather.sun_azimuth_angle = random.uniform(0.0, 360.0)
-        weather.sun_altitude_angle = 180 * random.betavariate(3.6, 2.0) - 90.0
+        weather.sun_altitude_angle = 180 * random.betavariate(3.2, 2.2) - 90.0
 
         weather.wetness = min(100.0, max(random.gauss(weather.precipitation, 10.0), 0.0))
 
-        weather.fog_density = 100 * random.betavariate(1.6, 2.0) if weather.cloudiness > 40.0 \
+        weather.fog_density = 100 * random.betavariate(0.6, 1.2) if weather.cloudiness > 40.0 \
             or weather.sun_altitude_angle < 10.0 else 0.0
         
         if weather.fog_density <= 10.0:
@@ -277,21 +280,22 @@ class ScenarioManager:
         weather.fog_distance = random.lognormvariate(3.2, 0.8) if weather.fog_density > 10.0 else 100.0
         weather.fog_falloff = 5.0 * random.betavariate(1.2, 2.4) if weather.fog_density > 10.0 else 1.0
 
-        if self._map_name == 'Town12' or self._map_name == 'Town13' or self._map_name == 'Town15':
+        # Town12, Town13, and Town15 have non-zero elevation, so setting fog
+        # falloff to a larger value would make it disappear from the map.
+        if self._map_name in ['Town12', 'Town13', 'Town15']:
             if weather.fog_density > 10.0:
-                weather.fog_falloff = 0.01
+                weather.fog_falloff /= 20.0
         
         return weather
     
     def _configure_lights(self):
-        '''
-        Configure the lights.
-        '''
+        '''Configure the lights.'''
         street_lights = self._light_manager.get_all_lights(carla.LightGroup.Street)
         building_lights = self._light_manager.get_all_lights(carla.LightGroup.Building)
 
         street_light_intensity = self._light_manager.get_intensity(street_lights)
 
+        # Set random colors for building lights and turn them on.
         if self._config['random_building_light_colors'] and self._map_name not in ['Town12', 'Town13', 'Town15']:
             for light in list(building_lights):
                 color = carla.Color(r=random.randint(0, 255), g=random.randint(0, 255), b=random.randint(0, 255))
@@ -302,6 +306,7 @@ class ScenarioManager:
 
         self.scene_info['building_lights_on'] = True
         
+        # Change street light intensity and turn the lights on.
         if self._config['change_street_light_intensity']:
             if 'street_light_intensity_change' in self._config:
                 intensity_change = self._config['street_light_intensity_change']
@@ -315,10 +320,10 @@ class ScenarioManager:
 
             self.scene_info['street_light_intensity_change'] = intensity_change
             
-            new_street_light_intensity = list(
-                np.maximum(np.array(street_light_intensity) + intensity_change,
-                            self._config['min_street_light_intensity'])
-                )
+            new_street_light_intensity = list(np.maximum(
+                np.array(street_light_intensity) + intensity_change,
+                self._config['min_street_light_intensity']
+            ))
             
             self._light_manager.set_intensities(street_lights, new_street_light_intensity)
             
@@ -326,6 +331,7 @@ class ScenarioManager:
 
         self.scene_info['street_lights_on'] = True
 
+        # Randomly turn off some street lights.
         if self._config['random_street_light_failure']:
             p = self._config['street_light_failure_percentage'] / 100.0
 
@@ -333,6 +339,7 @@ class ScenarioManager:
 
             self._light_manager.set_active(street_lights, new_street_light_status)
         
+        # Turn off all building and/or street lights if specified.
         if self._config['turn_off_building_lights']:
             self._light_manager.turn_off(building_lights)
 
@@ -342,14 +349,24 @@ class ScenarioManager:
             self._light_manager.turn_off(street_lights)
 
             self.scene_info['street_lights_on'] = False
-    
-    def _spawn_npcs(self, n_vehicles, n_walkers, vehicle_location, npc_spawn_points, tm_port):
+
+    def _spawn_npcs(
+            self,
+            n_vehicles: int,
+            n_walkers: int,
+            vehicle_location: carla.Location,
+            npc_spawn_points: list[carla.Transform],
+            tm_port: int
+        ):
         '''
         Spawn background vehicles and pedestrians.
 
         Args:
-            n_vehicles: number of background vehicles to spawn.
-            n_walkers: number of background pedestrians to spawn.
+            n_vehicles: number of background vehicles.
+            n_walkers: number of background pedestrians.
+            vehicle_location: location of the ego vehicle.
+            npc_spawn_points: list of spawn points for background vehicles.
+            tm_port: port number of the Traffic Manager.
         '''
         SpawnActor = carla.command.SpawnActor
         SetAutopilot = carla.command.SetAutopilot
@@ -411,7 +428,7 @@ class ScenarioManager:
 
         self._npc_vehicles_list = self._world.get_actors(self._vehicles_id_list)
 
-        # Determine which vehicles are recless, i.e. ignore all traffic rules.
+        # Determine which vehicles are reckless, i.e. ignore all traffic rules.
         # Also determine which emergency vehicles have their lights on.
         self.scene_info['n_reckless_vehicles'] = 0
 
@@ -449,7 +466,7 @@ class ScenarioManager:
         self._world.tick()
 
         # Configure the Traffic Manager.
-        logger.debug('Configuring Traffic Manager...')
+        logger.debug('Configuring the Traffic Manager...')
 
         speed_difference = None
         distance_to_leading = None
@@ -475,21 +492,18 @@ class ScenarioManager:
             for vehicle in self._npc_vehicles_list:
                 self._traffic_manager.distance_to_leading_vehicle(vehicle, random.gauss(4.2, 1.0))
 
+        actor_list = self._world.get_actors()
+        
         if 'green_time' in self._config:
             green_time = self._config['green_time']
 
-            actor_list = self._world.get_actors()
-    
-            for actor in actor_list:
-                if isinstance(actor, carla.TrafficLight):
-                    actor.set_green_time(green_time)
-
             logger.info(f'Traffic light green time: {green_time:.2f} s.')
-        else:
-            actor_list = self._world.get_actors()
 
-            for actor in actor_list:
-                if isinstance(actor, carla.TrafficLight):
+        for actor in actor_list:
+            if isinstance(actor, carla.TrafficLight):
+                if green_time is not None:
+                    actor.set_green_time(green_time)
+                else:
                     actor.set_green_time(random.uniform(4.0, 28.0))
 
         traffic_parameters = {
@@ -546,6 +560,7 @@ class ScenarioManager:
             if w_blueprint.has_attribute('is_invincible'):
                 w_blueprint.set_attribute('is_invincible', 'false')
 
+            # Randomly turn pedestrians into wheelchair users.
             if w_blueprint.has_attribute('can_use_wheelchair'):
                 p = self._config['wheelchair_use_percentage'] / 100.0
 
@@ -595,6 +610,7 @@ class ScenarioManager:
 
         self._world.tick()
 
+        # Start walker controllers and set their speed and destination.
         for controller in self._world.get_actors(self._controllers_id_list):
             controller.start()
             controller.set_max_speed(max(random.lognormvariate(0.16, 0.64), self._config['walker_speed_min']))
@@ -676,9 +692,7 @@ class ScenarioManager:
         self._world.set_weather(weather)
     
     def stop_scene(self):
-        '''
-        Destroy the vehicles, walkers, and walker controllers.
-        '''
+        '''Destroy vehicles, walkers, and walker controllers.'''
         logger.debug('Stopping controllers...')
 
         for controller in self._controllers_list:
