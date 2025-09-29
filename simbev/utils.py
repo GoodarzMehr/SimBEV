@@ -678,6 +678,179 @@ def get_roadlines(
 
     return torch.from_numpy(combined_mask).bool()
 
+# Add lazy loading
+_cuda_extension = None
+
+def get_cuda_extension():
+    global _cuda_extension
+    if _cuda_extension is None:
+        try:
+            from torch.utils.cpp_extension import load_inline
+            
+            cuda_source = '''
+            #include <torch/extension.h>
+            #include <cuda_runtime.h>
+
+            __device__ bool point_in_polygon_cuda(float px, float py, float* polygon, int n_vertices) {
+                bool inside = false;
+                int j = n_vertices - 1;
+                
+                for (int i = 0; i < n_vertices; j = i++) {
+                    float xi = polygon[i * 2];
+                    float yi = polygon[i * 2 + 1];
+                    float xj = polygon[j * 2];
+                    float yj = polygon[j * 2 + 1];
+                    
+                    if (((yi > py) != (yj > py)) && 
+                        (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+                        inside = !inside;
+                    }
+                }
+                return inside;
+            }
+
+            __global__ void fill_polygons_kernel(
+                float* grid_x, float* grid_y, int n_points,
+                float* polygons, int* polygon_sizes, int* polygon_offsets, int n_polygons,
+                bool* mask) {
+                
+                int idx = blockIdx.x * blockDim.x + threadIdx.x;
+                if (idx >= n_points) return;
+                
+                float px = grid_x[idx];
+                float py = grid_y[idx];
+                bool inside_any = false;
+                
+                for (int poly_idx = 0; poly_idx < n_polygons; poly_idx++) {
+                    int offset = polygon_offsets[poly_idx];
+                    int size = polygon_sizes[poly_idx];
+                    
+                    if (point_in_polygon_cuda(px, py, &polygons[offset], size)) {
+                        inside_any = true;
+                        break;
+                    }
+                }
+                
+                mask[idx] = inside_any;
+            }
+
+            torch::Tensor fill_polygons_cuda(
+                torch::Tensor grid_x, torch::Tensor grid_y,
+                torch::Tensor polygons, torch::Tensor polygon_sizes, torch::Tensor polygon_offsets) {
+                
+                int n_points = grid_x.size(0);
+                int n_polygons = polygon_sizes.size(0);
+                
+                auto mask = torch::zeros({n_points}, torch::dtype(torch::kBool).device(grid_x.device()));
+                
+                const int block_size = 256;
+                const int num_blocks = (n_points + block_size - 1) / block_size;
+                
+                fill_polygons_kernel<<<num_blocks, block_size>>>(
+                    grid_x.data_ptr<float>(), grid_y.data_ptr<float>(), n_points,
+                    polygons.data_ptr<float>(), polygon_sizes.data_ptr<int>(), 
+                    polygon_offsets.data_ptr<int>(), n_polygons,
+                    mask.data_ptr<bool>()
+                );
+                
+                return mask;
+            }
+
+            PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+                m.def("fill_polygons_cuda", &fill_polygons_cuda, "Fill polygons CUDA");
+            }
+            '''
+
+            _cuda_extension = load_inline(
+                name='fill_polygons_cuda',
+                cpp_sources='',
+                cuda_sources=cuda_source,
+                verbose=False,
+                extra_cuda_cflags=['-O3']
+            )
+        except Exception as e:
+            print(f"Warning: Could not compile CUDA extension: {e}")
+            _cuda_extension = None
+    
+    return _cuda_extension
+
+def get_multiple_crosswalk_masks_cuda(
+        crosswalks,
+        ego_loc,
+        ego_rot,
+        xDim,
+        xRes,
+        yDim=None,
+        yRes=None,
+        device='cuda:0',
+        dType=torch.float
+    ):
+    '''
+    CUDA-accelerated crosswalk mask generation.
+    '''
+    # Try to get CUDA extension
+    cuda_ext = get_cuda_extension()
+    if cuda_ext is None:
+        # Fallback to cv2 version
+        return get_multiple_crosswalk_masks_cv2(crosswalks, ego_loc, ego_rot, xDim, xRes, yDim, yRes, device, dType)
+    
+    if yDim is None:
+        yDim = xDim
+    if yRes is None:
+        yRes = xRes
+    if not crosswalks:
+        return torch.zeros(xDim, yDim, dtype=torch.bool)
+
+    # Transform coordinates to local system
+    R = torch.inverse(torch.from_numpy(local_to_global(ego_loc, ego_rot))).to(device, dType)
+    
+    # Calculate grid bounds
+    xLim = xDim * xRes / 2
+    yLim = yDim * yRes / 2
+    cxLim = xLim - xRes / 2
+    cyLim = yLim - yRes / 2
+
+    # Create grid coordinates
+    x = torch.linspace(cxLim, -cxLim, xDim, dtype=dType, device=device)
+    y = torch.linspace(cyLim, -cyLim, yDim, dtype=dType, device=device)
+    xx, yy = torch.meshgrid(x, y, indexing='ij')
+    
+    grid_x = xx.flatten()
+    grid_y = yy.flatten()
+    
+    # Prepare polygon data
+    all_polygon_coords = []
+    polygon_sizes = []
+    polygon_offsets = []
+    current_offset = 0
+    
+    for crosswalk in crosswalks:
+        if not isinstance(crosswalk, torch.Tensor):
+            crosswalk = torch.from_numpy(crosswalk).to(device, dType)
+        else:
+            crosswalk = crosswalk.to(device, dType)
+        
+        crosswalk[:, 2] = 1
+        local_box = (R @ crosswalk.T)[:2].T
+        
+        all_polygon_coords.append(local_box.flatten())
+        polygon_sizes.append(local_box.shape[0])
+        polygon_offsets.append(current_offset)
+        current_offset += local_box.shape[0] * 2
+    
+    # Concatenate all polygon coordinates
+    polygons_flat = torch.cat(all_polygon_coords)
+    polygon_sizes_tensor = torch.tensor(polygon_sizes, dtype=torch.int32, device=device)
+    polygon_offsets_tensor = torch.tensor(polygon_offsets, dtype=torch.int32, device=device)
+    
+    # Call CUDA kernel
+    mask = cuda_ext.fill_polygons_cuda(
+        grid_x, grid_y, polygons_flat, polygon_sizes_tensor, polygon_offsets_tensor
+    )
+    
+    return mask.reshape(xDim, yDim).cpu()
+
+
 class CustomTimer:
     '''
     Timer class that uses a performance counter if available, otherwise time

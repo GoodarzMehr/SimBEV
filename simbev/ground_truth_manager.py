@@ -435,7 +435,17 @@ class GTManager:
         #     dType=self.dType
         # )
 
-        wp_road_mask = get_multiple_crosswalk_masks_cv2(
+        # wp_road_mask = get_multiple_crosswalk_masks_cv2(
+        #     self.road_sections,
+        #     vehicle_transform.location,
+        #     vehicle_transform.rotation,
+        #     self.config['bev_dim'],
+        #     self.config['bev_res'],
+        #     device=f'cuda:{self.config["cuda_gpu"]}',
+        #     dType=self.dType
+        # )
+
+        wp_road_mask = get_multiple_crosswalk_masks_cuda(
             self.road_sections,
             vehicle_transform.location,
             vehicle_transform.rotation,
