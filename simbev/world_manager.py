@@ -413,7 +413,7 @@ class WorldManager:
             ground_truth_manager = self._vehicle_manager.get_ground_truth_manager()
             
             if self._counter % round(0.5 / self._config['timestep']) == 0:
-                ground_truth_manager.trim_waypoints()
+                ground_truth_manager.trim_map_sections()
 
             # Torch can hog GPU memory when calculating the ground truth, so
             # empty it every once in a while.

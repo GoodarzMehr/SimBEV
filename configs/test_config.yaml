@@ -25,8 +25,8 @@ val_scene_config:
   # Town07: 1
   # Town10HD: 1
   # Town12: 1
-  # Town13: 1
-  # Town15: 1
+  # Town13: 4
+  Town15: 16
 
 test_scene_config:
   # Town01: 2
@@ -52,10 +52,10 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 128
-max_scene_duration: 128
+min_scene_duration: 8
+max_scene_duration: 32
 
-early_scene_termination: False
+early_scene_termination: True
 termination_timeout: 8
 
 host: 'localhost'
