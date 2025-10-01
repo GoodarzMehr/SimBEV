@@ -548,6 +548,62 @@ def point_in_polygon_vectorized_batch(x, y, polygons_tensor):
     
     return intersections % 2 == 1
 
+def get_multiple_crosswalk_masks_cv2_numpy(
+        crosswalks,
+        ego_loc,
+        ego_rot,
+        xDim,
+        xRes,
+        yDim=None,
+        yRes=None,
+        dType=np.float32
+    ):
+    if yDim is None:
+        yDim = xDim
+    
+    if yRes is None:
+        yRes = xRes
+
+    if not crosswalks:
+        return np.zeros((xDim, yDim), dtype=np.bool_)
+
+    R = np.linalg.inv(local_to_global(ego_loc, ego_rot)).astype(dType)
+
+    # Calculate grid bounds
+    xLim = xDim * xRes / 2
+    yLim = yDim * yRes / 2
+    
+    # Create empty combined mask
+    combined_mask = np.zeros((xDim, yDim), dtype=np.uint8)
+    
+    # Process each crosswalk
+    all_polygons = []
+
+    for crosswalk in crosswalks:
+        if not isinstance(crosswalk, np.ndarray):
+            crosswalk = np.array(crosswalk, dtype=dType)
+
+        crosswalk[:, 2] = 1
+        local_box = (R @ crosswalk.T)[:2].T
+
+        # Convert to grid indices
+        grid_x = ((xLim - local_box[:, 1]) / xRes).astype(np.int32)
+        grid_y = ((yLim - local_box[:, 0]) / yRes).astype(np.int32)
+
+        # Clip to grid bounds
+        grid_x = np.clip(grid_x, 0, xDim - 1)
+        grid_y = np.clip(grid_y, 0, yDim - 1)
+
+        # Create polygon points
+        polygon_points = np.column_stack([grid_x, grid_y]).reshape((-1, 1, 2))
+        all_polygons.append(polygon_points)
+
+    # Fill all polygons at once
+    for poly in all_polygons:
+        cv2.fillPoly(combined_mask, [poly], 1)
+
+    return torch.from_numpy(combined_mask).bool()
+
 def get_multiple_crosswalk_masks_cv2(
         crosswalks,
         ego_loc,
@@ -602,9 +658,9 @@ def get_multiple_crosswalk_masks_cv2(
         grid_x = ((xLim - local_box[:, 1]) / xRes).numpy().astype(np.int32)
         grid_y = ((yLim - local_box[:, 0]) / yRes).numpy().astype(np.int32)
 
-        # Clip to grid bounds
-        grid_x = np.clip(grid_x, 0, xDim - 1)
-        grid_y = np.clip(grid_y, 0, yDim - 1)
+        # # Clip to grid bounds
+        # grid_x = np.clip(grid_x, 0, xDim - 1)
+        # grid_y = np.clip(grid_y, 0, yDim - 1)
         
         # Create polygon points
         polygon_points = np.column_stack([grid_x, grid_y]).reshape((-1, 1, 2))
@@ -792,6 +848,7 @@ def get_multiple_crosswalk_masks_cuda(
     cuda_ext = get_cuda_extension()
     if cuda_ext is None:
         # Fallback to cv2 version
+        print("CUDA extension not available, falling back to cv2 implementation.")
         return get_multiple_crosswalk_masks_cv2(crosswalks, ego_loc, ego_rot, xDim, xRes, yDim, yRes, device, dType)
     
     if yDim is None:
@@ -837,7 +894,7 @@ def get_multiple_crosswalk_masks_cuda(
         polygon_sizes.append(local_box.shape[0])
         polygon_offsets.append(current_offset)
         current_offset += local_box.shape[0] * 2
-    
+            
     # Concatenate all polygon coordinates
     polygons_flat = torch.cat(all_polygon_coords)
     polygon_sizes_tensor = torch.tensor(polygon_sizes, dtype=torch.int32, device=device)

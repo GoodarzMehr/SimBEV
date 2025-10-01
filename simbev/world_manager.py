@@ -73,8 +73,11 @@ class WorldManager:
 
         self._map_name = map_name
         
-        self._client.load_world(map_name)
-        
+        if map_name == 'Town10HD':
+            self._client.load_world('Town10HD_Opt')
+        else:
+            self._client.load_world(map_name)
+
         self._world = self._client.get_world()
         self._map = self._world.get_map()
         self._spectator = self._world.get_spectator()
@@ -163,6 +166,36 @@ class WorldManager:
                 'Cube'
             ]
         elif map_name == 'Town10HD':
+            # The first ones are for Town10HD, the second ones are for
+            # Town10HD_Opt.
+            # obstructing = [
+            #     'SM_Tesla2',
+            #     'SM_Tesla_2502',
+            #     'SM_Mustang_prop2',
+            #     'SM_Patrol2021Parked2',
+            #     'SM_mercedescccParked2',
+            #     'SM_LincolnMkz2017_prop',
+            #     'Vh_Car_ToyotaPrius_NOrig',
+            #     'InstancedFoliageActor_0_Inst_235_0',
+            #     'InstancedFoliageActor_0_Inst_239_4',
+            #     'InstancedFoliageActor_0_Inst_245_10',
+            #     'InstancedFoliageActor_0_Inst_246_11',
+            #     'InstancedFoliageActor_0_Inst_249_14',
+            #     'InstancedFoliageActor_0_Inst_250_15',
+            #     'InstancedFoliageActor_0_Inst_251_16',
+            #     'InstancedFoliageActor_0_Inst_252_17',
+            #     'InstancedFoliageActor_0_Inst_253_18',
+            #     'InstancedFoliageActor_0_Inst_254_19',
+            #     'InstancedFoliageActor_0_Inst_255_20',
+            #     'InstancedFoliageActor_0_Inst_256_21',
+            #     'InstancedFoliageActor_0_Inst_257_22',
+            #     'InstancedFoliageActor_0_Inst_258_23',
+            #     'InstancedFoliageActor_0_Inst_259_24',
+            #     'InstancedFoliageActor_0_Inst_260_25',
+            #     'InstancedFoliageActor_0_Inst_261_26',
+            #     'InstancedFoliageActor_0_Inst_276_41',
+            #     'InstancedFoliageActor_0_Inst_277_42'
+            # ]
             obstructing = [
                 'SM_Tesla2',
                 'SM_Tesla_2502',
@@ -171,25 +204,16 @@ class WorldManager:
                 'SM_mercedescccParked2',
                 'SM_LincolnMkz2017_prop',
                 'Vh_Car_ToyotaPrius_NOrig',
-                'InstancedFoliageActor_0_Inst_235_0',
-                'InstancedFoliageActor_0_Inst_239_4',
-                'InstancedFoliageActor_0_Inst_245_10',
-                'InstancedFoliageActor_0_Inst_246_11',
-                'InstancedFoliageActor_0_Inst_249_14',
-                'InstancedFoliageActor_0_Inst_250_15',
-                'InstancedFoliageActor_0_Inst_251_16',
-                'InstancedFoliageActor_0_Inst_252_17',
-                'InstancedFoliageActor_0_Inst_253_18',
-                'InstancedFoliageActor_0_Inst_254_19',
-                'InstancedFoliageActor_0_Inst_255_20',
-                'InstancedFoliageActor_0_Inst_256_21',
-                'InstancedFoliageActor_0_Inst_257_22',
-                'InstancedFoliageActor_0_Inst_258_23',
-                'InstancedFoliageActor_0_Inst_259_24',
-                'InstancedFoliageActor_0_Inst_260_25',
-                'InstancedFoliageActor_0_Inst_261_26',
-                'InstancedFoliageActor_0_Inst_276_41',
-                'InstancedFoliageActor_0_Inst_277_42'
+                'InstancedFoliageActor_0_Inst_12961_0',
+                'InstancedFoliageActor_0_Inst_12965_4',
+                'InstancedFoliageActor_0_Inst_12971_10',
+                'InstancedFoliageActor_0_Inst_12972_11',
+                'InstancedFoliageActor_0_Inst_12980_19',
+                'InstancedFoliageActor_0_Inst_12981_20',
+                'InstancedFoliageActor_0_Inst_12982_21',
+                'InstancedFoliageActor_0_Inst_12983_22',
+                'InstancedFoliageActor_0_Inst_13002_41',
+                'InstancedFoliageActor_0_Inst_13003_42'
             ]
         else:
             obstructing = []

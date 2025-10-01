@@ -368,10 +368,12 @@ class GTManager:
                 wp = self.map.get_waypoint_xodr(x[0], x[1], s)
             
             borders = carla_vector_to_torch(left_points + right_points[::-1])
+            borders_np = carla_vector_to_numpy(left_points + right_points[::-1])
 
             borders[:, 1] *= -1.0
+            borders_np[:, 1] *= -1.0
             
-            self.road_sections.append(borders)
+            self.road_sections.append(borders_np)
             self.lane_lines.append(borders)
 
         self.nwp_loc = []
@@ -435,7 +437,16 @@ class GTManager:
         #     dType=self.dType
         # )
 
-        # wp_road_mask = get_multiple_crosswalk_masks_cv2(
+        wp_road_mask = get_multiple_crosswalk_masks_cv2_numpy(
+            self.road_sections,
+            vehicle_transform.location,
+            vehicle_transform.rotation,
+            self.config['bev_dim'],
+            self.config['bev_res'],
+            dType=np.float32
+        )
+
+        # wp_road_mask = get_multiple_crosswalk_masks_cuda(
         #     self.road_sections,
         #     vehicle_transform.location,
         #     vehicle_transform.rotation,
@@ -444,16 +455,6 @@ class GTManager:
         #     device=f'cuda:{self.config["cuda_gpu"]}',
         #     dType=self.dType
         # )
-
-        wp_road_mask = get_multiple_crosswalk_masks_cuda(
-            self.road_sections,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res'],
-            device=f'cuda:{self.config["cuda_gpu"]}',
-            dType=self.dType
-        )
 
         # Get the road line mask from road line points.
         # road_line_mask = get_road_mask(
@@ -1078,7 +1079,6 @@ class GTManager:
         # semantic cameras and road waypoints. Otherwise (i.e. when near
         # an overpass/underpass), get the ground truth using bounding
         # boxes and road waypoints.
-        start = self.timer.time()
         if self.map_name not in ['Town04', 'Town05', 'Town12', 'Town13']:
             self.bev_gt = self.get_bev_gt()
             self.warning_flag = False
@@ -1106,8 +1106,6 @@ class GTManager:
 
                     self.warning_flag = True
         
-        end = self.timer.time()
-        print(f'GT time: {end - start:.6f} seconds')
         self.canvas = self._prepare_canvas()
     
     def render(self):
