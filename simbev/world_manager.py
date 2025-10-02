@@ -8,7 +8,6 @@ simulation.
 
 import time
 import carla
-import torch
 import logging
 
 from utils import is_used, kill_all_servers
@@ -414,12 +413,6 @@ class WorldManager:
             
             if self._counter % round(0.5 / self._config['timestep']) == 0:
                 ground_truth_manager.trim_map_sections()
-
-            # Torch can hog GPU memory when calculating the ground truth, so
-            # empty it every once in a while.
-            if self._counter % 40 == 5:
-                with torch.cuda.device(f'cuda:{self._config["cuda_gpu"]}'):
-                    torch.cuda.empty_cache()
             
             self._counter += 1
             

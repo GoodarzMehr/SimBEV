@@ -20,13 +20,13 @@ val_scene_config:
   # Town02: 1
   # Town03: 1
   # Town04: 1
-  # Town05: 1
+  Town05: 1
   # Town06: 1
   # Town07: 1
   # Town10HD: 1
   # Town12: 1
   # Town13: 4
-  Town15: 16
+  # Town15: 1
 
 test_scene_config:
   # Town01: 2
@@ -52,10 +52,10 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 8
-max_scene_duration: 32
+min_scene_duration: 128
+max_scene_duration: 128
 
-early_scene_termination: True
+early_scene_termination: False
 termination_timeout: 8
 
 host: 'localhost'
@@ -68,13 +68,12 @@ quality_level: 'Epic'
 retries_on_error: 10
 
 render_gpu: 0
-cuda_gpu: 1
 
 tile_stream_distance: 960.0
 actor_active_distance: 960.0
 
 waypoint_distance: 0.4
-mapping_area_radius: 960.0
+mapping_area_radius: 1200.0
 nearby_mapping_area_radius: 132.0
 
 spawn_point_separation_distance: 24.0
@@ -91,7 +90,7 @@ collect_traffic_sign_bbox: True
 
 use_bev_for_sidewalks: False
 
-ignore_lights_percentage: 0.1
+ignore_lights_percentage: 100.0
 ignore_signs_percentage: 0.1
 ignore_vehicles_percentage: 0.1
 ignore_walkers_percentage: 0.1

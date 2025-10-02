@@ -170,7 +170,8 @@ def get_multi_polygon_mask(
 
     # Create the polygon mask.
     for poly in all_polygons:
-        cv2.fillPoly(polygon_mask, [poly], 1)
+        if len(poly) > 2:
+            cv2.fillPoly(polygon_mask, [poly], 1)
 
     return polygon_mask.astype(bool)
 

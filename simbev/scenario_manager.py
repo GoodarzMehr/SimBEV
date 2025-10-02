@@ -7,7 +7,6 @@ and traffic elements.
 
 import time
 import carla
-import torch
 import random
 import logging
 
@@ -562,12 +561,13 @@ class ScenarioManager:
 
             # Randomly turn pedestrians into wheelchair users.
             if w_blueprint.has_attribute('can_use_wheelchair'):
-                p = self._config['wheelchair_use_percentage'] / 100.0
+                if w_blueprint.get_attribute('can_use_wheelchair').__bool__() == True:
+                    p = self._config['wheelchair_use_percentage'] / 100.0
 
-                if np.random.choice(2, p=[1 - p, p]):
-                    w_blueprint.set_attribute('use_wheelchair', 'true')
-                else:
-                    w_blueprint.set_attribute('use_wheelchair', 'false')
+                    if np.random.choice(2, p=[1 - p, p]):
+                        w_blueprint.set_attribute('use_wheelchair', 'true')
+                    else:
+                        w_blueprint.set_attribute('use_wheelchair', 'false')
             
             w_blueprint.set_attribute('role_name', 'npc_walker')
             
@@ -714,7 +714,3 @@ class ScenarioManager:
         self._client.apply_batch([carla.command.DestroyActor(x) for x in self._controllers_list])
 
         logger.debug('Controllers destroyed.')
-
-        # Release unused GPU memory.
-        with torch.cuda.device(f'cuda:{self._config["cuda_gpu"]}'):
-            torch.cuda.empty_cache()
