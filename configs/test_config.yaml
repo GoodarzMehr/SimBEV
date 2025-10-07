@@ -18,28 +18,28 @@ train_scene_config:
 val_scene_config:
   # Town01: 1
   # Town02: 1
+  # Town03: 4
+  # Town04: 1
+  # Town05: 1
+  # Town06: 1
+  # Town07: 1
+  Town10HD: 1
+  # Town12: 1
+  # Town13: 1
+  # Town15: 1
+
+test_scene_config:
+  # Town01: 1
+  # Town02: 1
   # Town03: 1
   # Town04: 1
-  Town05: 1
+  # Town05: 1
   # Town06: 1
   # Town07: 1
   # Town10HD: 1
   # Town12: 1
-  # Town13: 4
+  # Town13: 1
   # Town15: 1
-
-test_scene_config:
-  # Town01: 2
-  # Town02: 2
-  # Town03: 4
-  # Town04: 4
-  # Town05: 4
-  # Town06: 4
-  # Town07: 4
-  # Town10HD: 4
-  # Town12: 8
-  # Town13: 8
-  # Town15: 6
 
 # When mode is 'replace' the following configuration denotes the list of
 # scenes that should be overwritten.
@@ -52,8 +52,8 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 128
-max_scene_duration: 128
+min_scene_duration: 64
+max_scene_duration: 64
 
 early_scene_termination: False
 termination_timeout: 8
@@ -73,8 +73,8 @@ tile_stream_distance: 960.0
 actor_active_distance: 960.0
 
 waypoint_distance: 0.4
-mapping_area_radius: 1200.0
-nearby_mapping_area_radius: 132.0
+mapping_area_radius: 960.0
+nearby_mapping_area_radius: 140.0
 
 spawn_point_separation_distance: 24.0
 
@@ -91,7 +91,7 @@ collect_traffic_sign_bbox: True
 use_bev_for_sidewalks: False
 
 ignore_lights_percentage: 100.0
-ignore_signs_percentage: 0.1
+ignore_signs_percentage: 100.0
 ignore_vehicles_percentage: 0.1
 ignore_walkers_percentage: 0.1
 
@@ -130,7 +130,7 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: False
+use_rgb_camera: True
 
 rgb_camera_properties:
   fstop: '1.8'
@@ -155,7 +155,7 @@ use_flow_camera: False
 flow_camera_properties:
  {}
 
-use_lidar: False
+use_lidar: True
 
 lidar_channels: 128
 lidar_range: 120.0
@@ -212,7 +212,7 @@ imu_properties:
 # street_light_intensity_change: -2000000.0
 
 n_vehicles: 0
-n_walkers: 0
+n_walkers: 400
 
 # walker_cross_factor: 0.6
 
@@ -220,29 +220,29 @@ n_walkers: 0
 # distance_to_leading: 8.0
 # green_time: 12.0
 
-# initial_weather:
-#   cloudiness: 10.0
-#   precipitation: 0.0
-#   precipitation_deposits: 0.0
-#   wind_intensity: 10.0
-#   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: -20.0
-#   wetness: 0.0
-#   fog_density: 2.0
-#   fog_distance: 0.75
-#   fog_falloff: 0.1
+initial_weather:
+  cloudiness: 10.0
+  precipitation: 0.0
+  precipitation_deposits: 0.0
+  wind_intensity: 10.0
+  sun_azimuth_angle: 300.0
+  sun_altitude_angle: 20.0
+  wetness: 0.0
+  fog_density: 2.0
+  fog_distance: 0.75
+  fog_falloff: 0.1
 
-# final_weather:
-#   cloudiness: 10.0
-#   precipitation: 10.0
-#   precipitation_deposits: 10.0
-#   wind_intensity: 10.0
-#   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: 21.0
-#   wetness: 10.0
-#   fog_density: 10.0
-#   fog_distance: 100.0
-#   fog_falloff: 1.0
+final_weather:
+  cloudiness: 10.0
+  precipitation: 0.0
+  precipitation_deposits: 0.0
+  wind_intensity: 10.0
+  sun_azimuth_angle: 300.0
+  sun_altitude_angle: 21.0
+  wetness: 10.0
+  fog_density: 2.0
+  fog_distance: 100.0
+  fog_falloff: 1.0
 
 # ego_vehicle_spawn_point:
 #   Town04: [
@@ -275,6 +275,12 @@ n_walkers: 0
 #   ]
 #   Town12: [
 #       [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
+#   ]
+#   Town13: [
+#       [[2497.6, 4445.6, 171.5], [0.0, 0.0, 126.7]],
+#       [[1253.5, 790.7, 149.2], [0.0, 0.0, 90.0]],
+#       [[2526.3, 6388.1, 166.3], [0.0, 0.0, -131.8]],
+#       [[2314.3, 4143.0, 179.7], [0.0, 0.0, 70.3]]
 #   ]
 #   Town15: [
 #       [[-121.87, 169.54, 151.81], [0.0, 0.28, 3.19]]

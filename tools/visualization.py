@@ -171,8 +171,8 @@ def draw_bbox(canvas, corners, labels, bbox_color=None, thickness=1):
             ]:
                 cv2.line(
                     canvas,
-                    corners[index, start].astype(int),
-                    corners[index, end].astype(int),
+                    corners[index, start].astype(np.int32),
+                    corners[index, end].astype(np.int32),
                     bbox_color or SIMBEV_PALETTE[name],
                     thickness,
                     cv2.LINE_AA,

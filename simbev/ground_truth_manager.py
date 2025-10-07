@@ -164,6 +164,8 @@ class GTManager:
         Args:
             waypoints: list of waypoints.
         '''
+        self.warning_flag = False
+
         # Filter the list of waypoints to get those near the spawn area.
         vehicle_location = self.vehicle.get_location()
         
@@ -233,171 +235,232 @@ class GTManager:
 
         # Create a set of all road and lane ID pairs. These correspond to
         # individual lane sections.
-        road_lane_id_pairs = set([(wp.road_id, wp.lane_id) for wp in self.area_waypoints])
+        road_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in self.area_waypoints])
+        road_lane_id_pairs = {}
+
+        for triplet in road_lane_section_id_triplets:
+            if (triplet[0], triplet[2]) not in road_lane_id_pairs:
+                road_lane_id_pairs[(triplet[0], triplet[2])] = [triplet[1]]
+            else:
+                road_lane_id_pairs[(triplet[0], triplet[2])].append(triplet[1])
 
         self.road_sections = []
 
         # For each lane section, calculate its border points, left and right
         # lane line points, and its midline.
-        for pair in road_lane_id_pairs:
-            section = {
-                'road_id': pair[0],
-                'lane_id': pair[1],
-                'left_border': [],
-                'right_border': [],
-                'left_lane': [],
-                'right_lane': [],
-                'midline': []
-            }
+        for key, value in road_lane_id_pairs.items():
+            for section_id in value:
+                section = {
+                    'road_id': key[0],
+                    'lane_id': key[1],
+                    'section_id': section_id,
+                    'left_border': [],
+                    'right_border': [],
+                    'left_lane': [],
+                    'right_lane': [],
+                    'midline': []
+                }
 
-            s = 0.0
+                s = 0.0
 
-            left_points = []
-            right_points = []
+                left_points = []
+                right_points = []
 
-            wp = self.map.get_waypoint_xodr(pair[0], pair[1], s)
+                wp = self.map.get_waypoint_xodr(key[0], key[1], s)
 
-            counter = 1
+                midline_counter = 1
 
-            if wp is not None:
-                section['midline'].append(wp.transform.location)
+                counter = 0
 
-                while wp is not None:
-                    other_midline_location = wp.transform.location
-
-                    if counter % 10 == 0:
-                        section['midline'].append(other_midline_location)
-
-                    wp_transform = wp.transform
-                    
-                    wp_transform.rotation.yaw += 90.0
-
-                    left_points.append(wp_transform.location - \
-                                       0.5 * wp.lane_width * wp_transform.get_forward_vector())
-                    right_points.append(wp_transform.location + \
-                                        0.5 * wp.lane_width * wp_transform.get_forward_vector())
-
-                    llm = wp.left_lane_marking
-
-                    if llm.type not in bad_lane_marking_types:
-                        if llm.type in single_lane_marking_types:
-                            section['left_lane'].append(
-                                wp_transform.location - \
-                                0.5 * (wp.lane_width - llm.width) * wp_transform.get_forward_vector()
-                            )
-                        else:
-                            section['left_lane'].append(
-                                wp_transform.location - \
-                                0.5 * (wp.lane_width - 3 * llm.width) * wp_transform.get_forward_vector()
-                            )
-
-                    rlm = wp.right_lane_marking
-
-                    if rlm.type not in bad_lane_marking_types:
-                        if rlm.type in single_lane_marking_types:
-                            section['right_lane'].append(
-                                wp_transform.location + \
-                                    0.5 * (wp.lane_width - rlm.width) * wp_transform.get_forward_vector()
-                            )
-                        else:
-                            section['right_lane'].append(
-                                wp_transform.location + \
-                                    0.5 * (wp.lane_width - 3 * rlm.width) * wp_transform.get_forward_vector()
-                            )
-                    
+                while wp is None and counter < 2000:
                     s += self.config['waypoint_distance']
-
-                    wp = self.map.get_waypoint_xodr(pair[0], pair[1], s)
-
+                    
+                    wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+                    
                     counter += 1
 
-                section['left_border'] = carla_vector_to_numpy(left_points)
-                section['right_border'] = carla_vector_to_numpy(right_points)
+                if wp is not None:
+                    if wp.section_id == section_id:
+                        section['midline'].append(wp.transform.location)
 
-                section['left_lane'] = carla_vector_to_numpy(section['left_lane'])
-                section['right_lane'] = carla_vector_to_numpy(section['right_lane'])
+                    while wp is not None:
+                        if wp.section_id == section_id:
+                            other_midline_location = wp.transform.location
 
-                section['midline'].append(other_midline_location)
+                            if midline_counter % 10 == 0:
+                                section['midline'].append(other_midline_location)
 
-                section['left_border'][:, 1] *= -1.0
-                section['right_border'][:, 1] *= -1.0
-                section['left_lane'][:, 1] *= -1.0
-                section['right_lane'][:, 1] *= -1.0
-                
-                self.road_sections.append(section)
+                            wp_transform = wp.transform
+                            
+                            wp_transform.rotation.yaw += 90.0
 
+                            left_points.append(wp_transform.location - \
+                                            0.5 * wp.lane_width * wp_transform.get_forward_vector())
+                            right_points.append(wp_transform.location + \
+                                                0.5 * wp.lane_width * wp_transform.get_forward_vector())
+
+                            llm = wp.left_lane_marking
+
+                            if llm.type not in bad_lane_marking_types:
+                                if llm.type in single_lane_marking_types:
+                                    section['left_lane'].append(
+                                        wp_transform.location - \
+                                        0.5 * (wp.lane_width - llm.width) * wp_transform.get_forward_vector()
+                                    )
+                                else:
+                                    section['left_lane'].append(
+                                        wp_transform.location - \
+                                        0.5 * (wp.lane_width - 3 * llm.width) * wp_transform.get_forward_vector()
+                                    )
+
+                            rlm = wp.right_lane_marking
+
+                            if rlm.type not in bad_lane_marking_types:
+                                if rlm.type in single_lane_marking_types:
+                                    section['right_lane'].append(
+                                        wp_transform.location + \
+                                            0.5 * (wp.lane_width - rlm.width) * wp_transform.get_forward_vector()
+                                    )
+                                else:
+                                    section['right_lane'].append(
+                                        wp_transform.location + \
+                                            0.5 * (wp.lane_width - 3 * rlm.width) * wp_transform.get_forward_vector()
+                                    )
+                        
+                            s += self.config['waypoint_distance']
+
+                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+
+                            midline_counter += 1
+                        else:
+                            s += self.config['waypoint_distance']
+
+                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+
+                    section['left_border'] = carla_vector_to_numpy(left_points)
+                    section['right_border'] = carla_vector_to_numpy(right_points)
+
+                    section['left_lane'] = carla_vector_to_numpy(section['left_lane'])
+                    section['right_lane'] = carla_vector_to_numpy(section['right_lane'])
+
+                    section['midline'].append(other_midline_location)
+
+                    section['left_border'][:, 1] *= -1.0
+                    section['right_border'][:, 1] *= -1.0
+                    section['left_lane'][:, 1] *= -1.0
+                    section['right_lane'][:, 1] *= -1.0
+                    
+                    self.road_sections.append(section)
+        
         # Get sidewalk points from area waypoints.
         self.sidewalk_points = []
 
         for wp in self.area_waypoints:
             self._process_sidewalk_points(wp)
 
-            waypoint = self.map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
-            
-            if waypoint is not None:
-                self.sidewalk_points.append(waypoint)
+            if wp.is_junction:
+                waypoint = self.map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
+                
+                if waypoint is not None:
+                    self.sidewalk_points.append(waypoint)
 
-                self._process_sidewalk_points(waypoint)
-
+                    self._process_sidewalk_points(waypoint)
+        
         # Create a set of all sidewalk and lane ID pairs. These correspond to
         # individual sidewalk sections.
-        sidewalk_lane_id_pairs = set([(wp.road_id, wp.lane_id) for wp in self.sidewalk_points])
+        sidewalk_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in self.sidewalk_points])
+        sidewalk_lane_id_pairs = {}
+
+        if self.map_name == 'Town07':
+            for triplet in [(2, 0, 1), (2, 0, 8), (30, 0, 1), (30, 0, 8), (54, 0, 1), (54, 0, 8)]:
+                sidewalk_lane_section_id_triplets.add(triplet)
+
+        for triplet in sidewalk_lane_section_id_triplets:
+            if (triplet[0], triplet[2]) not in sidewalk_lane_id_pairs:
+                sidewalk_lane_id_pairs[(triplet[0], triplet[2])] = [triplet[1]]
+            else:
+                sidewalk_lane_id_pairs[(triplet[0], triplet[2])].append(triplet[1])
 
         self.sidewalk_sections = []
 
         # For each sidewalk section, calculate its border points and its
         # midline.
-        for pair in sidewalk_lane_id_pairs:
-            section = {
-                'road_id': pair[0],
-                'lane_id': pair[1],
-                'left_border': [],
-                'right_border': [],
-                'midline': []
-            }
+        for key, value in sidewalk_lane_id_pairs.items():
+            for section_id in value:
+                section = {
+                    'road_id': key[0],
+                    'lane_id': key[1],
+                    'section_id': section_id,
+                    'left_border': [],
+                    'right_border': [],
+                    'midline': []
+                }
 
-            s = 0.0
+                s = 0.0
 
-            left_points = []
-            right_points = []
+                left_points = []
+                right_points = []
 
-            wp = self.map.get_waypoint_xodr(pair[0], pair[1], s)
+                wp = self.map.get_waypoint_xodr(key[0], key[1], s)
 
-            counter = 1
+                midline_counter = 1
 
-            if wp is not None:
-                section['midline'].append(wp.transform.location)
+                counter = 0
 
-                while wp is not None:
-                    other_midline_location = wp.transform.location
+                if self.map_name =='Town15':
+                    if key == (156, -5) and section_id == 3:
+                        s = 300.0
+                    elif key == (117, 4) and section_id == 3:
+                        s = 70.0
+                    elif key == (203, -5) and section_id == 2:
+                        s = 200.0
 
-                    if counter % 100 == 0:
-                        section['midline'].append(other_midline_location)
-
-                    wp_transform = wp.transform
-                    
-                    wp_transform.rotation.yaw += 90.0
-
-                    left_points.append(wp_transform.location - \
-                                       0.5 * wp.lane_width * wp_transform.get_forward_vector())
-                    right_points.append(wp_transform.location + \
-                                       0.5 * wp.lane_width * wp_transform.get_forward_vector())
-
+                while wp is None and counter < 2000:
                     s += self.config['waypoint_distance']
-
-                    wp = self.map.get_waypoint_xodr(pair[0], pair[1], s)
-
+                    
+                    wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+                    
                     counter += 1
 
-                section['left_border'] = carla_vector_to_numpy(left_points)
-                section['right_border'] = carla_vector_to_numpy(right_points)
+                if wp is not None:
+                    if wp.section_id == section_id:
+                        section['midline'].append(wp.transform.location)
 
-                section['midline'].append(other_midline_location)
+                    while wp is not None:
+                        if wp.section_id == section_id:
+                            other_midline_location = wp.transform.location
 
-                section['left_border'][:, 1] *= -1.0
-                section['right_border'][:, 1] *= -1.0
+                            if midline_counter % 20 == 0:
+                                section['midline'].append(other_midline_location)
 
-                self.sidewalk_sections.append(section)
+                            wp_transform = wp.transform
+                            
+                            wp_transform.rotation.yaw += 90.0
+
+                            left_points.append(wp_transform.location - \
+                                            0.5 * wp.lane_width * wp_transform.get_forward_vector())
+                            right_points.append(wp_transform.location + \
+                                            0.5 * wp.lane_width * wp_transform.get_forward_vector())
+
+                            s += self.config['waypoint_distance']
+
+                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+
+                            midline_counter += 1
+                        else:
+                            s += self.config['waypoint_distance']
+
+                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+
+                    section['left_border'] = carla_vector_to_numpy(left_points)
+                    section['right_border'] = carla_vector_to_numpy(right_points)
+
+                    section['midline'].append(other_midline_location)
+
+                    section['left_border'][:, 1] *= -1.0
+                    section['right_border'][:, 1] *= -1.0
+
+                    self.sidewalk_sections.append(section)
     
     def _process_sidewalk_points(self, wp: carla.Waypoint):
         '''
@@ -416,8 +479,8 @@ class GTManager:
 
                 lwp = lwp.get_left_lane()
 
-                if lwp is not None and lwp.lane_type == carla.LaneType.NONE:
-                    lwp = None
+                # if lwp is not None and lwp.lane_type == carla.LaneType.NONE:
+                #     lwp = None
             else:
                 lwp = None
 
@@ -428,8 +491,8 @@ class GTManager:
 
                 rwp = rwp.get_right_lane()
 
-                if rwp is not None and rwp.lane_type == carla.LaneType.NONE:
-                    rwp = None
+                # if rwp is not None and rwp.lane_type == carla.LaneType.NONE:
+                #     rwp = None
             else:
                 rwp = None
     
@@ -466,9 +529,6 @@ class GTManager:
         for section in self.road_sections:
             if any(vehicle_location.distance(location) < self.config['nearby_mapping_area_radius'] \
                    for location in section['midline']):
-                # self.local_roads.append(section['border'])
-                self.local_road_midlines += section['midline']
-
                 left_border = section['left_border']
                 right_border = section['right_border']
                 chunk_size = 40
@@ -486,6 +546,10 @@ class GTManager:
 
                 if len(section['right_lane']) > 0:
                     self.local_road_lines.append(section['right_lane'])
+
+                for location in section['midline']:
+                    if vehicle_location.distance(location) < self.config['nearby_mapping_area_radius']:
+                        self.local_road_midlines.append(location)
         
         for section in self.sidewalk_sections:
             if any(vehicle_location.distance(location) < self.config['nearby_mapping_area_radius'] \
@@ -929,9 +993,23 @@ class GTManager:
                 actor_properties['parent'] = actor.parent.id if actor.parent is not None else None
                 actor_properties['attributes'] = actor.attributes
                 actor_properties['semantic_tags'] = actor.semantic_tags
+
+                bounding_box = actor.bounding_box
+                
+                if 'use_wheelchair' in actor_properties['attributes'] and actor_properties['attributes']['use_wheelchair'] == 'true':
+                    bounding_box.extent = carla.Vector3D(0.64, 0.48, 0.8)
+
+                    bounding_box.location.x += (0.6 - actor.bounding_box.extent.x)
+                    bounding_box.location.z += (0.8 - actor.bounding_box.extent.z)
+                elif actor_properties['type'] in ['walker.pedestrian.0050', 'walker.pedestrian.0051']:
+                    bounding_box.extent *= 0.65
+
+                    bounding_box.location.z += (bounding_box.extent.z - actor.bounding_box.extent.z)
+
                 actor_properties['bounding_box'] = carla_vector_to_numpy(
-                    actor.bounding_box.get_world_vertices(actor.get_transform())
+                    bounding_box.get_world_vertices(actor.get_transform())
                 )
+                
                 actor_properties['linear_velocity'] = carla_single_vector_to_numpy(actor.get_velocity())
                 actor_properties['angular_velocity'] = carla_single_vector_to_numpy(actor.get_angular_velocity())
 
