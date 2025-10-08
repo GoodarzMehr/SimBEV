@@ -143,13 +143,6 @@ class GTManager:
         self.sensor_manager = sensor_manager
         self.map_name = map_name
 
-        # Set data type, since calculations for larger maps require more
-        # precision.
-        if self.map_name in ['Town12', 'Town13', 'Town15']:
-            self.dType = np.float64
-        else:
-            self.dType = np.float32
-
         self.map = self.world.get_map()
         self.objects = self.world.get_environment_objects()
 
@@ -581,8 +574,7 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
 
         # Get the road line mask from road lines.
@@ -591,8 +583,7 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         
         # Get the sidewalk mask from sidewalk sections.
@@ -601,8 +592,7 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
 
         # For Town06, get the sidewalk mask from sidewalk meshes.
@@ -627,8 +617,7 @@ class GTManager:
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
-                self.config['bev_res'],
-                dType=self.dType
+                self.config['bev_res']
             )
 
         # Get the crosswalk mask from crosswalk locations.
@@ -655,8 +644,7 @@ class GTManager:
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
-                self.config['bev_res'],
-                dType=self.dType
+                self.config['bev_res']
             )
         else:
             crosswalk_list = []
@@ -673,8 +661,7 @@ class GTManager:
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
-                self.config['bev_res'],
-                dType=self.dType
+                self.config['bev_res']
             )
 
         # Get images from the top and bottom semantic cameras. Use the top
@@ -785,8 +772,7 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
 
         road_mask = binary_closing(road_mask)
@@ -797,8 +783,7 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         
         # Get the sidewalk mask from sidewalk sections.
@@ -807,8 +792,7 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
 
         sidewalk_mask = binary_closing(sidewalk_mask)
@@ -838,8 +822,7 @@ class GTManager:
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
-                self.config['bev_res'],
-                dType=self.dType
+                self.config['bev_res']
             )
         else:
             crosswalk_list = []
@@ -857,8 +840,7 @@ class GTManager:
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
-                self.config['bev_res'],
-                dType=self.dType
+                self.config['bev_res']
             )
 
         crosswalk_mask = binary_closing(np.logical_and(crosswalk_mask, road_mask))
@@ -898,56 +880,49 @@ class GTManager:
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         truck_mask = get_multi_polygon_mask(
             truck_bbox_list,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         bus_mask = get_multi_polygon_mask(
             bus_bbox_list,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         motorcycle_mask = get_multi_polygon_mask(
             motorcycle_bbox_list,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         bicycle_mask = get_multi_polygon_mask(
             bicycle_bbox_list,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         rider_mask = get_multi_polygon_mask(
             rider_bbox_list,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         pedestrian_mask = get_multi_polygon_mask(
             pedestrian_bbox_list,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
-            self.config['bev_res'],
-            dType=self.dType
+            self.config['bev_res']
         )
         
         # Concatenate individual masks to get the ground truth.

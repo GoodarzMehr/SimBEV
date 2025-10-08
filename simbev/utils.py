@@ -16,6 +16,7 @@ import numpy as np
 
 from typing import List
 
+
 def is_used(port: int) -> bool:
     '''
     Check whether or not a port is used.
@@ -29,9 +30,7 @@ def is_used(port: int) -> bool:
     return port in [conn.laddr.port for conn in psutil.net_connections()]
 
 def kill_all_servers():
-    '''
-    Kill all PIDs that start with CARLA.
-    '''
+    '''Kill all PIDs that start with CARLA.'''
     processes = [p for p in psutil.process_iter() if 'carla' in p.name().lower()]
     
     for process in processes:
@@ -68,25 +67,6 @@ def carla_single_vector_to_numpy(vector: carla.Vector3D) -> np.ndarray:
     '''
     return np.array([vector.x, vector.y, vector.z])
 
-def carla_vector_to_torch(vector_list: List[carla.Vector3D]) -> torch.Tensor:
-    '''
-    Convert a list of CARLA vectors to a Torch tensor.
-
-    Args:
-        vector_list: list of CARLA vectors.
-    
-    Returns:
-        vector_array: Torch tensor of vectors.
-    '''
-    vector_array = torch.zeros((len(vector_list), 3))
-
-    for i, vector in enumerate(vector_list):
-        vector_array[i, 0] = vector.x
-        vector_array[i, 1] = vector.y
-        vector_array[i, 2] = vector.z
-
-    return vector_array
-
 def local_to_global(location: carla.Location, rotation: carla.Rotation) -> np.ndarray:
     '''
     Calculate the transformation from a local CARLA coordinate system to the
@@ -116,11 +96,10 @@ def get_multi_polygon_mask(
         xDim: int,
         xRes: float,
         yDim: int = None,
-        yRes: float = None,
-        dType: np.dtype = np.float32
+        yRes: float = None
     ) -> np.ndarray:
     '''
-    Calculate a mask from the given polygons.
+    Calculate a BEV mask from the given polygons with global coordinates.
 
     Args:
         polygons: list of polygons to create a mask from.
@@ -130,7 +109,6 @@ def get_multi_polygon_mask(
         xRes: BEV grid width resolution.
         yDim: BEV grid height.
         yRes: BEV grid height resolution.
-        dType: data type to use for calculations.
     
     Returns:
         mask: polygon mask.
@@ -144,18 +122,18 @@ def get_multi_polygon_mask(
     if not polygons:
         return np.zeros((xDim, yDim), dtype=bool)
 
-    R = np.linalg.inv(local_to_global(ego_loc, ego_rot)).astype(dType)
+    # Calculate the transformation from the global coordinates to the ego
+    # vehicle's local coordinates.
+    R = np.linalg.inv(local_to_global(ego_loc, ego_rot))
 
-    # Calculate grid bounds.
+    # Calculate the grid bounds.
     xLim = xDim * xRes / 2
     yLim = yDim * yRes / 2
     
     # Create an empty polygon mask.
     polygon_mask = np.zeros((xDim, yDim), dtype=np.uint8)
-    
-    # Process each polygon
-    all_polygons = []
 
+    # Process each polygon.
     for polygon in polygons:
         polygon[:, 2] = 1
         local_polygon = (R @ polygon.T)[:2].T
@@ -165,11 +143,8 @@ def get_multi_polygon_mask(
         grid_y = ((yLim - local_polygon[:, 0]) / yRes).astype(np.int32)
 
         # Create polygon points
-        polygon_points = np.column_stack([grid_x, grid_y])
-        all_polygons.append(polygon_points)
+        poly = np.column_stack([grid_x, grid_y])
 
-    # Create the polygon mask.
-    for poly in all_polygons:
         if len(poly) > 2:
             cv2.fillPoly(polygon_mask, [poly], 1)
 
@@ -182,11 +157,10 @@ def get_multi_line_mask(
         xDim: int,
         xRes: float,
         yDim: int = None,
-        yRes: float = None,
-        dType: np.dtype = np.float32
+        yRes: float = None
     ) -> np.ndarray:
     '''
-    Calculate a mask from the given lines.
+    Calculate a BEV mask from the given lines with global coordinates.
 
     Args:
         lines: list of lines to create a mask from.
@@ -196,10 +170,9 @@ def get_multi_line_mask(
         xRes: BEV grid width resolution.
         yDim: BEV grid height.
         yRes: BEV grid height resolution.
-        dType: data type to use for calculations.
     
     Returns:
-        mask: polygon mask.
+        mask: line mask.
     '''
     if yDim is None:
         yDim = xDim
@@ -210,7 +183,9 @@ def get_multi_line_mask(
     if not lines:
         return np.zeros((xDim, yDim), dtype=bool)
 
-    R = np.linalg.inv(local_to_global(ego_loc, ego_rot)).astype(dType)
+    # Calculate the transformation from the global coordinates to the ego
+    # vehicle's local coordinates.
+    R = np.linalg.inv(local_to_global(ego_loc, ego_rot))
 
     # Calculate grid bounds.
     xLim = xDim * xRes / 2
@@ -228,6 +203,7 @@ def get_multi_line_mask(
     grid_x = ((xLim - local_lines[:, 0]) / xRes).astype(np.int32)
     grid_y = ((yLim - local_lines[:, 1]) / yRes).astype(np.int32)
 
+    # Remove points that are outside the grid.
     boundary_mask = (grid_x < 0) | (grid_x >= xDim) | (grid_y < 0) | (grid_y >= yDim)
 
     line_mask[grid_x[~boundary_mask], grid_y[~boundary_mask]] = 1
@@ -240,7 +216,6 @@ class CustomTimer:
     Timer class that uses a performance counter if available, otherwise time
     in seconds.
     '''
-    
     def __init__(self):
         try:
             self.timer = time.perf_counter
