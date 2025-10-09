@@ -119,7 +119,7 @@ def get_multi_polygon_mask(
     if yRes is None:
         yRes = xRes
 
-    if not polygons:
+    if len(polygons) == 0:
         return np.zeros((xDim, yDim), dtype=bool)
 
     # Calculate the transformation from the global coordinates to the ego
@@ -180,7 +180,7 @@ def get_multi_line_mask(
     if yRes is None:
         yRes = xRes
 
-    if not lines:
+    if len(lines) == 0:
         return np.zeros((xDim, yDim), dtype=bool)
 
     # Calculate the transformation from the global coordinates to the ego

@@ -335,7 +335,7 @@ class WorldManager:
             # Preprocess the waypoints and crosswalks for ground truth
             # generation.
             self._vehicle_manager.get_ground_truth_manager().augment_waypoints(self._waypoints)
-            self._vehicle_manager.get_ground_truth_manager().trim_crosswalks(self._crosswalks)
+            self._vehicle_manager.get_ground_truth_manager().get_area_crosswalks(self._crosswalks)
             self._vehicle_manager.get_ground_truth_manager().get_bounding_boxes()
 
             self._scenario_manager.setup_scenario(

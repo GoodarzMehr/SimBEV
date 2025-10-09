@@ -1,8 +1,8 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 '''
-Module that manages ground truth generation for CARLA simulation, including
-BEV semantic segmentation, object detection bounding boxes, and HD map information.
+Module that manages the calculations for obtaining the BEV ground truth, 3D
+object bounding boxes, and HD map information.
 '''
 
 import cv2
@@ -127,15 +127,16 @@ CITYSCAPE_PALETTE = {
 
 class GTManager:
     '''
-    Ground Truth Manager class that handles the generation of various types
-    of ground truth data including BEV semantic maps, object bounding boxes,
-    and HD map information.
+    The Ground Truth Manager manages the calculations for obtaining the BEV
+    ground truth, 3D object bounding boxes, and HD map information.
 
     Args:
-        core: CarlaCore object instance that provides access to the CARLA
-              world, vehicle, sensors, and configuration.
+        config: dictionary of configuration parameters.
+        world: CARLA world.
+        vehicle: ego vehicle.
+        sensor_manager: ego vehicle's sensor manager.
+        map_name: name of the CARLA map.
     '''
-    
     def __init__(self, config, world, vehicle, sensor_manager, map_name):
         self.config = config
         self.world = world
@@ -147,8 +148,6 @@ class GTManager:
         self.objects = self.world.get_environment_objects()
 
         self.timer = CustomTimer()
-
-        self.warning_flag = False
 
     def augment_waypoints(self, waypoints: List[carla.Waypoint]):
         '''
@@ -162,7 +161,7 @@ class GTManager:
         # Filter the list of waypoints to get those near the spawn area.
         vehicle_location = self.vehicle.get_location()
         
-        self.area_waypoints = [
+        area_waypoints = [
             wp for wp in waypoints if vehicle_location.distance(
                 wp.transform.location
             ) < self.config['mapping_area_radius']
@@ -171,77 +170,187 @@ class GTManager:
         # The list of generated waypoints only includes those in lanes where
         # the lane type is Driving. Our goal is to add ones in the adjacent
         # lanes, if those lanes are Parking, Bidirectional, or Biking; or if
-        # those lanes are NONE, Shoulder, or Border, conditioned on the fact
-        # that at least one of the lane markings is not NONE, Grass, or Curb.
-        good_lane_types = [carla.LaneType.Parking, carla.LaneType.Bidirectional, carla.LaneType.Biking]
-        conditional_lane_types = [carla.LaneType.NONE, carla.LaneType.Shoulder, carla.LaneType.Border]
+        # those lanes are NONE, Shoulder, or Border, provided that at least
+        # one of the lane markings is not NONE, Grass, or Curb.
+        self.good_lane_types = [carla.LaneType.Parking, carla.LaneType.Bidirectional, carla.LaneType.Biking]
+        self.conditional_lane_types = [carla.LaneType.NONE, carla.LaneType.Shoulder, carla.LaneType.Border]
 
-        bad_lane_marking_types = [
+        self.bad_lane_marking_types = [
             carla.LaneMarkingType.NONE,
             carla.LaneMarkingType.Grass,
             carla.LaneMarkingType.Curb
         ]
-        single_lane_marking_types = [
+        self.single_lane_marking_types = [
             carla.LaneMarkingType.Solid,
             carla.LaneMarkingType.Broken,
             carla.LaneMarkingType.Other,
             carla.LaneMarkingType.BottsDots
         ]
 
+        logger.debug('Compiling a list of road waypoints...')
+
         adjacent_waypoints = []
 
-        for wp in self.area_waypoints:
-            lwp = wp.get_left_lane()
-            rwp = wp.get_right_lane()
-
-            while lwp:
-                if lwp.lane_type in good_lane_types:
-                    adjacent_waypoints.append(lwp)
-                    lwp = lwp.get_left_lane()
-                elif lwp.lane_type in conditional_lane_types:
-                    if (lwp.left_lane_marking.type in bad_lane_marking_types and
-                        lwp.right_lane_marking.type in bad_lane_marking_types):
-                        lwp = None
-                    else:
-                        adjacent_waypoints.append(lwp)
-                        lwp = lwp.get_left_lane()
-                else:
-                    lwp = None
-
-            while rwp:
-                if rwp.lane_type in good_lane_types:
-                    adjacent_waypoints.append(rwp)
-                    rwp = rwp.get_right_lane()
-                elif rwp.lane_type in conditional_lane_types:
-                    if (rwp.left_lane_marking.type in bad_lane_marking_types and
-                        rwp.right_lane_marking.type in bad_lane_marking_types):
-                        rwp = None
-                    else:
-                        adjacent_waypoints.append(rwp)
-                        rwp = rwp.get_right_lane()
-                else:
-                    rwp = None
+        # Get the adjacent waypoints on both sides.
+        for wp in area_waypoints:
+            self._get_adjacent_waypoints(wp, adjacent_waypoints)
         
-        self.area_waypoints += adjacent_waypoints
+        area_waypoints += adjacent_waypoints
 
         self.world.tick()
 
-        # Create a set of all road and lane ID pairs. These correspond to
-        # individual lane sections.
-        road_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in self.area_waypoints])
-        road_lane_id_pairs = {}
+        logger.debug(f'Compiled a list of {len(area_waypoints)} road waypoints.')
+        logger.debug('Compiling a list of sidewalk points...')
 
-        for triplet in road_lane_section_id_triplets:
-            if (triplet[0], triplet[2]) not in road_lane_id_pairs:
-                road_lane_id_pairs[(triplet[0], triplet[2])] = [triplet[1]]
+        # Get the sidewalk points from area waypoints.
+        sidewalk_points = []
+
+        for wp in area_waypoints:
+            self._get_sidewalk_points(wp, sidewalk_points)
+
+            if wp.is_junction:
+                waypoint = self.map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
+                
+                if waypoint is not None:
+                    sidewalk_points.append(waypoint)
+
+                    self._get_sidewalk_points(waypoint, sidewalk_points)
+        
+        self.world.tick()
+
+        logger.debug(f'Compiled a list of {len(sidewalk_points)} sidewalk points.')
+
+        # Create a set of all road, lane, and section ID triplets. These
+        # correspond to individual lane sections.
+        road_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in area_waypoints])
+
+        # Create a set of all sidewalk, lane, and section ID triplets. These
+        # correspond to individual sidewalk sections.
+        sidewalk_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in sidewalk_points])
+        
+        if self.map_name == 'Town07':
+            for triplet in [(2, 0, 1), (2, 0, 8), (30, 0, 1), (30, 0, 8), (54, 0, 1), (54, 0, 8)]:
+                sidewalk_lane_section_id_triplets.add(triplet)
+        
+        # Process the triplets to get dictionaries of unique road/lane ID
+        # pairs each mapped to the list of their corresponding section IDs.
+        road_lane_id_pairs = self._process_triplets(road_lane_section_id_triplets)
+        sidewalk_lane_id_pairs = self._process_triplets(sidewalk_lane_section_id_triplets)
+
+        logger.debug('Collecting comprehensive information about every lane section...')
+
+        # Get comprehensive information about every lane section from the list
+        # of road/lane ID pairs.
+        self.road_sections = self._get_sections_from_id_pairs(road_lane_id_pairs, roads=True)
+        self.sidewalk_sections = self._get_sections_from_id_pairs(sidewalk_lane_id_pairs, roads=False)
+
+        logger.debug(f'Collected information about {len(self.road_sections)} road sections.')
+        logger.debug(f'Collected information about {len(self.sidewalk_sections)} sidewalk sections.')
+
+        if self.map_name == 'Town06':
+            all_sidewalks = [obj for obj in self.objects if '_Sidewalk_' in obj.name]
+
+            self.sidewalk_meshes = []
+
+            for sidewalk in all_sidewalks:
+                bbox = sidewalk.bounding_box.get_local_vertices()
+
+                bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
+
+                bbox[:, 1] *= -1.0
+
+                self.sidewalk_meshes.append(bbox)
+    
+    def _get_adjacent_waypoints(self, wp: carla.Waypoint, adjacent_waypoints: List[carla.Waypoint]):
+        '''
+        Get all adjacent waypoints to the left and right of a given waypoint.
+
+        Args:
+            wp: subject waypoint.
+            adjacent_waypoints: list to append adjacent waypoints to.
+        '''
+        for direction in [True, False]:
+            awp = wp.get_left_lane() if direction else wp.get_right_lane()
+
+            while awp:
+                if awp.lane_type in self.good_lane_types:
+                    adjacent_waypoints.append(awp)
+                    
+                    awp = awp.get_left_lane() if direction else awp.get_right_lane()
+                elif awp.lane_type in self.conditional_lane_types:
+                    if (awp.left_lane_marking.type in self.bad_lane_marking_types and
+                        awp.right_lane_marking.type in self.bad_lane_marking_types):
+                        awp = None
+                    else:
+                        adjacent_waypoints.append(awp)
+                        
+                        awp = awp.get_left_lane() if direction else awp.get_right_lane()
+                else:
+                    awp = None
+    
+    def _get_sidewalk_points(self, wp: carla.Waypoint, sidewalk_points: List[carla.Waypoint]):
+        '''
+        Get the sidewalk points to the left and right of a given waypoint.
+
+        Args:
+            wp: subject waypoint.
+            sidewalk_points: list to append sidewalk points to.
+        '''
+        for direction in [True, False]:
+            awp = wp.get_left_lane() if direction else wp.get_right_lane()
+
+            while awp:
+                if awp.lane_type is not carla.LaneType.Driving:
+                    if awp.lane_type == carla.LaneType.Sidewalk:
+                        sidewalk_points.append(awp)
+
+                    awp = awp.get_left_lane() if direction else awp.get_right_lane()
+                else:
+                    awp = None
+    
+    def _process_triplets(self, triplet_list: List[tuple]) -> dict:
+        '''
+        Process a list of (road, section, lane) ID triplets to get a
+        dictionary of unique road/lane ID pairs each mapped to the list of
+        their corresponding section IDs.
+
+        Args:
+            triplet_list: list of (road, lane, section) ID triplets.
+        
+        Returns:
+            id_pairs: dictionary of road/lane ID pairs mapped to section ID
+                lists.
+        '''
+        id_pairs = {}
+
+        for triplet in triplet_list:
+            if (triplet[0], triplet[2]) not in id_pairs:
+                id_pairs[(triplet[0], triplet[2])] = [triplet[1]]
             else:
-                road_lane_id_pairs[(triplet[0], triplet[2])].append(triplet[1])
+                id_pairs[(triplet[0], triplet[2])].append(triplet[1])
+        
+        return id_pairs
+    
+    def _get_sections_from_id_pairs(self, id_pairs: dict, roads: bool) -> List[dict]:
+        '''
+        Get comprehensive information about every lane section from a
+        dictionary of road/lane ID pairs each mapped to the list of their
+        corresponding section IDs.
 
-        self.road_sections = []
+        Args:
+            id_pairs: dictionary of road/lane ID pairs mapped to section ID
+                lists.
+            roads: boolean indicating if the sections are road sections.
+
+        Returns:
+            sections: list of dictionaries containing comprehensive information
+                about each lane section.
+        '''
+        sections = []
 
         # For each lane section, calculate its border points, left and right
-        # lane line points, and its midline.
-        for key, value in road_lane_id_pairs.items():
+        # lane line points (if a road section), and its midline.
+        for key, value in id_pairs.items():
             for section_id in value:
                 section = {
                     'road_id': key[0],
@@ -249,10 +358,11 @@ class GTManager:
                     'section_id': section_id,
                     'left_border': [],
                     'right_border': [],
-                    'left_lane': [],
-                    'right_lane': [],
                     'midline': []
                 }
+
+                if roads:
+                    section.update({'left_lane': [], 'right_lane': []})
 
                 s = 0.0
 
@@ -261,16 +371,24 @@ class GTManager:
 
                 wp = self.map.get_waypoint_xodr(key[0], key[1], s)
 
+                start_point_counter = 0
                 midline_counter = 1
 
-                counter = 0
+                if not roads:
+                    if self.map_name == 'Town15':
+                        if key == (156, -5) and section_id == 3:
+                            s = 300.0
+                        elif key == (117, 4) and section_id == 3:
+                            s = 70.0
+                        elif key == (203, -5) and section_id == 2:
+                            s = 200.0
 
-                while wp is None and counter < 2000:
+                while wp is None and start_point_counter < 2000:
                     s += self.config['waypoint_distance']
                     
                     wp = self.map.get_waypoint_xodr(key[0], key[1], s)
                     
-                    counter += 1
+                    start_point_counter += 1
 
                 if wp is not None:
                     if wp.section_id == section_id:
@@ -278,47 +396,50 @@ class GTManager:
 
                     while wp is not None:
                         if wp.section_id == section_id:
-                            other_midline_location = wp.transform.location
+                            next_midline_location = wp.transform.location
 
                             if midline_counter % 10 == 0:
-                                section['midline'].append(other_midline_location)
+                                section['midline'].append(next_midline_location)
 
                             wp_transform = wp.transform
                             
                             wp_transform.rotation.yaw += 90.0
 
+                            # Get the left and right borders.
                             left_points.append(wp_transform.location - \
                                             0.5 * wp.lane_width * wp_transform.get_forward_vector())
                             right_points.append(wp_transform.location + \
                                                 0.5 * wp.lane_width * wp_transform.get_forward_vector())
 
-                            llm = wp.left_lane_marking
+                            # Get the left and right borders of the lane lines.
+                            if roads:
+                                llm = wp.left_lane_marking
 
-                            if llm.type not in bad_lane_marking_types:
-                                if llm.type in single_lane_marking_types:
-                                    section['left_lane'].append(
-                                        wp_transform.location - \
-                                        0.5 * (wp.lane_width - llm.width) * wp_transform.get_forward_vector()
-                                    )
-                                else:
-                                    section['left_lane'].append(
-                                        wp_transform.location - \
-                                        0.5 * (wp.lane_width - 3 * llm.width) * wp_transform.get_forward_vector()
-                                    )
+                                if llm.type not in self.bad_lane_marking_types:
+                                    if llm.type in self.single_lane_marking_types:
+                                        section['left_lane'].append(
+                                            wp_transform.location - 
+                                            0.5 * (wp.lane_width - llm.width) * wp_transform.get_forward_vector()
+                                        )
+                                    else:
+                                        section['left_lane'].append(
+                                            wp_transform.location - \
+                                            0.5 * (wp.lane_width - 3 * llm.width) * wp_transform.get_forward_vector()
+                                        )
 
-                            rlm = wp.right_lane_marking
+                                rlm = wp.right_lane_marking
 
-                            if rlm.type not in bad_lane_marking_types:
-                                if rlm.type in single_lane_marking_types:
-                                    section['right_lane'].append(
-                                        wp_transform.location + \
+                                if rlm.type not in self.bad_lane_marking_types:
+                                    if rlm.type in self.single_lane_marking_types:
+                                        section['right_lane'].append(
+                                            wp_transform.location + 
                                             0.5 * (wp.lane_width - rlm.width) * wp_transform.get_forward_vector()
-                                    )
-                                else:
-                                    section['right_lane'].append(
-                                        wp_transform.location + \
+                                        )
+                                    else:
+                                        section['right_lane'].append(
+                                            wp_transform.location + \
                                             0.5 * (wp.lane_width - 3 * rlm.width) * wp_transform.get_forward_vector()
-                                    )
+                                        )
                         
                             s += self.config['waypoint_distance']
 
@@ -333,179 +454,66 @@ class GTManager:
                     section['left_border'] = carla_vector_to_numpy(left_points)
                     section['right_border'] = carla_vector_to_numpy(right_points)
 
-                    section['left_lane'] = carla_vector_to_numpy(section['left_lane'])
-                    section['right_lane'] = carla_vector_to_numpy(section['right_lane'])
+                    if roads:
+                        section['left_lane'] = carla_vector_to_numpy(section['left_lane'])
+                        section['right_lane'] = carla_vector_to_numpy(section['right_lane'])
 
-                    section['midline'].append(other_midline_location)
-
-                    section['left_border'][:, 1] *= -1.0
-                    section['right_border'][:, 1] *= -1.0
-                    section['left_lane'][:, 1] *= -1.0
-                    section['right_lane'][:, 1] *= -1.0
-                    
-                    self.road_sections.append(section)
-        
-        # Get sidewalk points from area waypoints.
-        self.sidewalk_points = []
-
-        for wp in self.area_waypoints:
-            self._process_sidewalk_points(wp)
-
-            if wp.is_junction:
-                waypoint = self.map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
-                
-                if waypoint is not None:
-                    self.sidewalk_points.append(waypoint)
-
-                    self._process_sidewalk_points(waypoint)
-        
-        # Create a set of all sidewalk and lane ID pairs. These correspond to
-        # individual sidewalk sections.
-        sidewalk_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in self.sidewalk_points])
-        sidewalk_lane_id_pairs = {}
-
-        if self.map_name == 'Town07':
-            for triplet in [(2, 0, 1), (2, 0, 8), (30, 0, 1), (30, 0, 8), (54, 0, 1), (54, 0, 8)]:
-                sidewalk_lane_section_id_triplets.add(triplet)
-
-        for triplet in sidewalk_lane_section_id_triplets:
-            if (triplet[0], triplet[2]) not in sidewalk_lane_id_pairs:
-                sidewalk_lane_id_pairs[(triplet[0], triplet[2])] = [triplet[1]]
-            else:
-                sidewalk_lane_id_pairs[(triplet[0], triplet[2])].append(triplet[1])
-
-        self.sidewalk_sections = []
-
-        # For each sidewalk section, calculate its border points and its
-        # midline.
-        for key, value in sidewalk_lane_id_pairs.items():
-            for section_id in value:
-                section = {
-                    'road_id': key[0],
-                    'lane_id': key[1],
-                    'section_id': section_id,
-                    'left_border': [],
-                    'right_border': [],
-                    'midline': []
-                }
-
-                s = 0.0
-
-                left_points = []
-                right_points = []
-
-                wp = self.map.get_waypoint_xodr(key[0], key[1], s)
-
-                midline_counter = 1
-
-                counter = 0
-
-                if self.map_name =='Town15':
-                    if key == (156, -5) and section_id == 3:
-                        s = 300.0
-                    elif key == (117, 4) and section_id == 3:
-                        s = 70.0
-                    elif key == (203, -5) and section_id == 2:
-                        s = 200.0
-
-                while wp is None and counter < 2000:
-                    s += self.config['waypoint_distance']
-                    
-                    wp = self.map.get_waypoint_xodr(key[0], key[1], s)
-                    
-                    counter += 1
-
-                if wp is not None:
-                    if wp.section_id == section_id:
-                        section['midline'].append(wp.transform.location)
-
-                    while wp is not None:
-                        if wp.section_id == section_id:
-                            other_midline_location = wp.transform.location
-
-                            if midline_counter % 20 == 0:
-                                section['midline'].append(other_midline_location)
-
-                            wp_transform = wp.transform
-                            
-                            wp_transform.rotation.yaw += 90.0
-
-                            left_points.append(wp_transform.location - \
-                                            0.5 * wp.lane_width * wp_transform.get_forward_vector())
-                            right_points.append(wp_transform.location + \
-                                            0.5 * wp.lane_width * wp_transform.get_forward_vector())
-
-                            s += self.config['waypoint_distance']
-
-                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
-
-                            midline_counter += 1
-                        else:
-                            s += self.config['waypoint_distance']
-
-                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
-
-                    section['left_border'] = carla_vector_to_numpy(left_points)
-                    section['right_border'] = carla_vector_to_numpy(right_points)
-
-                    section['midline'].append(other_midline_location)
+                    section['midline'].append(next_midline_location)
 
                     section['left_border'][:, 1] *= -1.0
                     section['right_border'][:, 1] *= -1.0
 
-                    self.sidewalk_sections.append(section)
+                    if roads:
+                        section['left_lane'][:, 1] *= -1.0
+                        section['right_lane'][:, 1] *= -1.0
+
+                    sections.append(section)
+        
+        return sections
     
-    def _process_sidewalk_points(self, wp: carla.Waypoint):
+    def get_area_crosswalks(self, crosswalks: List[carla.Location]):
         '''
-        Process waypoints to get points on the sidewalks.
+        Get the crosswalks within the mapping area.
 
         Args:
-            wp: waypoint to process.
+            crosswalks: list of all crosswalk boundary locations.
         '''
-        lwp = wp.get_left_lane()
-        rwp = wp.get_right_lane()
+        self.area_crosswalks = []
 
-        while lwp:
-            if lwp.lane_type is not carla.LaneType.Driving:
-                if lwp.lane_type == carla.LaneType.Sidewalk:
-                    self.sidewalk_points.append(lwp)
+        logger.debug('Compiling a list of crosswalks...')
 
-                lwp = lwp.get_left_lane()
+        # For Town01, Town02, Town12, and Town13, get the crosswalks from the
+        # map data. For others, get the crosswalks from the list of
+        # environment objects (the latter method is more accurate).
+        if self.map_name in ['Town01', 'Town02','Town12', 'Town13']:
+            for i in range(len(crosswalks)):
+                for j in range(i + 1, len(crosswalks)):
+                    if crosswalks[i].distance(crosswalks[j]) < 0.02 and \
+                        crosswalks[i].distance(self.vehicle.get_location()) < self.config['mapping_area_radius']:
+                            crosswalk = carla_vector_to_numpy(crosswalks[i:j + 1])
 
-                # if lwp is not None and lwp.lane_type == carla.LaneType.NONE:
-                #     lwp = None
-            else:
-                lwp = None
+                            crosswalk[:, 1] *= -1.0
 
-        while rwp:
-            if rwp.lane_type is not carla.LaneType.Driving:
-                if rwp.lane_type == carla.LaneType.Sidewalk:
-                    self.sidewalk_points.append(rwp)
+                            self.area_crosswalks.append(crosswalk)
+        else:
+            all_crosswalks = [obj for obj in self.objects if '_Crosswalk_' in obj.name]
 
-                rwp = rwp.get_right_lane()
+            crosswalks = [cw for cw in all_crosswalks if not any(x in cw.name for x in BAD_CROSSWALKS)]
 
-                # if rwp is not None and rwp.lane_type == carla.LaneType.NONE:
-                #     rwp = None
-            else:
-                rwp = None
-    
-    def trim_crosswalks(self, crosswalks: List[carla.Location]):
-        '''
-        Trim the list of crosswalks to only include those that are within the
-        mapping area radius.
-        '''
-        self.trimmed_crosswalks = []
+            for crosswalk in crosswalks:
+                bbox = crosswalk.bounding_box.get_local_vertices()
 
-        logger.debug('Trimming crosswalks...')
+                midpoint = (bbox[0] + bbox[7]) / 2
 
-        for i in range(len(crosswalks)):
-            for j in range(i + 1, len(crosswalks)):
-                if crosswalks[i].distance(crosswalks[j]) < 0.02 and \
-                    crosswalks[i].distance(self.vehicle.get_location()) < self.config['mapping_area_radius']:
-                    self.trimmed_crosswalks.append(crosswalks[i:j + 1])
+                if midpoint.distance(self.vehicle.get_location()) < self.config['mapping_area_radius']:
+                    bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
 
-        logger.debug('Crosswalks trimmed.')
-    
+                    bbox[:, 1] *= -1.0
+
+                    self.area_crosswalks.append(bbox)
+        
+        logger.debug(f'Compiled a list of {len(self.area_crosswalks)} crosswalks.')
+
     def trim_map_sections(self):
         '''
         Trim the list of road and sidewalk sections and only leave those
@@ -560,6 +568,8 @@ class GTManager:
                         self.local_sidewalks.append(np.vstack((left_border[i:j], right_border[i:j][::-1])))
 
         self.local_road_midlines = carla_vector_to_numpy(self.local_road_midlines)
+
+        # TODO: Do this for crosswalks and Town05 sidewalk meshes.
     
     def get_bev_gt(self):
         '''
@@ -597,72 +607,21 @@ class GTManager:
 
         # For Town06, get the sidewalk mask from sidewalk meshes.
         if self.map_name == 'Town06':
-            mesh_sidewalk_mask = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
-
-            all_sidewalks = [obj for obj in self.objects if '_Sidewalk_' in obj.name]
-
-            sidewalk_list = []
-
-            for sidewalk in all_sidewalks:
-                bbox = sidewalk.bounding_box.get_local_vertices()
-
-                bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
-
-                bbox[:, 1] *= -1.0
-
-                sidewalk_list.append(bbox)
-
             mesh_sidewalk_mask = get_multi_polygon_mask(
-                sidewalk_list,
+                self.sidewalk_meshes,
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
                 self.config['bev_res']
             )
 
-        # Get the crosswalk mask from crosswalk locations.
-        crosswalk_mask = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
-
-        if self.map_name in ['Town03', 'Town04', 'Town05', 'Town06', 'Town07', 'Town10HD']:
-            all_crosswalks = [obj for obj in self.objects if '_Crosswalk_' in obj.name]
-
-            crosswalks = [cw for cw in all_crosswalks if not any(x in cw.name for x in BAD_CROSSWALKS)]
-            
-            crosswalk_list = []
-            
-            for crosswalk in crosswalks:
-                bbox = crosswalk.bounding_box.get_local_vertices()
-
-                bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
-
-                bbox[:, 1] *= -1.0
-
-                crosswalk_list.append(bbox)
-
-            crosswalk_mask = get_multi_polygon_mask(
-                crosswalk_list,
-                vehicle_transform.location,
-                vehicle_transform.rotation,
-                self.config['bev_dim'],
-                self.config['bev_res']
-            )
-        else:
-            crosswalk_list = []
-            
-            for crosswalk in self.trimmed_crosswalks:
-                crosswalk = carla_vector_to_numpy(crosswalk)
-
-                crosswalk[:, 1] *= -1.0
-
-                crosswalk_list.append(crosswalk)
-
-            crosswalk_mask = get_multi_polygon_mask(
-                crosswalk_list,
-                vehicle_transform.location,
-                vehicle_transform.rotation,
-                self.config['bev_dim'],
-                self.config['bev_res']
-            )
+        crosswalk_mask = get_multi_polygon_mask(
+            self.area_crosswalks,
+            vehicle_transform.location,
+            vehicle_transform.rotation,
+            self.config['bev_dim'],
+            self.config['bev_res']
+        )
 
         # Get images from the top and bottom semantic cameras. Use the top
         # image along with the road mask from waypoints to create a road mask,
@@ -691,18 +650,6 @@ class GTManager:
             bev_crosswalk_mask = binary_opening(
                 np.logical_or(top_bev_image[:, :, 2] == 157, crosswalk_mask),
                 footprint=np.ones((3, 3))
-            )
-        elif self.map_name in ['Town15']:
-            bev_crosswalk_mask = np.logical_or(
-                np.logical_and(
-                    binary_dilation(crosswalk_mask, footprint=np.ones((11, 11))),
-                    np.logical_or(top_bev_image[:, :, 2] == 157, top_bev_image[:, :, 2] == 110),
-                ),
-                np.logical_and(crosswalk_mask, top_bev_image[:, :, 1] == 70)
-            )
-            bev_crosswalk_mask = binary_opening(binary_closing(bev_crosswalk_mask), footprint=np.ones((3, 3)))
-            bev_crosswalk_mask = binary_closing(
-                np.logical_or(bev_crosswalk_mask, ~road_mask), footprint=np.ones((4, 4))
             )
         else:
             bev_crosswalk_mask = crosswalk_mask
@@ -798,50 +745,58 @@ class GTManager:
         sidewalk_mask = binary_closing(sidewalk_mask)
 
         # Get the crosswalk mask from crosswalk locations.
-        crosswalk_mask = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
+        # crosswalk_mask = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
 
-        if self.map_name in ['Town04', 'Town05']:
-            all_crosswalks = [obj for obj in self.objects if '_Crosswalk_' in obj.name]
+        # if self.map_name in ['Town04', 'Town05']:
+        #     all_crosswalks = [obj for obj in self.objects if '_Crosswalk_' in obj.name]
 
-            crosswalks = [cw for cw in all_crosswalks if not any(x in cw.name for x in BAD_CROSSWALKS)]
+        #     crosswalks = [cw for cw in all_crosswalks if not any(x in cw.name for x in BAD_CROSSWALKS)]
 
-            crosswalk_list = []
+        #     crosswalk_list = []
             
-            for crosswalk in crosswalks:
-                bbox = crosswalk.bounding_box.get_local_vertices()
+        #     for crosswalk in crosswalks:
+        #         bbox = crosswalk.bounding_box.get_local_vertices()
 
-                bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
+        #         bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
 
-                bbox[:, 1] *= -1.0
+        #         bbox[:, 1] *= -1.0
 
-                if np.abs(bbox[:, 2] - vehicle_transform.location.z).max() < 4.8:
-                    crosswalk_list.append(bbox)
+        #         if np.abs(bbox[:, 2] - vehicle_transform.location.z).max() < 4.8:
+        #             crosswalk_list.append(bbox)
 
-            crosswalk_mask = get_multi_polygon_mask(
-                crosswalk_list,
-                vehicle_transform.location,
-                vehicle_transform.rotation,
-                self.config['bev_dim'],
-                self.config['bev_res']
-            )
-        else:
-            crosswalk_list = []
+        #     crosswalk_mask = get_multi_polygon_mask(
+        #         crosswalk_list,
+        #         vehicle_transform.location,
+        #         vehicle_transform.rotation,
+        #         self.config['bev_dim'],
+        #         self.config['bev_res']
+        #     )
+        # else:
+        #     crosswalk_list = []
             
-            for crosswalk in self.trimmed_crosswalks:
-                crosswalk = carla_vector_to_numpy(crosswalk)
+        #     for crosswalk in self.trimmed_crosswalks:
+        #         crosswalk = carla_vector_to_numpy(crosswalk)
 
-                crosswalk[:, 1] *= -1.0
+        #         crosswalk[:, 1] *= -1.0
 
-                if np.abs(crosswalk[:, 2] - vehicle_transform.location.z).max() < 4.8:
-                    crosswalk_list.append(crosswalk)
+        #         if np.abs(crosswalk[:, 2] - vehicle_transform.location.z).max() < 4.8:
+        #             crosswalk_list.append(crosswalk)
 
-            crosswalk_mask = get_multi_polygon_mask(
-                crosswalk_list,
-                vehicle_transform.location,
-                vehicle_transform.rotation,
-                self.config['bev_dim'],
-                self.config['bev_res']
-            )
+        #     crosswalk_mask = get_multi_polygon_mask(
+        #         crosswalk_list,
+        #         vehicle_transform.location,
+        #         vehicle_transform.rotation,
+        #         self.config['bev_dim'],
+        #         self.config['bev_res']
+        #     )
+
+        crosswalk_mask = get_multi_polygon_mask(
+            self.area_crosswalks,
+            vehicle_transform.location,
+            vehicle_transform.rotation,
+            self.config['bev_dim'],
+            self.config['bev_res']
+        )
 
         crosswalk_mask = binary_closing(np.logical_and(crosswalk_mask, road_mask))
 
@@ -1204,6 +1159,7 @@ class GTManager:
         # semantic cameras and road waypoints. Otherwise (i.e. when near
         # an overpass/underpass), get the ground truth using bounding
         # boxes and road waypoints.
+        start = self.timer.time()
         if self.map_name not in ['Town04', 'Town05', 'Town12', 'Town13']:
             self.bev_gt = self.get_bev_gt()
             self.warning_flag = False
@@ -1232,6 +1188,10 @@ class GTManager:
                     self.warning_flag = True
         
         self.canvas = self._prepare_canvas()
+
+        gt_time = self.timer.time() - start
+
+        print(f'Ground truth time: {gt_time:.6f} seconds')
     
     def render(self):
         '''
