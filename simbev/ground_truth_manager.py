@@ -15,7 +15,7 @@ from utils import *
 
 from typing import List
 
-from skimage.morphology import binary_closing, binary_opening, binary_dilation
+from skimage.morphology import binary_closing, binary_opening
 
 from scipy.spatial.distance import cdist
 
@@ -241,7 +241,7 @@ class GTManager:
 
         # Get comprehensive information about every lane section from the list
         # of road/lane ID pairs.
-        self.road_sections = self._get_sections_from_id_pairs(road_lane_id_pairs, roads=True)
+        self.road_sections = self._get_sections_from_id_pairs(road_lane_id_pairs)
         self.sidewalk_sections = self._get_sections_from_id_pairs(sidewalk_lane_id_pairs, roads=False)
 
         logger.debug(f'Collected information about {len(self.road_sections)} road sections.')
@@ -331,7 +331,7 @@ class GTManager:
         
         return id_pairs
     
-    def _get_sections_from_id_pairs(self, id_pairs: dict, roads: bool) -> List[dict]:
+    def _get_sections_from_id_pairs(self, id_pairs: dict, roads: bool = True) -> List[dict]:
         '''
         Get comprehensive information about every lane section from a
         dictionary of road/lane ID pairs each mapped to the list of their
@@ -525,10 +525,7 @@ class GTManager:
         vehicle_location[:, 1] *= -1.0
 
         # Trim road sections.
-        self.local_roads, self.local_road_midlines, self.local_road_lines = self._process_sections(
-            self.road_sections,
-            roads=True
-        )
+        self.local_roads, self.local_road_midlines, self.local_road_lines = self._process_sections(self.road_sections)
 
         # Trim sidewalk sections.
         self.local_sidewalks = self._process_sections(self.sidewalk_sections, roads=False)
@@ -544,7 +541,7 @@ class GTManager:
                                           np.min(cdist(sidewalk, vehicle_location)) < \
                                             self.config['nearby_mapping_area_radius']]
     
-    def _process_sections(self, sections: List[dict], roads: bool) -> List[np.ndarray]:
+    def _process_sections(self, sections: List[dict], roads: bool = True) -> List[np.ndarray]:
         '''
         Process a list of lane sections and only keep those within a
         certain distance of the ego vehicle.
@@ -597,16 +594,65 @@ class GTManager:
         else:
             return local_sections
 
-    def get_bev_gt(self):
+    def _process_level_sections(self, sections: List[np.ndarray]) -> List[np.ndarray]:
+        '''
+        Process a list of sections and only keep those within a
+        certain elevation of the ego vehicle.
+
+        Args:
+            sections: list of sections.
+        '''
+        vehicle_location = self.vehicle.get_location()
+
+        level_sections = []
+
+        for section in sections:
+            mask = np.abs(section[:, 2] - vehicle_location.z) < 4.8
+
+            level_sections.append(section[mask])
+
+        return level_sections
+
+    def get_bev_gt(self, elevation_difference: bool = False) -> np.ndarray:
         '''
         Get the BEV ground truth using the top and bottom semantic cameras and
         road waypoints.
         '''
         vehicle_transform = self.vehicle.get_transform()
 
+        mask = {
+            'road': None,
+            'road_line': None,
+            'sidewalk': None,
+            'crosswalk': None,
+            'car': None,
+            'truck': None,
+            'bus': None,
+            'motorcycle': None,
+            'bicycle': None,
+            'rider': None,
+            'pedestrian': None
+        }
+
+        if elevation_difference:
+            level_roads = self._process_level_sections(self.local_roads)
+            level_road_lines = self._process_level_sections(self.local_road_lines)
+            level_sidewalks = self._process_level_sections(self.local_sidewalks)
+
+            level_crosswalks = []
+            
+            for crosswalk in self.local_crosswalks:
+                if abs(crosswalk[0, 2] - vehicle_transform.location.z) < 4.8:
+                    level_crosswalks.append(crosswalk)
+        else:
+            level_roads = self.local_roads
+            level_road_lines = self.local_road_lines
+            level_sidewalks = self.local_sidewalks
+            level_crosswalks = self.local_crosswalks
+
         # Get the road mask from road sections.
         wp_road_mask = get_multi_polygon_mask(
-            self.local_roads,
+            level_roads,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
@@ -614,8 +660,8 @@ class GTManager:
         )
 
         # Get the road line mask from road lines.
-        road_line_mask = get_multi_line_mask(
-            self.local_road_lines,
+        mask['road_line'] = get_multi_line_mask(
+            level_road_lines,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
@@ -624,7 +670,7 @@ class GTManager:
         
         # Get the sidewalk mask from sidewalk sections.
         wp_sidewalk_mask = get_multi_polygon_mask(
-            self.local_sidewalks,
+            level_sidewalks,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
@@ -641,284 +687,127 @@ class GTManager:
                 self.config['bev_res']
             )
 
-        crosswalk_mask = get_multi_polygon_mask(
-            self.local_crosswalks,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-
-        # Get images from the top and bottom semantic cameras. Use the top
-        # image along with the road mask from waypoints to create a road mask,
-        # and use both images to create masks for cars, trucks, buses,
-        # motorcycles, bicycles, riders, and pedestrians.
-        top_bev_image = self.sensor_manager.sensor_list['semantic_bev_camera'][0].get_save_queue().get(True, 10.0)
-        bottom_bev_image = np.flip(
-            self.sensor_manager.sensor_list['semantic_bev_camera'][1].get_save_queue().get(True, 10.0),
-            axis=0
-        )
-
-        bev_road_mask = np.logical_or(top_bev_image[:, :, 2] == 128, top_bev_image[:, :, 2] == 157)
-
-        road_mask = binary_closing(np.logical_or(wp_road_mask, bev_road_mask))
-        
-        if self.config['use_bev_for_sidewalks']:
-            sidewalk_mask = binary_closing(np.logical_or(top_bev_image[:, :, 0] == 232, wp_sidewalk_mask))
-        elif self.map_name == 'Town06':
-            sidewalk_mask = binary_closing(np.logical_or(wp_sidewalk_mask, np.logical_and(
-                mesh_sidewalk_mask, np.logical_or(top_bev_image[:, :, 0] == 232, bottom_bev_image[:, :, 0] == 232)
-            )))
-        else:
-            sidewalk_mask = binary_closing(wp_sidewalk_mask)
-
-        if self.map_name in ['Town12', 'Town13']:
-            bev_crosswalk_mask = binary_opening(
-                np.logical_or(top_bev_image[:, :, 2] == 157, crosswalk_mask),
-                footprint=np.ones((3, 3))
-            )
-        else:
-            bev_crosswalk_mask = crosswalk_mask
-
-        crosswalk_mask = binary_closing(np.logical_and(bev_crosswalk_mask, road_mask))
-
-        car_mask = np.logical_or(bottom_bev_image[:, :, 0] == 142, top_bev_image[:, :, 0] == 142)
-        truck_mask = np.logical_or(
-            np.logical_and(bottom_bev_image[:, :, 0] == 70, bottom_bev_image[:, :, 1] == 0),
-            np.logical_and(top_bev_image[:, :, 0] == 70, top_bev_image[:, :, 1] == 0)
-        )
-        bus_mask = np.logical_or(
-            np.logical_and(bottom_bev_image[:, :, 0] == 100, bottom_bev_image[:, :, 1] == 60),
-            np.logical_and(top_bev_image[:, :, 0] == 100, top_bev_image[:, :, 1] == 60)
-        )
-        motorcycle_mask = np.logical_or(bottom_bev_image[:, :, 0] == 230, top_bev_image[:, :, 0] == 230)
-        bicycle_mask = np.logical_or(bottom_bev_image[:, :, 0] == 32, top_bev_image[:, :, 0] == 32)
-        rider_mask = np.logical_or(bottom_bev_image[:, :, 2] == 255, top_bev_image[:, :, 2] == 255)
-        pedestrian_mask = np.logical_or(bottom_bev_image[:, :, 1] == 20, top_bev_image[:, :, 1] == 20)
-
-        # Concatenate individual masks to get the ground truth.
-        bev_gt = np.array([
-            road_mask,
-            road_line_mask,
-            sidewalk_mask,
-            crosswalk_mask,
-            car_mask,
-            truck_mask,
-            bus_mask,
-            motorcycle_mask,
-            bicycle_mask,
-            rider_mask,
-            pedestrian_mask
-        ])
-
-        return bev_gt
-
-    def get_bev_gt_alt(self):
-        '''
-        Get the BEV ground truth using object bounding boxes and road
-        waypoints.
-        '''
-        vehicle_transform = self.vehicle.get_transform()
-
-        level_roads = []
-        level_road_lines = []
-        level_sidewalks = []
-
-        for road in self.local_roads:
-            mask = np.abs(road[:, 2] - vehicle_transform.location.z) < 4.8
-            
-            level_roads.append(road[mask])
-        
-        for road_line in self.local_road_lines:
-            mask = np.abs(road_line[:, 2] - vehicle_transform.location.z) < 4.8
-
-            level_road_lines.append(road_line[mask])
-
-        for sidewalk in self.local_sidewalks:
-            mask = np.abs(sidewalk[:, 2] - vehicle_transform.location.z) < 4.8
-
-            level_sidewalks.append(sidewalk[mask])
-
-        # Get the road mask from road sections.
-        road_mask = get_multi_polygon_mask(
-            level_roads,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-
-        road_mask = binary_closing(road_mask)
-
-        # Get the road line mask from road lines.
-        road_line_mask = get_multi_line_mask(
-            level_road_lines,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        
-        # Get the sidewalk mask from sidewalk sections.
-        sidewalk_mask = get_multi_polygon_mask(
-            level_sidewalks,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-
-        sidewalk_mask = binary_closing(sidewalk_mask)
-
         # Get the crosswalk mask from crosswalk locations.
-        # crosswalk_mask = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
-
-        # if self.map_name in ['Town04', 'Town05']:
-        #     all_crosswalks = [obj for obj in self.objects if '_Crosswalk_' in obj.name]
-
-        #     crosswalks = [cw for cw in all_crosswalks if not any(x in cw.name for x in BAD_CROSSWALKS)]
-
-        #     crosswalk_list = []
-            
-        #     for crosswalk in crosswalks:
-        #         bbox = crosswalk.bounding_box.get_local_vertices()
-
-        #         bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
-
-        #         bbox[:, 1] *= -1.0
-
-        #         if np.abs(bbox[:, 2] - vehicle_transform.location.z).max() < 4.8:
-        #             crosswalk_list.append(bbox)
-
-        #     crosswalk_mask = get_multi_polygon_mask(
-        #         crosswalk_list,
-        #         vehicle_transform.location,
-        #         vehicle_transform.rotation,
-        #         self.config['bev_dim'],
-        #         self.config['bev_res']
-        #     )
-        # else:
-        #     crosswalk_list = []
-            
-        #     for crosswalk in self.trimmed_crosswalks:
-        #         crosswalk = carla_vector_to_numpy(crosswalk)
-
-        #         crosswalk[:, 1] *= -1.0
-
-        #         if np.abs(crosswalk[:, 2] - vehicle_transform.location.z).max() < 4.8:
-        #             crosswalk_list.append(crosswalk)
-
-        #     crosswalk_mask = get_multi_polygon_mask(
-        #         crosswalk_list,
-        #         vehicle_transform.location,
-        #         vehicle_transform.rotation,
-        #         self.config['bev_dim'],
-        #         self.config['bev_res']
-        #     )
-
         crosswalk_mask = get_multi_polygon_mask(
-            self.local_crosswalks,
+            level_crosswalks,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
             self.config['bev_res']
         )
 
-        crosswalk_mask = binary_closing(np.logical_and(crosswalk_mask, road_mask))
+        if elevation_difference:
+            mask['road'] = binary_closing(wp_road_mask)
+            mask['sidewalk'] = binary_closing(wp_sidewalk_mask)
+            mask['crosswalk'] = binary_closing(np.logical_and(crosswalk_mask, mask['road']))
 
-        car_bbox_list = []
-        truck_bbox_list = []
-        bus_bbox_list = []
-        motorcycle_bbox_list = []
-        bicycle_bbox_list = []
-        rider_bbox_list = []
-        pedestrian_bbox_list = []
+            bbox_list = {
+                'car': [],
+                'truck': [],
+                'bus': [],
+                'motorcycle': [],
+                'bicycle': [],
+                'rider': [],
+                'pedestrian': []
+            }
 
-        for actor in self.actors:
-            if any(x in actor['semantic_tags'] for x in [12, 13, 14, 15, 16, 18, 19]):
-                if np.abs(actor['bounding_box'][:, 2] - vehicle_transform.location.z).max() < 4.8:
-                    bbox = actor['bounding_box']
+            actors = self.get_bounding_boxes()
 
-                    bbox = np.array([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
+            for actor in actors:
+                if any(x in actor['semantic_tags'] for x in [12, 13, 14, 15, 16, 18, 19]):
+                    if np.abs(actor['bounding_box'][:, 2] - vehicle_transform.location.z).max() < 4.8:
+                        bbox = actor['bounding_box']
 
-                    if 12 in actor['semantic_tags']:
-                        pedestrian_bbox_list.append(bbox)
-                    if 13 in actor['semantic_tags']:
-                        rider_bbox_list.append(bbox)
-                    if 14 in actor['semantic_tags']:
-                        car_bbox_list.append(bbox)
-                    if 15 in actor['semantic_tags']:
-                        truck_bbox_list.append(bbox)
-                    if 16 in actor['semantic_tags']:
-                        bus_bbox_list.append(bbox)
-                    if 18 in actor['semantic_tags']:
-                        motorcycle_bbox_list.append(bbox)
-                    if 19 in actor['semantic_tags']:
-                        bicycle_bbox_list.append(bbox)
-        
-        car_mask = get_multi_polygon_mask(
-            car_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        truck_mask = get_multi_polygon_mask(
-            truck_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        bus_mask = get_multi_polygon_mask(
-            bus_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        motorcycle_mask = get_multi_polygon_mask(
-            motorcycle_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        bicycle_mask = get_multi_polygon_mask(
-            bicycle_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        rider_mask = get_multi_polygon_mask(
-            rider_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        pedestrian_mask = get_multi_polygon_mask(
-            pedestrian_bbox_list,
-            vehicle_transform.location,
-            vehicle_transform.rotation,
-            self.config['bev_dim'],
-            self.config['bev_res']
-        )
-        
+                        bbox = np.array([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
+
+                        if 12 in actor['semantic_tags']:
+                            bbox_list['pedestrian'].append(bbox)
+                        if 13 in actor['semantic_tags']:
+                            bbox_list['rider'].append(bbox)
+                        if 14 in actor['semantic_tags']:
+                            bbox_list['car'].append(bbox)
+                        if 15 in actor['semantic_tags']:
+                            bbox_list['truck'].append(bbox)
+                        if 16 in actor['semantic_tags']:
+                            bbox_list['bus'].append(bbox)
+                        if 18 in actor['semantic_tags']:
+                            bbox_list['motorcycle'].append(bbox)
+                        if 19 in actor['semantic_tags']:
+                            bbox_list['bicycle'].append(bbox)
+            
+            for key in bbox_list.keys():
+                if len(bbox_list[key]) > 0:
+                    mask[key] = get_multi_polygon_mask(
+                        bbox_list[key],
+                        vehicle_transform.location,
+                        vehicle_transform.rotation,
+                        self.config['bev_dim'],
+                        self.config['bev_res']
+                    )
+                else:
+                    mask[key] = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
+        else:
+            # Get images from the top and bottom semantic cameras. Use the top
+            # image along with the masks from sections to create masks for the
+            # road, road lines, sidewalks, crosswalks, and hazard areas, and
+            # use both images to create masks for cars, trucks, buses,
+            # motorcycles, bicycles, riders, and pedestrians.
+            top_bev_image = self.sensor_manager.sensor_list['semantic_bev_camera'][0].get_save_queue().get(True, 10.0)
+            bottom_bev_image = np.flip(
+                self.sensor_manager.sensor_list['semantic_bev_camera'][1].get_save_queue().get(True, 10.0),
+                axis=0
+            )
+
+            bev_road_mask = np.logical_or(top_bev_image[:, :, 2] == 128, top_bev_image[:, :, 2] == 157)
+
+            mask['road'] = binary_closing(np.logical_or(wp_road_mask, bev_road_mask))
+            
+            if self.config['use_bev_for_sidewalks']:
+                mask['sidewalk'] = binary_closing(np.logical_or(top_bev_image[:, :, 0] == 232, wp_sidewalk_mask))
+            elif self.map_name == 'Town06':
+                mask['sidewalk'] = binary_closing(np.logical_or(wp_sidewalk_mask, np.logical_and(
+                    mesh_sidewalk_mask, np.logical_or(top_bev_image[:, :, 0] == 232, bottom_bev_image[:, :, 0] == 232)
+                )))
+            else:
+                mask['sidewalk'] = binary_closing(wp_sidewalk_mask)
+
+            if self.map_name in ['Town12', 'Town13']:
+                bev_crosswalk_mask = binary_opening(
+                    np.logical_or(top_bev_image[:, :, 2] == 157, crosswalk_mask),
+                    footprint=np.ones((3, 3))
+                )
+            else:
+                bev_crosswalk_mask = crosswalk_mask
+
+            mask['crosswalk'] = binary_closing(np.logical_and(bev_crosswalk_mask, mask['road']))
+
+            mask['car'] = np.logical_or(bottom_bev_image[:, :, 0] == 142, top_bev_image[:, :, 0] == 142)
+            mask['truck'] = np.logical_or(
+                np.logical_and(bottom_bev_image[:, :, 0] == 70, bottom_bev_image[:, :, 1] == 0),
+                np.logical_and(top_bev_image[:, :, 0] == 70, top_bev_image[:, :, 1] == 0)
+            )
+            mask['bus'] = np.logical_or(
+                np.logical_and(bottom_bev_image[:, :, 0] == 100, bottom_bev_image[:, :, 1] == 60),
+                np.logical_and(top_bev_image[:, :, 0] == 100, top_bev_image[:, :, 1] == 60)
+            )
+            mask['motorcycle'] = np.logical_or(bottom_bev_image[:, :, 0] == 230, top_bev_image[:, :, 0] == 230)
+            mask['bicycle'] = np.logical_or(bottom_bev_image[:, :, 0] == 32, top_bev_image[:, :, 0] == 32)
+            mask['rider'] = np.logical_or(bottom_bev_image[:, :, 2] == 255, top_bev_image[:, :, 2] == 255)
+            mask['pedestrian'] = np.logical_or(bottom_bev_image[:, :, 1] == 20, top_bev_image[:, :, 1] == 20)
+
         # Concatenate individual masks to get the ground truth.
         bev_gt = np.array([
-            road_mask,
-            road_line_mask,
-            sidewalk_mask,
-            crosswalk_mask,
-            car_mask,
-            truck_mask,
-            bus_mask,
-            motorcycle_mask,
-            bicycle_mask,
-            rider_mask,
-            pedestrian_mask
+            mask['road'],
+            mask['road_line'],
+            mask['sidewalk'],
+            mask['crosswalk'],
+            mask['car'],
+            mask['truck'],
+            mask['bus'],
+            mask['motorcycle'],
+            mask['bicycle'],
+            mask['rider'],
+            mask['pedestrian']
         ])
 
         return bev_gt
@@ -1087,6 +976,8 @@ class GTManager:
                     object_properties['semantic_tags'] = []
 
                 self.actors.append(object_properties)
+        
+        return self.actors
 
     def get_hd_map_info(self):
         '''
@@ -1204,8 +1095,7 @@ class GTManager:
                 self.bev_gt = self.get_bev_gt()
                 self.warning_flag = False
             else:
-                self.get_bounding_boxes()
-                self.bev_gt = self.get_bev_gt_alt()
+                self.bev_gt = self.get_bev_gt(elevation_difference=True)
 
                 if self.warning_flag is False:
                     logger.warning('Using alternative ground truth generation method due to elevation difference '
@@ -1217,7 +1107,7 @@ class GTManager:
 
         gt_time = self.timer.time() - start
 
-        print(f'Ground truth time: {gt_time:.6f} seconds')
+        print(f'Ground truth time: {(1000.0 * gt_time):.3f} ms')
     
     def render(self):
         '''

@@ -8,7 +8,6 @@ import os
 import cv2
 import time
 import carla
-import torch
 import psutil
 import signal
 
