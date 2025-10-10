@@ -18,10 +18,10 @@ train_scene_config:
 val_scene_config:
   # Town01: 1
   # Town02: 1
-  # Town03: 2
+  # Town03: 1
   # Town04: 2
   # Town05: 1
-  # Town06: 1
+  Town06: 1
   # Town07: 1
   # Town10HD: 1
   # Town12: 1

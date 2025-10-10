@@ -203,7 +203,7 @@ def get_multi_line_mask(
     grid_x = ((xLim - local_lines[:, 0]) / xRes).astype(np.int32)
     grid_y = ((yLim - local_lines[:, 1]) / yRes).astype(np.int32)
 
-    # Remove points that are outside the grid.
+    # Remove the points that are outside the grid.
     boundary_mask = (grid_x < 0) | (grid_x >= xDim) | (grid_y < 0) | (grid_y >= yDim)
 
     line_mask[grid_x[~boundary_mask], grid_y[~boundary_mask]] = 1

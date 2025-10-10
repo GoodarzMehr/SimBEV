@@ -516,61 +516,87 @@ class GTManager:
 
     def trim_map_sections(self):
         '''
-        Trim the list of road and sidewalk sections and only leave those
-        within the ego vehicle's perception range so ground truth calculations
-        are more efficient.
+        Trim the list of road, sidewalk, and crosswalk sections and only leave
+        those within the ego vehicle's perception range so ground truth
+        calculations are more efficient.
         '''
+        vehicle_location = carla_single_vector_to_numpy(self.vehicle.get_location()).reshape(1, -1)
+
+        vehicle_location[:, 1] *= -1.0
+
+        # Trim road sections.
+        self.local_roads, self.local_road_midlines, self.local_road_lines = self._process_sections(
+            self.road_sections,
+            roads=True
+        )
+
+        # Trim sidewalk sections.
+        self.local_sidewalks = self._process_sections(self.sidewalk_sections, roads=False)
+
+        # Trim crosswalk sections.
+        self.local_crosswalks = [crosswalk.copy() for crosswalk in self.area_crosswalks if \
+                                 np.min(cdist(crosswalk, vehicle_location)) < \
+                                    self.config['nearby_mapping_area_radius']]
+
+        # For Town06, also trim sidewalk meshes.
+        if self.map_name == 'Town06':
+            self.local_sidewalk_meshes = [sidewalk.copy() for sidewalk in self.sidewalk_meshes if \
+                                          np.min(cdist(sidewalk, vehicle_location)) < \
+                                            self.config['nearby_mapping_area_radius']]
+    
+    def _process_sections(self, sections: List[dict], roads: bool) -> List[np.ndarray]:
+        '''
+        Process a list of lane sections and only keep those within a
+        certain distance of the ego vehicle.
+
+        Args:
+            sections: list of lane sections.
+            roads: boolean indicating if the sections are road sections.
+        '''
+        chunk_size = 40
+
         vehicle_location = self.vehicle.get_location()
 
-        self.local_roads = []
-        self.local_road_midlines = []
-        self.local_road_lines = []
-        self.local_sidewalks = []
+        local_sections = []
 
-        for section in self.road_sections:
-            if any(vehicle_location.distance(location) < self.config['nearby_mapping_area_radius'] \
-                   for location in section['midline']):
-                left_border = section['left_border']
-                right_border = section['right_border']
-                chunk_size = 40
-
-                if left_border.shape[0] < chunk_size:
-                    self.local_roads.append(np.vstack((left_border, right_border[::-1])))
-                else:
-                    for i in range(0, left_border.shape[0], chunk_size):
-                        j = min(i + chunk_size, left_border.shape[0])
-
-                        self.local_roads.append(np.vstack((left_border[i:j], right_border[i:j][::-1])))
-
-                if len(section['left_lane']) > 0:
-                    self.local_road_lines.append(section['left_lane'])
-
-                if len(section['right_lane']) > 0:
-                    self.local_road_lines.append(section['right_lane'])
-
-                for location in section['midline']:
-                    if vehicle_location.distance(location) < self.config['nearby_mapping_area_radius']:
-                        self.local_road_midlines.append(location)
+        if roads:
+            local_midlines = []
+            local_lines = []
         
-        for section in self.sidewalk_sections:
+        for section in sections:
             if any(vehicle_location.distance(location) < self.config['nearby_mapping_area_radius'] \
                    for location in section['midline']):
                 left_border = section['left_border']
                 right_border = section['right_border']
-                chunk_size = 40
 
+                # Split long sections into smaller chunks to avoid
+                # unnecessary processing.
                 if left_border.shape[0] < chunk_size:
-                    self.local_sidewalks.append(np.vstack((left_border, right_border[::-1])))
+                    local_sections.append(np.vstack((left_border, right_border[::-1])))
                 else:
                     for i in range(0, left_border.shape[0], chunk_size):
                         j = min(i + chunk_size, left_border.shape[0])
 
-                        self.local_sidewalks.append(np.vstack((left_border[i:j], right_border[i:j][::-1])))
+                        local_sections.append(np.vstack((left_border[i:j], right_border[i:j][::-1])))
 
-        self.local_road_midlines = carla_vector_to_numpy(self.local_road_midlines)
+                if roads:
+                    if len(section['left_lane']) > 0:
+                        local_lines.append(section['left_lane'])
 
-        # TODO: Do this for crosswalks and Town05 sidewalk meshes.
-    
+                    if len(section['right_lane']) > 0:
+                        local_lines.append(section['right_lane'])
+
+                    for location in section['midline']:
+                        if vehicle_location.distance(location) < self.config['nearby_mapping_area_radius']:
+                            local_midlines.append(location)
+        
+        if roads:
+            local_midlines = carla_vector_to_numpy(local_midlines)
+
+            return local_sections, local_midlines, local_lines
+        else:
+            return local_sections
+
     def get_bev_gt(self):
         '''
         Get the BEV ground truth using the top and bottom semantic cameras and
@@ -608,7 +634,7 @@ class GTManager:
         # For Town06, get the sidewalk mask from sidewalk meshes.
         if self.map_name == 'Town06':
             mesh_sidewalk_mask = get_multi_polygon_mask(
-                self.sidewalk_meshes,
+                self.local_sidewalk_meshes,
                 vehicle_transform.location,
                 vehicle_transform.rotation,
                 self.config['bev_dim'],
@@ -616,7 +642,7 @@ class GTManager:
             )
 
         crosswalk_mask = get_multi_polygon_mask(
-            self.area_crosswalks,
+            self.local_crosswalks,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
@@ -791,7 +817,7 @@ class GTManager:
         #     )
 
         crosswalk_mask = get_multi_polygon_mask(
-            self.area_crosswalks,
+            self.local_crosswalks,
             vehicle_transform.location,
             vehicle_transform.rotation,
             self.config['bev_dim'],
