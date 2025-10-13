@@ -84,19 +84,29 @@ class VehicleManager:
             # Determine whether the ego vehicle is reckless (ignores all
             # traffic rules).
             scene_info['reckless_ego'] = False
+            scene_info['distracted_ego'] = False
 
-            if self._config['reckless_ego']:
-                p = self._config['reckless_ego_percentage'] / 100.0
+            p = self._config['reckless_ego_percentage'] / 100.0
+            
+            if np.random.choice(2, p=[1 - p, p]):
+                logger.warning('The ego vehicle is reckless!')
+
+                self._traffic_manager.ignore_lights_percentage(self.vehicle, 100.0)
+                self._traffic_manager.ignore_signs_percentage(self.vehicle, 100.0)
+                self._traffic_manager.ignore_vehicles_percentage(self.vehicle, 100.0)
+                self._traffic_manager.ignore_walkers_percentage(self.vehicle, 100.0)
+
+                scene_info['reckless_ego'] = True
+            else:
+                p = self._config['distracted_ego_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
-                    logger.warning('Ego vehicle is reckless!')
+                    logger.warning('The ego vehicle is distracted!')
 
                     self._traffic_manager.ignore_lights_percentage(self.vehicle, 100.0)
                     self._traffic_manager.ignore_signs_percentage(self.vehicle, 100.0)
-                    self._traffic_manager.ignore_vehicles_percentage(self.vehicle, 100.0)
-                    self._traffic_manager.ignore_walkers_percentage(self.vehicle, 100.0)
 
-                    scene_info['reckless_ego'] = True
+                    scene_info['distracted_ego'] = True
 
             if 'speed_difference' not in self._config:
                 self._traffic_manager.vehicle_percentage_speed_difference(self.vehicle, random.uniform(-40.0, 20.0))
@@ -362,18 +372,27 @@ class VehicleManager:
             # traffic rules).
             logger.debug('Configuring ego vehicle behavior...')
 
-            if self._config['reckless_ego']:
-                p = self._config['reckless_ego_percentage'] / 100.0
-                
+            p = self._config['reckless_ego_percentage'] / 100.0
+            
+            if np.random.choice(2, p=[1 - p, p]):
+                logger.warning('The ego vehicle is reckless!')
+
+                self._traffic_manager.ignore_lights_percentage(self.vehicle, 100.0)
+                self._traffic_manager.ignore_signs_percentage(self.vehicle, 100.0)
+                self._traffic_manager.ignore_vehicles_percentage(self.vehicle, 100.0)
+                self._traffic_manager.ignore_walkers_percentage(self.vehicle, 100.0)
+
+                scene_info['reckless_ego'] = True    
+            else:
+                p = self._config['distracted_ego_percentage'] / 100.0
+
                 if np.random.choice(2, p=[1 - p, p]):
-                    logger.warning('The ego vehicle is reckless!')
+                    logger.warning('The ego vehicle is distracted!')
 
                     self._traffic_manager.ignore_lights_percentage(self.vehicle, 100.0)
                     self._traffic_manager.ignore_signs_percentage(self.vehicle, 100.0)
-                    self._traffic_manager.ignore_vehicles_percentage(self.vehicle, 100.0)
-                    self._traffic_manager.ignore_walkers_percentage(self.vehicle, 100.0)
 
-                    scene_info['reckless_ego'] = True    
+                    scene_info['distracted_ego'] = True
                 else:
                     self._traffic_manager.ignore_lights_percentage(
                         self.vehicle,
@@ -392,7 +411,9 @@ class VehicleManager:
                         self._config['ignore_walkers_percentage']
                     )
 
-                    scene_info['reckless_ego'] = False
+                    scene_info['distracted_ego'] = False
+                
+                scene_info['reckless_ego'] = False
             
             if 'speed_difference' not in self._config:
                 self._traffic_manager.vehicle_percentage_speed_difference(self.vehicle, random.uniform(-40.0, 20.0))

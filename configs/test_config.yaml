@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  Town01: 1
-  Town02: 1
-  Town03: 1
-  Town04: 1
-  Town05: 1
-  Town06: 1
-  Town07: 1
-  Town10HD: 1
-  Town12: 1
-  Town13: 1
-  Town15: 1
+  # Town01: 1
+  # Town02: 1
+  # Town03: 1
+  # Town04: 1
+  Town05: 2
+  # Town06: 1
+  # Town07: 1
+  # Town10HD: 1
+  # Town12: 1
+  # Town13: 1
+  # Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -101,11 +101,11 @@ door_open_percentage: 10.0
 
 emergency_lights_percentage: 50.0
 
-reckless_ego: True
 reckless_ego_percentage: 1.0
-
-reckless_npc: True
 reckless_npc_percentage: 1.0
+
+distracted_ego_percentage: 4.0
+distracted_npc_percentage: 4.0
 
 walker_spawn_attempts: 100
 
@@ -213,8 +213,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-# n_vehicles: 0
-# n_walkers: 0
+n_vehicles: 0
+n_walkers: 0
 
 # walker_cross_factor: 0.6
 

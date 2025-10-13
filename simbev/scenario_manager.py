@@ -427,9 +427,12 @@ class ScenarioManager:
 
         self._npc_vehicles_list = self._world.get_actors(self._vehicles_id_list)
 
-        # Determine which vehicles are reckless, i.e. ignore all traffic rules.
-        # Also determine which emergency vehicles have their lights on.
+        # Determine which vehicles are reckless, i.e. ignore all traffic
+        # rules, and which are distracted, i.e. fail to pay attention to
+        # traffic lights and signs. Also determine which emergency vehicles
+        # have their lights on.
         self.scene_info['n_reckless_vehicles'] = 0
+        self.scene_info['n_distracted_vehicles'] = 0
 
         for vehicle in self._npc_vehicles_list:
             self._traffic_manager.update_vehicle_lights(vehicle, True)
@@ -445,18 +448,27 @@ class ScenarioManager:
             self._traffic_manager.ignore_vehicles_percentage(vehicle, self._config['ignore_vehicles_percentage'])
             self._traffic_manager.ignore_walkers_percentage(vehicle, self._config['ignore_walkers_percentage'])
             
-            if self._config['reckless_npc']:
-                p = self._config['reckless_npc_percentage'] / 100.0
+            p = self._config['reckless_npc_percentage'] / 100.0
+            
+            if np.random.choice(2, p=[1 - p, p]):
+                logger.warning(f'{vehicle.attributes["role_name"]} is reckless!')
+                
+                self._traffic_manager.ignore_lights_percentage(vehicle, 100.0)
+                self._traffic_manager.ignore_signs_percentage(vehicle, 100.0)
+                self._traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
+                self._traffic_manager.ignore_walkers_percentage(vehicle, 100.0)
+
+                self.scene_info['n_reckless_vehicles'] += 1
+            else:
+                p = self._config['distracted_npc_percentage'] / 100.0
                 
                 if np.random.choice(2, p=[1 - p, p]):
-                    logger.warning(f'{vehicle.attributes["role_name"]} is reckless!')
+                    logger.warning(f'{vehicle.attributes["role_name"]} is distracted!')
                     
                     self._traffic_manager.ignore_lights_percentage(vehicle, 100.0)
                     self._traffic_manager.ignore_signs_percentage(vehicle, 100.0)
-                    self._traffic_manager.ignore_vehicles_percentage(vehicle, 100.0)
-                    self._traffic_manager.ignore_walkers_percentage(vehicle, 100.0)
 
-                    self.scene_info['n_reckless_vehicles'] += 1
+                    self.scene_info['n_distracted_vehicles'] += 1
 
         logger.info(f'{len(self._vehicles_id_list)} vehicles spawned.')
 
