@@ -11,6 +11,8 @@ import numpy as np
 
 from utils import CustomTimer
 
+from concurrent.futures import ThreadPoolExecutor
+
 from scipy.spatial.transform import Rotation as R
 
 class SensorManager:
@@ -50,6 +52,9 @@ class SensorManager:
         self._timer = CustomTimer()
         
         self._data = []
+
+        self._io_executor = ThreadPoolExecutor(max_workers=48, thread_name_prefix="sensor_io")
+        self._io_futures = []
 
     def get_data(self):
         '''
@@ -118,16 +123,34 @@ class SensorManager:
             scene: scene number.
             frame: frame number.
         '''
+        # for key in self.sensor_list:
+        #     if key in ['rgb_camera', 'semantic_camera', 'instance_camera', 'depth_camera', 'flow_camera']:
+        #         for camera, camera_name in zip(self.sensor_list[key], self._name_list['camera']):
+        #             camera.save(camera_name, path, scene, frame)
+        #     elif key in ['radar']:
+        #         for radar, radar_name in zip(self.sensor_list[key], self._name_list['radar']):
+        #             radar.save(radar_name, path, scene, frame)
+        #     elif key in ['lidar', 'semantic_lidar', 'gnss', 'imu']:
+        #         for sensor in self.sensor_list[key]:
+        #             sensor.save(path, scene, frame)
+
+        # Submit all I/O operations asynchronously
         for key in self.sensor_list:
             if key in ['rgb_camera', 'semantic_camera', 'instance_camera', 'depth_camera', 'flow_camera']:
                 for camera, camera_name in zip(self.sensor_list[key], self._name_list['camera']):
-                    camera.save(camera_name, path, scene, frame)
+                    self._io_futures.append(
+                        self._io_executor.submit(camera.save, camera_name, path, scene, frame)
+                    )
             elif key in ['radar']:
                 for radar, radar_name in zip(self.sensor_list[key], self._name_list['radar']):
-                    radar.save(radar_name, path, scene, frame)
+                    self._io_futures.append(
+                        self._io_executor.submit(radar.save, radar_name, path, scene, frame)
+                    )
             elif key in ['lidar', 'semantic_lidar', 'gnss', 'imu']:
                 for sensor in self.sensor_list[key]:
-                    sensor.save(path, scene, frame)
+                    self._io_futures.append(
+                        self._io_executor.submit(sensor.save, path, scene, frame)
+                    )
         
         scene_data = {}
 
@@ -195,8 +218,16 @@ class SensorManager:
         '''Reset scenario data.'''
         self._data = []
     
+    def wait_for_saves(self):
+        '''Wait for all pending I/O to complete.'''
+        for future in self._io_futures:
+            future.result()  # This will raise any exceptions
+        self._io_futures.clear()
+    
     def destroy(self):
         '''Destroy the sensors.'''
+        self.wait_for_saves()  # Ensure all saves complete
+        self._io_executor.shutdown(wait=True)
         for key in self.sensor_list:
             for sensor in self.sensor_list[key]:
                 sensor.destroy()

@@ -90,8 +90,7 @@ def local_to_global(location: carla.Location, rotation: carla.Rotation) -> np.nd
 
 def get_multi_polygon_mask(
         polygons: List[np.ndarray],
-        ego_loc: carla.Location,
-        ego_rot: carla.Rotation,
+        ego_tf: carla.Transform,
         xDim: int,
         xRes: float,
         yDim: int = None,
@@ -102,8 +101,7 @@ def get_multi_polygon_mask(
 
     Args:
         polygons: list of polygons to create a mask from.
-        ego_loc: ego vehicle location.
-        ego_rot: ego vehicle rotation.
+        ego_tf: ego vehicle transform.
         xDim: BEV grid width.
         xRes: BEV grid width resolution.
         yDim: BEV grid height.
@@ -121,6 +119,9 @@ def get_multi_polygon_mask(
     if len(polygons) == 0:
         return np.zeros((xDim, yDim), dtype=bool)
 
+    ego_loc = ego_tf.location
+    ego_rot = ego_tf.rotation
+    
     # Calculate the transformation from the global coordinates to the ego
     # vehicle's local coordinates.
     R = np.linalg.inv(local_to_global(ego_loc, ego_rot))
@@ -151,8 +152,7 @@ def get_multi_polygon_mask(
 
 def get_multi_line_mask(
         lines: List[np.ndarray],
-        ego_loc: carla.Location,
-        ego_rot: carla.Rotation,
+        ego_tf: carla.Transform,
         xDim: int,
         xRes: float,
         yDim: int = None,
@@ -163,8 +163,7 @@ def get_multi_line_mask(
 
     Args:
         lines: list of lines to create a mask from.
-        ego_loc: ego vehicle location.
-        ego_rot: ego vehicle rotation.
+        ego_tf: ego vehicle transform.
         xDim: BEV grid width.
         xRes: BEV grid width resolution.
         yDim: BEV grid height.
@@ -181,6 +180,9 @@ def get_multi_line_mask(
 
     if len(lines) == 0:
         return np.zeros((xDim, yDim), dtype=bool)
+    
+    ego_loc = ego_tf.location
+    ego_rot = ego_tf.rotation
 
     # Calculate the transformation from the global coordinates to the ego
     # vehicle's local coordinates.

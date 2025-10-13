@@ -392,6 +392,11 @@ class WorldManager:
             save: whether to save sensor data to file.
         '''
         # Clear all sensor queues before proceeding.
+        start = time.perf_counter()
+
+        if save:
+            self._vehicle_manager.get_sensor_manager().wait_for_saves()
+
         self._vehicle_manager.get_sensor_manager().clear_queues()
 
         # Randomly open the door of some vehicles that are stopped, then close
@@ -438,9 +443,14 @@ class WorldManager:
             
             if self._termination_counter * self._config['timestep'] >= self._config['termination_timeout']:
                 self._terminate_scene = True
+        
+        end = time.perf_counter()
+
+        logger.debug(f'Time taken for world tick: {end - start:.6f} seconds.')
     
     def stop_scene(self):
         '''Stop the scene.'''
+        self._vehicle_manager.get_sensor_manager().wait_for_saves()
         return self._scenario_manager.stop_scene()
     
     def destroy_vehicle(self):
