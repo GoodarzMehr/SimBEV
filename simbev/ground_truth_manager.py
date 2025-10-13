@@ -9,6 +9,7 @@ import cv2
 import json
 import carla
 import logging
+
 import numpy as np
 
 from utils import *

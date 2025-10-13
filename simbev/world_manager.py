@@ -393,7 +393,7 @@ class WorldManager:
         '''
         # Clear all sensor queues before proceeding.
         start = time.perf_counter()
-
+        
         if save:
             self._vehicle_manager.get_sensor_manager().wait_for_saves()
 
@@ -450,7 +450,6 @@ class WorldManager:
     
     def stop_scene(self):
         '''Stop the scene.'''
-        self._vehicle_manager.get_sensor_manager().wait_for_saves()
         return self._scenario_manager.stop_scene()
     
     def destroy_vehicle(self):
