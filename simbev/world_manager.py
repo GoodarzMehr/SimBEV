@@ -314,15 +314,24 @@ class WorldManager:
         '''Move the ego vehicle to a new spawn point.'''
         self._scenario_manager.scene_info = self._vehicle_manager.move_vehicle(self._spawn_points, self._tm_port)
     
-    def start_scene(self):
-        '''Start the scenario.'''
+    def start_scene(self, seed: int = None):
+        '''
+        Start the scene.
+        
+        Args:
+            seed: random seed for the scene.
+        '''
         try:
             self._counter = 0
             self._termination_counter = 0
             
             self._terminate_scene = False
 
-            # Add information about the scenario to the scene info.
+            if seed is not None:
+                self._world.set_pedestrians_seed(seed)
+                self._traffic_manager.set_random_device_seed(seed)
+
+            # Add information about the scene to the scene info.
             self._scenario_manager.scene_info['map'] = self._map_name
             self._scenario_manager.scene_info['vehicle'] = self._vehicle_manager.vehicle.type_id
             self._scenario_manager.scene_info['expected_scene_duration'] = self._scenario_manager.scene_duration
@@ -406,8 +415,14 @@ class WorldManager:
         if self._config['weather_shift'] and scene is not None:
             self._scenario_manager.shift_weather()
         
+        if frame is not None and frame == 0:
+            time.sleep(0.5)
+        
         # Proceed for one time step.
         self._world.tick()
+
+        if frame is not None and frame == 0:
+            time.sleep(0.5)
 
         self._set_spectator_view()
         
@@ -425,13 +440,13 @@ class WorldManager:
 
         # Render the data and ground truth.
         if render:
-            self._vehicle_manager.get_sensor_manager().render()
             self._vehicle_manager.get_ground_truth_manager().render()
+            self._vehicle_manager.get_sensor_manager().render()
         
         # Save the data and ground truth to file.
         if save and all(v is not None for v in [path, scene, frame]):
-            self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
             self._vehicle_manager.get_ground_truth_manager().save(path, scene, frame)
+            self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
 
         # Decide whether to terminate the scene.
         if scene is not None and self._config['early_scene_termination']:

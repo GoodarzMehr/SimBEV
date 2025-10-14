@@ -548,6 +548,11 @@ class GTManager:
         Args:
             sections: list of lane sections.
             roads: boolean indicating if the sections are road sections.
+        
+        Returns:
+            local_sections: list of the desired sections.
+            local_midlines: list of midlines (if road sections).
+            local_lines: list of lane lines (if road sections).
         '''
         chunk_size = 40
 
@@ -802,39 +807,38 @@ class GTManager:
         bev_gt = np.array([mask[key] for key in mask.keys()])
 
         return bev_gt
-
-    # TODO: Think about semi-reckless ego.
     
-    def get_bounding_boxes(self):
+    def get_bounding_boxes(self) -> List[dict]:
         '''
-        Get the bounding box of actors (including traffic elements) in the
-        scene that are within a certain radius of the ego vehicle.
+        Get the bounding box of actors (including traffic elements) and
+        static objects in the scene that are within a certain radius of the
+        ego vehicle.
+
+        Returns:
+            actors: list containing the properties of each actor/object.
         '''
-        self.actors = []
+        actors = []
 
         actor_list = self.world.get_actors()
 
         vehicle_location = self.vehicle.get_location()
 
         for actor in actor_list:
-            actor_properties = {}
             actor_location = actor.get_location()
 
             if vehicle_location.distance(actor_location) < self.config['bbox_collection_radius'] \
                 and all(x not in actor.type_id for x in ['spectator', 'sensor', 'controller']) \
                     and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]):
-                actor_properties['id'] = actor.id
-                actor_properties['type'] = str(actor.type_id)
-                actor_properties['is_alive'] = actor.is_alive
-                actor_properties['is_active'] = actor.is_active
-                actor_properties['is_dormant'] = actor.is_dormant
-                actor_properties['parent'] = actor.parent.id if actor.parent is not None else None
-                actor_properties['attributes'] = actor.attributes
+                actor_properties = self._get_basic_actor_properties(actor)
+                
                 actor_properties['semantic_tags'] = actor.semantic_tags
 
                 bounding_box = actor.bounding_box
                 
-                if 'use_wheelchair' in actor_properties['attributes'] and actor_properties['attributes']['use_wheelchair'] == 'true':
+                # The default bounding boxes for wheelchair users and certain
+                # pedestrians are incorrect, so they are adjusted here.
+                if 'use_wheelchair' in actor_properties['attributes'] and \
+                    actor_properties['attributes']['use_wheelchair'] == 'true':
                     bounding_box.extent = carla.Vector3D(0.64, 0.48, 0.8)
 
                     bounding_box.location.x += (0.6 - actor.bounding_box.extent.x)
@@ -847,72 +851,55 @@ class GTManager:
                 actor_properties['bounding_box'] = carla_vector_to_numpy(
                     bounding_box.get_world_vertices(actor.get_transform())
                 )
-                
-                actor_properties['linear_velocity'] = carla_single_vector_to_numpy(actor.get_velocity())
-                actor_properties['angular_velocity'] = carla_single_vector_to_numpy(actor.get_angular_velocity())
 
                 actor_properties['bounding_box'][:, 1] *= -1.0
-                actor_properties['linear_velocity'][1] *= -1.0
-                actor_properties['angular_velocity'][1:] *= -1.0
 
-                self.actors.append(actor_properties)
+                actors.append(actor_properties)
 
-            # Get traffic lights.
-            if self.config['collect_traffic_light_bbox']:
-                if isinstance(actor, carla.TrafficLight):
-                    if vehicle_location.distance(actor_location) < self.config['bbox_collection_radius']:
-                        bounding_boxes = actor.get_light_boxes()
+            # Get the traffic lights.
+            if self.config['collect_traffic_light_bbox'] and isinstance(actor, carla.TrafficLight) \
+                and vehicle_location.distance(actor_location) < self.config['bbox_collection_radius']:
+                bounding_boxes = actor.get_light_boxes()
 
-                        for bounding_box in bounding_boxes:
-                            if bounding_box.extent.z > 0.3:
-                                actor_properties = {}
+                for bounding_box in bounding_boxes:
+                    if bounding_box.extent.z > 0.3:
+                        actor_properties = self._get_basic_actor_properties(actor)
 
-                                actor_properties['id'] = actor.id
-                                actor_properties['type'] = str(actor.type_id)
-                                actor_properties['is_alive'] = actor.is_alive
-                                actor_properties['is_active'] = actor.is_active
-                                actor_properties['is_dormant'] = actor.is_dormant
-                                actor_properties['parent'] = actor.parent.id if actor.parent is not None else None
-                                actor_properties['attributes'] = actor.attributes
-                                actor_properties['semantic_tags'] = [7]
+                        actor_properties['semantic_tags'] = [7]
 
-                                if self.map_name in ['Town12', 'Town13']:
-                                    tile_bounding_box = carla_vector_to_numpy(bounding_box.get_local_vertices())
+                        # In Town12 and Town13, bounding box coordinates are
+                        # relative to the map tile, so we use the location of
+                        # the actor to find their coordinates in the global
+                        # coordinate frame.
+                        if self.map_name in ['Town12', 'Town13']:
+                            tile_bounding_box = carla_vector_to_numpy(bounding_box.get_local_vertices())
 
-                                    x_difference = np.round((actor_location.x - bounding_box.location.x) / 1000.0) \
-                                        * 1000.0
-                                    y_difference = np.round((actor_location.y - bounding_box.location.y) / 1000.0) \
-                                        * 1000.0
+                            x_difference = np.round((actor_location.x - bounding_box.location.x) / 1000.0) * 1000.0
+                            y_difference = np.round((actor_location.y - bounding_box.location.y) / 1000.0) * 1000.0
 
-                                    actor_properties['bounding_box'] = tile_bounding_box + np.array([
-                                        x_difference, y_difference, 0.0
-                                    ])
-                                else:
-                                    actor_properties['bounding_box'] = carla_vector_to_numpy(
-                                        bounding_box.get_local_vertices()
-                                    )
+                            actor_properties['bounding_box'] = tile_bounding_box + np.array([
+                                x_difference, y_difference, 0.0
+                            ])
+                        else:
+                            actor_properties['bounding_box'] = carla_vector_to_numpy(
+                                bounding_box.get_local_vertices()
+                            )
 
-                                actor_properties['linear_velocity'] = np.zeros(3)
-                                actor_properties['angular_velocity'] = np.zeros(3)
+                        actor_properties['bounding_box'][:, 1] *= -1.0
 
-                                actor_properties['bounding_box'][:, 1] *= -1.0
+                        actor_properties['green_time'] = actor.get_green_time()
+                        actor_properties['yellow_time'] = actor.get_yellow_time()
+                        actor_properties['red_time'] = actor.get_red_time()
+                        
+                        actor_properties['state'] = str(actor.get_state())
 
-                                actor_properties['green_time'] = actor.get_green_time()
-                                actor_properties['yellow_time'] = actor.get_yellow_time()
-                                actor_properties['red_time'] = actor.get_red_time()
-                                
-                                actor_properties['state'] = str(actor.get_state())
+                        actor_properties['opendrive_id'] = actor.get_opendrive_id()
+                        actor_properties['pole_index'] = actor.get_pole_index()
 
-                                actor_properties['opendrive_id'] = actor.get_opendrive_id()
-                                actor_properties['pole_index'] = actor.get_pole_index()
-
-                                self.actors.append(actor_properties)
+                        actors.append(actor_properties)
         
         # Get the list of objects (props) in the scene, i.e. parked cars,
         # trucks, etc. that are within a certain radius of the ego vehicle.
-        if self.config['collect_traffic_sign_bbox']:
-            traffic_sign_list = self.world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
-        
         car_list = self.world.get_environment_objects(carla.CityObjectLabel.Car)
         truck_list = self.world.get_environment_objects(carla.CityObjectLabel.Truck)
         bus_list = self.world.get_environment_objects(carla.CityObjectLabel.Bus)
@@ -920,12 +907,15 @@ class GTManager:
         bicycle_list = self.world.get_environment_objects(carla.CityObjectLabel.Bicycle)
 
         if self.config['collect_traffic_sign_bbox']:
+            traffic_sign_list = self.world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
+
             object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
         else:
             object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
 
         for obj in object_list:
             object_properties = {}
+            
             object_location = obj.transform.location if self.map_name not in ['Town12', 'Town13'] \
                 else obj.bounding_box.location
 
@@ -954,7 +944,6 @@ class GTManager:
                     if self.map_name not in ['Town12', 'Town13', 'Town15'] and \
                         'speed_limit' in object_properties['sign_type']:
                         object_properties['sign_type'] = 'speed_limit'
-
                 elif obj.type == carla.CityObjectLabel.Car:
                     object_properties['semantic_tags'] = [14]
                 elif obj.type == carla.CityObjectLabel.Truck:
@@ -968,13 +957,45 @@ class GTManager:
                 else:
                     object_properties['semantic_tags'] = []
 
-                self.actors.append(object_properties)
+                actors.append(object_properties)
         
-        return self.actors
+        return actors
 
+    def _get_basic_actor_properties(self, actor: carla.Actor) -> dict:
+        '''
+        Get the basic properties of a given actor.
+
+        Args:
+            actor: CARLA actor.
+        
+        Returns:
+            actor_properties: dictionary of basic actor properties.
+        '''
+        actor_properties = {}
+
+        actor_properties['id'] = actor.id
+        actor_properties['type'] = str(actor.type_id)
+        actor_properties['is_alive'] = actor.is_alive
+        actor_properties['is_active'] = actor.is_active
+        actor_properties['is_dormant'] = actor.is_dormant
+        actor_properties['parent'] = actor.parent.id if actor.parent is not None else None
+        actor_properties['attributes'] = actor.attributes
+
+        actor_properties['linear_velocity'] = carla_single_vector_to_numpy(actor.get_velocity())
+        actor_properties['angular_velocity'] = carla_single_vector_to_numpy(actor.get_angular_velocity())
+
+        actor_properties['linear_velocity'][1] *= -1.0
+        actor_properties['angular_velocity'][1:] *= -1.0
+
+        return actor_properties
+    
     def get_hd_map_info(self):
         '''
-        Get HD map information from the waypoint at the vehicle's current location.
+        Get HD map information from the waypoint at the vehicle's current
+        location.
+
+        Returns:
+            hd_map_info: HD map information.
         '''
         hd_map_info = {}
 
@@ -994,20 +1015,6 @@ class GTManager:
         hd_map_info['junction_id'] = wp.junction_id if wp.is_junction else None
         hd_map_info['is_intersection'] = wp.is_intersection
 
-        hd_map_info['left_lane_marking'] = {
-            'type': str(wp.left_lane_marking.type),
-            'width': wp.left_lane_marking.width,
-            'color': str(wp.left_lane_marking.color),
-            'lane_change': str(wp.left_lane_marking.lane_change)
-        }
-
-        hd_map_info['right_lane_marking'] = {
-            'type': str(wp.right_lane_marking.type),
-            'width': wp.right_lane_marking.width,
-            'color': str(wp.right_lane_marking.color),
-            'lane_change': str(wp.right_lane_marking.lane_change)
-        }
-
         hd_map_info['transform'] = {
             'x': wp.transform.location.x,
             'y': -wp.transform.location.y,
@@ -1016,36 +1023,40 @@ class GTManager:
             'pitch': -wp.transform.rotation.pitch,
             'yaw': -wp.transform.rotation.yaw
         }
+        
+        for direction in ['left', 'right']:
+            adjacent_lane_marking = wp.left_lane_marking if direction == 'left' else wp.right_lane_marking
 
-        left_lane_wp = wp.get_left_lane()
-        right_lane_wp = wp.get_right_lane()
+            hd_map_info[f'{direction}_lane_marking'] = {
+                'type': str(adjacent_lane_marking.type),
+                'width': adjacent_lane_marking.width,
+                'color': str(adjacent_lane_marking.color),
+                'lane_change': str(adjacent_lane_marking.lane_change)
+            }
 
-        hd_map_info['left_lane'] = {}
-        hd_map_info['right_lane'] = {}
+            adjacent_lane_wp = wp.get_left_lane() if direction == 'left' else wp.get_right_lane()
 
-        if left_lane_wp is not None:
-            hd_map_info['left_lane']['id'] = left_lane_wp.id
-            hd_map_info['left_lane']['s'] = left_lane_wp.s
-            hd_map_info['left_lane']['road_id'] = left_lane_wp.road_id
-            hd_map_info['left_lane']['section_id'] = left_lane_wp.section_id
-            hd_map_info['left_lane']['lane_id'] = left_lane_wp.lane_id
-            hd_map_info['left_lane']['lane_type'] = str(left_lane_wp.lane_type)
-            hd_map_info['left_lane']['lane_width'] = left_lane_wp.lane_width
-            hd_map_info['left_lane']['lane_change'] = str(left_lane_wp.lane_change)
+            hd_map_info[f'{direction}_lane'] = {}
 
-        if right_lane_wp is not None:
-            hd_map_info['right_lane']['id'] = right_lane_wp.id
-            hd_map_info['right_lane']['s'] = right_lane_wp.s
-            hd_map_info['right_lane']['road_id'] = right_lane_wp.road_id
-            hd_map_info['right_lane']['section_id'] = right_lane_wp.section_id
-            hd_map_info['right_lane']['lane_id'] = right_lane_wp.lane_id
-            hd_map_info['right_lane']['lane_type'] = str(right_lane_wp.lane_type)
-            hd_map_info['right_lane']['lane_width'] = right_lane_wp.lane_width
-            hd_map_info['right_lane']['lane_change'] = str(right_lane_wp.lane_change)
+            if adjacent_lane_wp is not None:
+                hd_map_info[f'{direction}_lane']['id'] = adjacent_lane_wp.id
+                hd_map_info[f'{direction}_lane']['s'] = adjacent_lane_wp.s
+                hd_map_info[f'{direction}_lane']['road_id'] = adjacent_lane_wp.road_id
+                hd_map_info[f'{direction}_lane']['section_id'] = adjacent_lane_wp.section_id
+                hd_map_info[f'{direction}_lane']['lane_id'] = adjacent_lane_wp.lane_id
+                hd_map_info[f'{direction}_lane']['lane_type'] = str(adjacent_lane_wp.lane_type)
+                hd_map_info[f'{direction}_lane']['lane_width'] = adjacent_lane_wp.lane_width
+                hd_map_info[f'{direction}_lane']['lane_change'] = str(adjacent_lane_wp.lane_change)
         
         return hd_map_info
     
     def _prepare_canvas(self):
+        '''
+        Prepare a canvas for rendering the BEV ground truth.
+        
+        Returns:
+            canvas: canvas containing the BEV ground truth.
+        '''
         background = (255, 255, 255)
     
         canvas = np.zeros((self.config['bev_dim'], self.config['bev_dim'], 3), dtype=np.uint8)
@@ -1064,6 +1075,7 @@ class GTManager:
         return canvas
     
     def get_ground_truth(self):
+        '''Get the ground truth.'''
         # If nearby roads do not have an elevation difference of more than
         # 6.4 meters, get the ground truth using the top and bottom
         # semantic cameras and road waypoints. Otherwise (i.e. when near
@@ -1098,15 +1110,20 @@ class GTManager:
         self.canvas = self._prepare_canvas()
     
     def render(self):
-        '''
-        Render the BEV ground truth.
-        '''
+        '''Render the BEV ground truth.'''
         cv2.imshow('Ground Truth', self.canvas)
         cv2.waitKey(1)
     
     def save(self, path, scene, frame):
-        with open(
-            f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz', 'wb') as f:
+        '''
+        Save the ground truth.
+
+        Args:
+            path: root directory of the dataset.
+            scene: scene number.
+            frame: frame number.
+        '''
+        with open(f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz', 'wb') as f:
             np.savez_compressed(f, data=self.bev_gt)
 
         cv2.imwrite(
@@ -1114,10 +1131,10 @@ class GTManager:
             self.canvas
         )
         
-        self.get_bounding_boxes()
+        actors = self.get_bounding_boxes()
 
         with open(f'{path}/simbev/ground-truth/det/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_DET.bin', 'wb') as f:
-            np.save(f, np.array(self.actors), allow_pickle=True)
+            np.save(f, np.array(actors), allow_pickle=True)
 
         hd_map_info = self.get_hd_map_info()
 
