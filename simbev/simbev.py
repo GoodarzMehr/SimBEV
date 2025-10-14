@@ -5,6 +5,7 @@ import yaml
 import time
 import json
 import copy
+import random
 import argparse
 import traceback
 
@@ -340,6 +341,14 @@ def main():
                 if config[f'{split}_scene_config'] is not None:
                     for town in config[f'{split}_scene_config']:
                         if config[f'{split}_scene_config'][town] > 0:
+                            if config['use_scene_number_for_random_seed']:
+                                seed = scene_counter + config['random_seed_offset']
+
+                                random.seed(seed)
+                                np.random.seed(seed)
+                            else:
+                                seed = None
+                            
                             core.connect_client()
                             
                             core.load_map(town)
@@ -349,6 +358,14 @@ def main():
                             for i in range(config[f'{split}_scene_config'][town]):
                                 logger.info(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
 
+                                if config['use_scene_number_for_random_seed']:
+                                    seed = scene_counter + config['random_seed_offset']
+
+                                    random.seed(seed)
+                                    np.random.seed(seed)
+                                else:
+                                    seed = None
+                                
                                 # Randomly select the scene duration.
                                 scene_duration = max(
                                     round(np.random.uniform(
@@ -367,7 +384,7 @@ def main():
                                 if i > 0:
                                     core.move_vehicle()
 
-                                core.start_scene()
+                                core.start_scene(seed)
 
                                 # Run the simulation for a few seconds so
                                 # everything gets going.
@@ -465,6 +482,14 @@ def main():
                         if f'scene_{scene_counter:04d}' in data.keys():
                             town = data[f'scene_{scene_counter:04d}']['scene_info']['map']
 
+                            if config['use_scene_number_for_random_seed']:
+                                seed = scene_counter + config['random_seed_offset']
+
+                                random.seed(seed)
+                                np.random.seed(seed)
+                            else:
+                                seed = None
+
                             # Load a new map if necessary.
                             if town != core.get_world_manager().get_map_name():
                                 core.connect_client()
@@ -485,7 +510,7 @@ def main():
                             
                             core.spawn_vehicle()
                             
-                            core.start_scene()
+                            core.start_scene(seed)
 
                             # Run the simulation for a few seconds so
                             # everything gets going.

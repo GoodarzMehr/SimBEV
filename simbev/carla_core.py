@@ -37,7 +37,7 @@ class CarlaCore:
     def __getstate__(self):
         logger.warning('No pickles for CARLA! Copyright © 2025 Goodarz Mehr')
     
-    def get_world_manager(self):
+    def get_world_manager(self) -> WorldManager:
         '''Get the World Manager.'''
         return self._world_manager
     
@@ -158,10 +158,15 @@ class CarlaCore:
         '''Move the vehicle.'''
         return self._world_manager.move_vehicle()
     
-    def start_scene(self):
-        '''Start the scene.'''
-        return self._world_manager.start_scene()
-    
+    def start_scene(self, seed: int = None):
+        '''
+        Start the scene.
+        
+        Args:
+            seed: random seed for the scene.
+        '''
+        return self._world_manager.start_scene(seed)
+
     def tick(self, path: str = None, scene: int = None, frame: int = None, render: bool = False, save: bool = False):
         '''
         Proceed for one time step.

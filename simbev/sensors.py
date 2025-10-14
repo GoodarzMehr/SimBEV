@@ -152,13 +152,13 @@ class BaseCamera(BaseSensor):
         '''Clear the queues to ensure only the latest image is accessible.'''
         with self._render_queue.mutex:
             self._render_queue.queue.clear()
-            self._render_queue.all_tasks_done.notify_all()
             self._render_queue.unfinished_tasks = 0
+            self._render_queue.all_tasks_done.notify_all()
 
         with self._save_queue.mutex:
             self._save_queue.queue.clear()
-            self._save_queue.all_tasks_done.notify_all()
             self._save_queue.unfinished_tasks = 0
+            self._save_queue.all_tasks_done.notify_all()
     
     def destroy(self):
         '''Destroy the camera.'''
@@ -491,13 +491,13 @@ class BaseLidar(BaseSensor):
         '''
         with self._render_queue.mutex:
             self._render_queue.queue.clear()
-            self._render_queue.all_tasks_done.notify_all()
             self._render_queue.unfinished_tasks = 0
+            self._render_queue.all_tasks_done.notify_all()
 
         with self._save_queue.mutex:
             self._save_queue.queue.clear()
-            self._save_queue.all_tasks_done.notify_all()
             self._save_queue.unfinished_tasks = 0
+            self._save_queue.all_tasks_done.notify_all()
     
     def _create_visualizer(self, window_name, width=1024, height=1024):
         '''
@@ -806,13 +806,13 @@ class Radar(BaseSensor):
         '''
         with self._render_queue.mutex:
             self._render_queue.queue.clear()
-            self._render_queue.all_tasks_done.notify_all()
             self._render_queue.unfinished_tasks = 0
+            self._render_queue.all_tasks_done.notify_all()
 
         with self._save_queue.mutex:
             self._save_queue.queue.clear()
-            self._save_queue.all_tasks_done.notify_all()
             self._save_queue.unfinished_tasks = 0
+            self._save_queue.all_tasks_done.notify_all()
     
     def _create_visualizer(self, window_name, width=1024, height=1024):
         '''
@@ -990,8 +990,8 @@ class GNSS(BaseSensor):
         '''
         with self._save_queue.mutex:
             self._save_queue.queue.clear()
-            self._save_queue.all_tasks_done.notify_all()
             self._save_queue.unfinished_tasks = 0
+            self._save_queue.all_tasks_done.notify_all()
     
     def save(self, path, scene, frame):
         '''
@@ -1077,8 +1077,8 @@ class IMU(BaseSensor):
         '''
         with self._save_queue.mutex:
             self._save_queue.queue.clear()
-            self._save_queue.all_tasks_done.notify_all()
             self._save_queue.unfinished_tasks = 0
+            self._save_queue.all_tasks_done.notify_all()
     
     def save(self, path, scene, frame):
         '''

@@ -8,7 +8,6 @@ simulation.
 
 import time
 import carla
-import torch
 import logging
 
 from utils import is_used, kill_all_servers
@@ -36,11 +35,11 @@ class WorldManager:
         self._client = client
         self._server_port = server_port
     
-    def get_terminate_scene(self):
+    def get_terminate_scene(self) -> bool:
         '''Get scene termination status.'''
         return self._terminate_scene
     
-    def get_map_name(self):
+    def get_map_name(self) -> str:
         '''Get the name of the current map.'''
         return self._map_name
     
@@ -73,8 +72,11 @@ class WorldManager:
 
         self._map_name = map_name
         
-        self._client.load_world(map_name)
-        
+        if map_name == 'Town10HD':
+            self._client.load_world('Town10HD_Opt')
+        else:
+            self._client.load_world(map_name)
+
         self._world = self._client.get_world()
         self._map = self._world.get_map()
         self._spectator = self._world.get_spectator()
@@ -163,6 +165,36 @@ class WorldManager:
                 'Cube'
             ]
         elif map_name == 'Town10HD':
+            # The first ones are for Town10HD, the second ones are for
+            # Town10HD_Opt.
+            # obstructing = [
+            #     'SM_Tesla2',
+            #     'SM_Tesla_2502',
+            #     'SM_Mustang_prop2',
+            #     'SM_Patrol2021Parked2',
+            #     'SM_mercedescccParked2',
+            #     'SM_LincolnMkz2017_prop',
+            #     'Vh_Car_ToyotaPrius_NOrig',
+            #     'InstancedFoliageActor_0_Inst_235_0',
+            #     'InstancedFoliageActor_0_Inst_239_4',
+            #     'InstancedFoliageActor_0_Inst_245_10',
+            #     'InstancedFoliageActor_0_Inst_246_11',
+            #     'InstancedFoliageActor_0_Inst_249_14',
+            #     'InstancedFoliageActor_0_Inst_250_15',
+            #     'InstancedFoliageActor_0_Inst_251_16',
+            #     'InstancedFoliageActor_0_Inst_252_17',
+            #     'InstancedFoliageActor_0_Inst_253_18',
+            #     'InstancedFoliageActor_0_Inst_254_19',
+            #     'InstancedFoliageActor_0_Inst_255_20',
+            #     'InstancedFoliageActor_0_Inst_256_21',
+            #     'InstancedFoliageActor_0_Inst_257_22',
+            #     'InstancedFoliageActor_0_Inst_258_23',
+            #     'InstancedFoliageActor_0_Inst_259_24',
+            #     'InstancedFoliageActor_0_Inst_260_25',
+            #     'InstancedFoliageActor_0_Inst_261_26',
+            #     'InstancedFoliageActor_0_Inst_276_41',
+            #     'InstancedFoliageActor_0_Inst_277_42'
+            # ]
             obstructing = [
                 'SM_Tesla2',
                 'SM_Tesla_2502',
@@ -171,25 +203,16 @@ class WorldManager:
                 'SM_mercedescccParked2',
                 'SM_LincolnMkz2017_prop',
                 'Vh_Car_ToyotaPrius_NOrig',
-                'InstancedFoliageActor_0_Inst_235_0',
-                'InstancedFoliageActor_0_Inst_239_4',
-                'InstancedFoliageActor_0_Inst_245_10',
-                'InstancedFoliageActor_0_Inst_246_11',
-                'InstancedFoliageActor_0_Inst_249_14',
-                'InstancedFoliageActor_0_Inst_250_15',
-                'InstancedFoliageActor_0_Inst_251_16',
-                'InstancedFoliageActor_0_Inst_252_17',
-                'InstancedFoliageActor_0_Inst_253_18',
-                'InstancedFoliageActor_0_Inst_254_19',
-                'InstancedFoliageActor_0_Inst_255_20',
-                'InstancedFoliageActor_0_Inst_256_21',
-                'InstancedFoliageActor_0_Inst_257_22',
-                'InstancedFoliageActor_0_Inst_258_23',
-                'InstancedFoliageActor_0_Inst_259_24',
-                'InstancedFoliageActor_0_Inst_260_25',
-                'InstancedFoliageActor_0_Inst_261_26',
-                'InstancedFoliageActor_0_Inst_276_41',
-                'InstancedFoliageActor_0_Inst_277_42'
+                'InstancedFoliageActor_0_Inst_12961_0',
+                'InstancedFoliageActor_0_Inst_12965_4',
+                'InstancedFoliageActor_0_Inst_12971_10',
+                'InstancedFoliageActor_0_Inst_12972_11',
+                'InstancedFoliageActor_0_Inst_12980_19',
+                'InstancedFoliageActor_0_Inst_12981_20',
+                'InstancedFoliageActor_0_Inst_12982_21',
+                'InstancedFoliageActor_0_Inst_12983_22',
+                'InstancedFoliageActor_0_Inst_13002_41',
+                'InstancedFoliageActor_0_Inst_13003_42'
             ]
         else:
             obstructing = []
@@ -291,15 +314,24 @@ class WorldManager:
         '''Move the ego vehicle to a new spawn point.'''
         self._scenario_manager.scene_info = self._vehicle_manager.move_vehicle(self._spawn_points, self._tm_port)
     
-    def start_scene(self):
-        '''Start the scenario.'''
+    def start_scene(self, seed: int = None):
+        '''
+        Start the scene.
+        
+        Args:
+            seed: random seed for the scene.
+        '''
         try:
             self._counter = 0
             self._termination_counter = 0
             
             self._terminate_scene = False
 
-            # Add information about the scenario to the scene info.
+            if seed is not None:
+                self._world.set_pedestrians_seed(seed)
+                self._traffic_manager.set_random_device_seed(seed)
+
+            # Add information about the scene to the scene info.
             self._scenario_manager.scene_info['map'] = self._map_name
             self._scenario_manager.scene_info['vehicle'] = self._vehicle_manager.vehicle.type_id
             self._scenario_manager.scene_info['expected_scene_duration'] = self._scenario_manager.scene_duration
@@ -312,7 +344,8 @@ class WorldManager:
             # Preprocess the waypoints and crosswalks for ground truth
             # generation.
             self._vehicle_manager.get_ground_truth_manager().augment_waypoints(self._waypoints)
-            self._vehicle_manager.get_ground_truth_manager().trim_crosswalks(self._crosswalks)
+            self._vehicle_manager.get_ground_truth_manager().get_area_crosswalks(self._crosswalks)
+            self._vehicle_manager.get_ground_truth_manager().get_bounding_boxes()
 
             self._scenario_manager.setup_scenario(
                 self._vehicle_manager.vehicle.get_location(),
@@ -367,6 +400,10 @@ class WorldManager:
             render: whether to render sensor data.
             save: whether to save sensor data to file.
         '''
+        # Wait for all I/O operations to finish before proceeding.
+        if save:
+            self._vehicle_manager.get_sensor_manager().wait_for_saves()
+
         # Clear all sensor queues before proceeding.
         self._vehicle_manager.get_sensor_manager().clear_queues()
 
@@ -378,8 +415,14 @@ class WorldManager:
         if self._config['weather_shift'] and scene is not None:
             self._scenario_manager.shift_weather()
         
+        if frame is not None and frame == 0:
+            time.sleep(0.5)
+        
         # Proceed for one time step.
         self._world.tick()
+
+        if frame is not None and frame == 0:
+            time.sleep(0.5)
 
         self._set_spectator_view()
         
@@ -389,13 +432,7 @@ class WorldManager:
             ground_truth_manager = self._vehicle_manager.get_ground_truth_manager()
             
             if self._counter % round(0.5 / self._config['timestep']) == 0:
-                ground_truth_manager.trim_waypoints()
-
-            # Torch can hog GPU memory when calculating the ground truth, so
-            # empty it every once in a while.
-            if self._counter % 40 == 5:
-                with torch.cuda.device(f'cuda:{self._config["cuda_gpu"]}'):
-                    torch.cuda.empty_cache()
+                ground_truth_manager.trim_map_sections()
             
             self._counter += 1
             
@@ -403,13 +440,13 @@ class WorldManager:
 
         # Render the data and ground truth.
         if render:
-            self._vehicle_manager.get_sensor_manager().render()
             self._vehicle_manager.get_ground_truth_manager().render()
+            self._vehicle_manager.get_sensor_manager().render()
         
         # Save the data and ground truth to file.
         if save and all(v is not None for v in [path, scene, frame]):
-            self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
             self._vehicle_manager.get_ground_truth_manager().save(path, scene, frame)
+            self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
 
         # Decide whether to terminate the scene.
         if scene is not None and self._config['early_scene_termination']:
@@ -429,7 +466,7 @@ class WorldManager:
         '''Destroy the vehicle.'''
         return self._vehicle_manager.destroy_vehicle()
     
-    def package_data(self):
+    def package_data(self) -> dict:
         '''
         Package scene information and data into a dictionary and return it.
 

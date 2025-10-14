@@ -18,28 +18,28 @@ train_scene_config:
 val_scene_config:
   # Town01: 1
   # Town02: 1
-  # Town03: 2
-  # Town04: 2
-  Town05: 1
-  # Town06: 2
+  # Town03: 1
+  # Town04: 1
+  # Town05: 1
+  # Town06: 1
   # Town07: 1
-  # Town10HD: 1
-  # Town12: 2
-  # Town13: 2
-  # Town15: 2
+  Town10HD: 4
+  # Town12: 1
+  # Town13: 1
+  # Town15: 1
 
 test_scene_config:
-  # Town01: 2
-  # Town02: 2
-  # Town03: 4
-  # Town04: 4
-  # Town05: 4
-  # Town06: 4
-  # Town07: 4
-  # Town10HD: 4
-  # Town12: 8
-  # Town13: 8
-  # Town15: 6
+  # Town01: 1
+  # Town02: 1
+  # Town03: 1
+  # Town04: 1
+  # Town05: 1
+  # Town06: 1
+  # Town07: 1
+  # Town10HD: 1
+  # Town12: 1
+  # Town13: 1
+  # Town15: 1
 
 # When mode is 'replace' the following configuration denotes the list of
 # scenes that should be overwritten.
@@ -53,7 +53,7 @@ simulate_physics: True
 
 warmup_duration: 4
 min_scene_duration: 8
-max_scene_duration: 32
+max_scene_duration: 40
 
 early_scene_termination: True
 termination_timeout: 8
@@ -68,18 +68,22 @@ quality_level: 'Epic'
 retries_on_error: 10
 
 render_gpu: 0
-cuda_gpu: 1
+
+max_io_workers: 48
+
+use_scene_number_for_random_seed: True
+random_seed_offset: 27
 
 tile_stream_distance: 960.0
 actor_active_distance: 960.0
 
 waypoint_distance: 0.4
 mapping_area_radius: 960.0
-nearby_mapping_area_radius: 132.0
+nearby_mapping_area_radius: 140.0
 
 spawn_point_separation_distance: 24.0
 
-bbox_collection_radius: 120.0
+bbox_collection_radius: 140.0
 
 npc_spawn_radius: 480.0
 
@@ -100,11 +104,11 @@ door_open_percentage: 10.0
 
 emergency_lights_percentage: 50.0
 
-reckless_ego: True
 reckless_ego_percentage: 1.0
-
-reckless_npc: True
 reckless_npc_percentage: 1.0
+
+distracted_ego_percentage: 4.0
+distracted_npc_percentage: 4.0
 
 walker_spawn_attempts: 100
 
@@ -213,7 +217,7 @@ imu_properties:
 # street_light_intensity_change: -2000000.0
 
 # n_vehicles: 0
-# n_walkers: 400
+# n_walkers: 0
 
 # walker_cross_factor: 0.6
 
@@ -234,15 +238,15 @@ imu_properties:
 #   fog_falloff: 0.1
 
 # final_weather:
-#   cloudiness: 100.0
-#   precipitation: 100.0
-#   precipitation_deposits: 100.0
+#   cloudiness: 10.0
+#   precipitation: 0.0
+#   precipitation_deposits: 0.0
 #   wind_intensity: 10.0
 #   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: -20.0
-#   wetness: 100.0
-#   fog_density: 100.0
-#   fog_distance: 10.0
+#   sun_altitude_angle: 21.0
+#   wetness: 10.0
+#   fog_density: 2.0
+#   fog_distance: 100.0
 #   fog_falloff: 1.0
 
 # ego_vehicle_spawn_point:
@@ -276,6 +280,12 @@ imu_properties:
 #   ]
 #   Town12: [
 #       [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
+#   ]
+#   Town13: [
+#       [[2497.6, 4445.6, 171.5], [0.0, 0.0, 126.7]],
+#       [[1253.5, 790.7, 149.2], [0.0, 0.0, 90.0]],
+#       [[2526.3, 6388.1, 166.3], [0.0, 0.0, -131.8]],
+#       [[2314.3, 4143.0, 179.7], [0.0, 0.0, 70.3]]
 #   ]
 #   Town15: [
 #       [[-121.87, 169.54, 151.81], [0.0, 0.28, 3.19]]
