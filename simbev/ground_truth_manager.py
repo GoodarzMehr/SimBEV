@@ -139,14 +139,14 @@ class GTManager:
         map_name: name of the CARLA map.
     '''
     def __init__(self, config, world, vehicle, sensor_manager, map_name):
-        self.config = config
-        self.world = world
-        self.vehicle = vehicle
-        self.sensor_manager = sensor_manager
-        self.map_name = map_name
+        self._config = config
+        self._world = world
+        self._vehicle = vehicle
+        self._sensor_manager = sensor_manager
+        self._map_name = map_name
 
-        self.map = self.world.get_map()
-        self.objects = self.world.get_environment_objects()
+        self._map = self._world.get_map()
+        self._objects = self._world.get_environment_objects()
 
     def augment_waypoints(self, waypoints: List[carla.Waypoint]):
         '''
@@ -155,15 +155,15 @@ class GTManager:
         Args:
             waypoints: list of waypoints.
         '''
-        self.warning_flag = False
+        self._warning_flag = False
 
         # Filter the list of waypoints to get those near the spawn area.
-        vehicle_location = self.vehicle.get_location()
+        vehicle_location = self._vehicle.get_location()
         
         area_waypoints = [
             wp for wp in waypoints if vehicle_location.distance(
                 wp.transform.location
-            ) < self.config['mapping_area_radius']
+            ) < self._config['mapping_area_radius']
         ]
 
         # The list of generated waypoints only includes those in lanes where
@@ -171,15 +171,15 @@ class GTManager:
         # lanes, if those lanes are Parking, Bidirectional, or Biking; or if
         # those lanes are NONE, Shoulder, or Border, provided that at least
         # one of the lane markings is not NONE, Grass, or Curb.
-        self.good_lane_types = [carla.LaneType.Parking, carla.LaneType.Bidirectional, carla.LaneType.Biking]
-        self.conditional_lane_types = [carla.LaneType.NONE, carla.LaneType.Shoulder, carla.LaneType.Border]
+        self._good_lane_types = [carla.LaneType.Parking, carla.LaneType.Bidirectional, carla.LaneType.Biking]
+        self._conditional_lane_types = [carla.LaneType.NONE, carla.LaneType.Shoulder, carla.LaneType.Border]
 
-        self.bad_lane_marking_types = [
+        self._bad_lane_marking_types = [
             carla.LaneMarkingType.NONE,
             carla.LaneMarkingType.Grass,
             carla.LaneMarkingType.Curb
         ]
-        self.single_lane_marking_types = [
+        self._single_lane_marking_types = [
             carla.LaneMarkingType.Solid,
             carla.LaneMarkingType.Broken,
             carla.LaneMarkingType.Other,
@@ -196,7 +196,7 @@ class GTManager:
         
         area_waypoints += adjacent_waypoints
 
-        self.world.tick()
+        self._world.tick()
 
         logger.debug(f'Compiled a list of {len(area_waypoints)} road waypoints.')
         logger.debug('Compiling a list of sidewalk points...')
@@ -208,14 +208,14 @@ class GTManager:
             self._get_sidewalk_points(wp, sidewalk_points)
 
             if wp.is_junction:
-                waypoint = self.map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
+                waypoint = self._map.get_waypoint(wp.transform.location, lane_type=carla.LaneType.Sidewalk)
                 
                 if waypoint is not None:
                     sidewalk_points.append(waypoint)
 
                     self._get_sidewalk_points(waypoint, sidewalk_points)
         
-        self.world.tick()
+        self._world.tick()
 
         logger.debug(f'Compiled a list of {len(sidewalk_points)} sidewalk points.')
 
@@ -227,7 +227,7 @@ class GTManager:
         # correspond to individual sidewalk sections.
         sidewalk_lane_section_id_triplets = set([(wp.road_id, wp.section_id, wp.lane_id) for wp in sidewalk_points])
         
-        if self.map_name == 'Town07':
+        if self._map_name == 'Town07':
             for triplet in [(2, 0, 1), (2, 0, 8), (30, 0, 1), (30, 0, 8), (54, 0, 1), (54, 0, 8)]:
                 sidewalk_lane_section_id_triplets.add(triplet)
         
@@ -240,16 +240,16 @@ class GTManager:
 
         # Get comprehensive information about every lane section from the list
         # of road/lane ID pairs.
-        self.road_sections = self._get_sections_from_id_pairs(road_lane_id_pairs)
-        self.sidewalk_sections = self._get_sections_from_id_pairs(sidewalk_lane_id_pairs, roads=False)
+        self._road_sections = self._get_sections_from_id_pairs(road_lane_id_pairs)
+        self._sidewalk_sections = self._get_sections_from_id_pairs(sidewalk_lane_id_pairs, roads=False)
 
-        logger.debug(f'Collected information about {len(self.road_sections)} road sections.')
-        logger.debug(f'Collected information about {len(self.sidewalk_sections)} sidewalk sections.')
+        logger.debug(f'Collected information about {len(self._road_sections)} road sections.')
+        logger.debug(f'Collected information about {len(self._sidewalk_sections)} sidewalk sections.')
 
-        if self.map_name == 'Town06':
-            all_sidewalks = [obj for obj in self.objects if '_Sidewalk_' in obj.name]
+        if self._map_name == 'Town06':
+            all_sidewalks = [obj for obj in self._objects if '_Sidewalk_' in obj.name]
 
-            self.sidewalk_meshes = []
+            self._sidewalk_meshes = []
 
             for sidewalk in all_sidewalks:
                 bbox = sidewalk.bounding_box.get_local_vertices()
@@ -258,7 +258,7 @@ class GTManager:
 
                 bbox[:, 1] *= -1.0
 
-                self.sidewalk_meshes.append(bbox)
+                self._sidewalk_meshes.append(bbox)
     
     def _get_adjacent_waypoints(self, wp: carla.Waypoint, adjacent_waypoints: List[carla.Waypoint]):
         '''
@@ -272,13 +272,13 @@ class GTManager:
             awp = wp.get_left_lane() if direction else wp.get_right_lane()
 
             while awp:
-                if awp.lane_type in self.good_lane_types:
+                if awp.lane_type in self._good_lane_types:
                     adjacent_waypoints.append(awp)
                     
                     awp = awp.get_left_lane() if direction else awp.get_right_lane()
-                elif awp.lane_type in self.conditional_lane_types:
-                    if (awp.left_lane_marking.type in self.bad_lane_marking_types and
-                        awp.right_lane_marking.type in self.bad_lane_marking_types):
+                elif awp.lane_type in self._conditional_lane_types:
+                    if (awp.left_lane_marking.type in self._bad_lane_marking_types and
+                        awp.right_lane_marking.type in self._bad_lane_marking_types):
                         awp = None
                     else:
                         adjacent_waypoints.append(awp)
@@ -368,13 +368,13 @@ class GTManager:
                 left_points = []
                 right_points = []
 
-                wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+                wp = self._map.get_waypoint_xodr(key[0], key[1], s)
 
                 start_point_counter = 0
                 midline_counter = 1
 
                 if not roads:
-                    if self.map_name == 'Town15':
+                    if self._map_name == 'Town15':
                         if key == (156, -5) and section_id == 3:
                             s = 300.0
                         elif key == (117, 4) and section_id == 3:
@@ -383,9 +383,9 @@ class GTManager:
                             s = 200.0
 
                 while wp is None and start_point_counter < 2000:
-                    s += self.config['waypoint_distance']
+                    s += self._config['waypoint_distance']
                     
-                    wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+                    wp = self._map.get_waypoint_xodr(key[0], key[1], s)
                     
                     start_point_counter += 1
 
@@ -414,8 +414,8 @@ class GTManager:
                             if roads:
                                 llm = wp.left_lane_marking
 
-                                if llm.type not in self.bad_lane_marking_types:
-                                    if llm.type in self.single_lane_marking_types:
+                                if llm.type not in self._bad_lane_marking_types:
+                                    if llm.type in self._single_lane_marking_types:
                                         section['left_lane'].append(
                                             wp_transform.location - 
                                             0.5 * (wp.lane_width - llm.width) * wp_transform.get_forward_vector()
@@ -428,8 +428,8 @@ class GTManager:
 
                                 rlm = wp.right_lane_marking
 
-                                if rlm.type not in self.bad_lane_marking_types:
-                                    if rlm.type in self.single_lane_marking_types:
+                                if rlm.type not in self._bad_lane_marking_types:
+                                    if rlm.type in self._single_lane_marking_types:
                                         section['right_lane'].append(
                                             wp_transform.location + 
                                             0.5 * (wp.lane_width - rlm.width) * wp_transform.get_forward_vector()
@@ -440,15 +440,15 @@ class GTManager:
                                             0.5 * (wp.lane_width - 3 * rlm.width) * wp_transform.get_forward_vector()
                                         )
                         
-                            s += self.config['waypoint_distance']
+                            s += self._config['waypoint_distance']
 
-                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+                            wp = self._map.get_waypoint_xodr(key[0], key[1], s)
 
                             midline_counter += 1
                         else:
-                            s += self.config['waypoint_distance']
+                            s += self._config['waypoint_distance']
 
-                            wp = self.map.get_waypoint_xodr(key[0], key[1], s)
+                            wp = self._map.get_waypoint_xodr(key[0], key[1], s)
 
                     section['left_border'] = carla_vector_to_numpy(left_points)
                     section['right_border'] = carla_vector_to_numpy(right_points)
@@ -477,25 +477,25 @@ class GTManager:
         Args:
             crosswalks: list of all crosswalk boundary locations.
         '''
-        self.area_crosswalks = []
+        self._area_crosswalks = []
 
         logger.debug('Compiling a list of crosswalks...')
 
         # For Town01, Town02, Town12, and Town13, get the crosswalks from the
         # map data. For others, get the crosswalks from the list of
         # environment objects (the latter method is more accurate).
-        if self.map_name in ['Town01', 'Town02','Town12', 'Town13']:
+        if self._map_name in ['Town01', 'Town02','Town12', 'Town13']:
             for i in range(len(crosswalks)):
                 for j in range(i + 1, len(crosswalks)):
                     if crosswalks[i].distance(crosswalks[j]) < 0.02 and \
-                        crosswalks[i].distance(self.vehicle.get_location()) < self.config['mapping_area_radius']:
+                        crosswalks[i].distance(self._vehicle.get_location()) < self._config['mapping_area_radius']:
                             crosswalk = carla_vector_to_numpy(crosswalks[i:j + 1])
 
                             crosswalk[:, 1] *= -1.0
 
-                            self.area_crosswalks.append(crosswalk)
+                            self._area_crosswalks.append(crosswalk)
         else:
-            all_crosswalks = [obj for obj in self.objects if '_Crosswalk_' in obj.name]
+            all_crosswalks = [obj for obj in self._objects if '_Crosswalk_' in obj.name]
 
             crosswalks = [cw for cw in all_crosswalks if not any(x in cw.name for x in BAD_CROSSWALKS)]
 
@@ -504,14 +504,14 @@ class GTManager:
 
                 midpoint = (bbox[0] + bbox[7]) / 2
 
-                if midpoint.distance(self.vehicle.get_location()) < self.config['mapping_area_radius']:
+                if midpoint.distance(self._vehicle.get_location()) < self._config['mapping_area_radius']:
                     bbox = carla_vector_to_numpy([bbox[0], bbox[2], bbox[6], bbox[4], bbox[0]])
 
                     bbox[:, 1] *= -1.0
 
-                    self.area_crosswalks.append(bbox)
+                    self._area_crosswalks.append(bbox)
         
-        logger.debug(f'Compiled a list of {len(self.area_crosswalks)} crosswalks.')
+        logger.debug(f'Compiled a list of {len(self._area_crosswalks)} crosswalks.')
 
     def trim_map_sections(self):
         '''
@@ -519,26 +519,26 @@ class GTManager:
         those within the ego vehicle's perception range so ground truth
         calculations are more efficient.
         '''
-        vehicle_location = carla_single_vector_to_numpy(self.vehicle.get_location()).reshape(1, -1)
+        vehicle_location = carla_single_vector_to_numpy(self._vehicle.get_location()).reshape(1, -1)
 
         vehicle_location[:, 1] *= -1.0
 
         # Trim road sections.
-        self.local_roads, self.local_road_midlines, self.local_road_lines = self._process_sections(self.road_sections)
+        self._local_roads, self._local_road_midlines, self._local_road_lines = self._process_sections(self._road_sections)
 
         # Trim sidewalk sections.
-        self.local_sidewalks = self._process_sections(self.sidewalk_sections, roads=False)
+        self._local_sidewalks = self._process_sections(self._sidewalk_sections, roads=False)
 
         # Trim crosswalk sections.
-        self.local_crosswalks = [crosswalk.copy() for crosswalk in self.area_crosswalks if \
+        self._local_crosswalks = [crosswalk.copy() for crosswalk in self._area_crosswalks if \
                                  np.min(cdist(crosswalk, vehicle_location)) < \
-                                    self.config['nearby_mapping_area_radius']]
+                                    self._config['nearby_mapping_area_radius']]
 
         # For Town06, also trim sidewalk meshes.
-        if self.map_name == 'Town06':
-            self.local_sidewalk_meshes = [sidewalk.copy() for sidewalk in self.sidewalk_meshes if \
+        if self._map_name == 'Town06':
+            self._local_sidewalk_meshes = [sidewalk.copy() for sidewalk in self._sidewalk_meshes if \
                                           np.min(cdist(sidewalk, vehicle_location)) < \
-                                            self.config['nearby_mapping_area_radius']]
+                                            self._config['nearby_mapping_area_radius']]
     
     def _process_sections(self, sections: List[dict], roads: bool = True) -> List[np.ndarray]:
         '''
@@ -556,7 +556,7 @@ class GTManager:
         '''
         chunk_size = 40
 
-        vehicle_location = self.vehicle.get_location()
+        vehicle_location = self._vehicle.get_location()
 
         local_sections = []
 
@@ -565,7 +565,7 @@ class GTManager:
             local_lines = []
         
         for section in sections:
-            if any(vehicle_location.distance(location) < self.config['nearby_mapping_area_radius'] \
+            if any(vehicle_location.distance(location) < self._config['nearby_mapping_area_radius'] \
                    for location in section['midline']):
                 left_border = section['left_border']
                 right_border = section['right_border']
@@ -588,7 +588,7 @@ class GTManager:
                         local_lines.append(section['right_lane'])
 
                     for location in section['midline']:
-                        if vehicle_location.distance(location) < self.config['nearby_mapping_area_radius']:
+                        if vehicle_location.distance(location) < self._config['nearby_mapping_area_radius']:
                             local_midlines.append(location)
         
         if roads:
@@ -609,7 +609,7 @@ class GTManager:
         Returns:
             level_sections: list of the desired sections.
         '''
-        vehicle_location = self.vehicle.get_location()
+        vehicle_location = self._vehicle.get_location()
 
         level_sections = []
 
@@ -632,7 +632,7 @@ class GTManager:
         Returns:
             bev_gt: BEV ground truth.
         '''
-        vehicle_transform = self.vehicle.get_transform()
+        vehicle_transform = self._vehicle.get_transform()
 
         mask = {
             'road': None,
@@ -651,54 +651,54 @@ class GTManager:
         # If significant elevation difference is present in the scene, process
         # map sections and only keep those that are within a certain elevation
         # of the ego vehicle.
-        level_roads = self._process_level_sections(self.local_roads) \
-            if elevation_difference else self.local_roads
-        level_road_lines = self._process_level_sections(self.local_road_lines) \
-            if elevation_difference else self.local_road_lines
-        level_sidewalks = self._process_level_sections(self.local_sidewalks) \
-            if elevation_difference else self.local_sidewalks
-        level_crosswalks = [cw for cw in self.local_crosswalks if abs(cw[0, 2] - vehicle_transform.location.z) < 4.8] \
-            if elevation_difference else self.local_crosswalks
+        level_roads = self._process_level_sections(self._local_roads) \
+            if elevation_difference else self._local_roads
+        level_road_lines = self._process_level_sections(self._local_road_lines) \
+            if elevation_difference else self._local_road_lines
+        level_sidewalks = self._process_level_sections(self._local_sidewalks) \
+            if elevation_difference else self._local_sidewalks
+        level_crosswalks = [cw for cw in self._local_crosswalks if abs(cw[0, 2] - vehicle_transform.location.z) < 4.8] \
+            if elevation_difference else self._local_crosswalks
 
         # Get the road mask from road sections.
         wp_road_mask = get_multi_polygon_mask(
             level_roads,
             vehicle_transform,
-            self.config['bev_dim'],
-            self.config['bev_res']
+            self._config['bev_dim'],
+            self._config['bev_res']
         )
 
         # Get the road line mask from road lines.
         mask['road_line'] = get_multi_line_mask(
             level_road_lines,
             vehicle_transform,
-            self.config['bev_dim'],
-            self.config['bev_res']
+            self._config['bev_dim'],
+            self._config['bev_res']
         )
         
         # Get the sidewalk mask from sidewalk sections.
         wp_sidewalk_mask = get_multi_polygon_mask(
             level_sidewalks,
             vehicle_transform,
-            self.config['bev_dim'],
-            self.config['bev_res']
+            self._config['bev_dim'],
+            self._config['bev_res']
         )
 
         # For Town06, get the sidewalk mask from sidewalk meshes.
-        if self.map_name == 'Town06':
+        if self._map_name == 'Town06':
             mesh_sidewalk_mask = get_multi_polygon_mask(
-                self.local_sidewalk_meshes,
+                self._local_sidewalk_meshes,
                 vehicle_transform,
-                self.config['bev_dim'],
-                self.config['bev_res']
+                self._config['bev_dim'],
+                self._config['bev_res']
             )
 
         # Get the crosswalk mask from crosswalk locations.
         crosswalk_mask = get_multi_polygon_mask(
             level_crosswalks,
             vehicle_transform,
-            self.config['bev_dim'],
-            self.config['bev_res']
+            self._config['bev_dim'],
+            self._config['bev_res']
         )
 
         if elevation_difference:
@@ -745,20 +745,20 @@ class GTManager:
                     mask[key] = get_multi_polygon_mask(
                         bbox_list[key],
                         vehicle_transform,
-                        self.config['bev_dim'],
-                        self.config['bev_res']
+                        self._config['bev_dim'],
+                        self._config['bev_res']
                     )
                 else:
-                    mask[key] = np.zeros((self.config['bev_dim'], self.config['bev_dim']), dtype=bool)
+                    mask[key] = np.zeros((self._config['bev_dim'], self._config['bev_dim']), dtype=bool)
         else:
             # Get the images from the top and bottom semantic cameras. Use the
             # top image along with the masks from map sections to create masks
             # for the road, sidewalks (if specified), and crosswalks, and use
             # both images to create masks for cars, trucks, buses,
             # motorcycles, bicycles, riders, and pedestrians.
-            top_bev_image = self.sensor_manager.sensor_list['semantic_bev_camera'][0].get_save_queue().get(True, 10.0)
+            top_bev_image = self._sensor_manager.sensor_list['semantic_bev_camera'][0].get_save_queue().get(True, 10.0)
             bottom_bev_image = np.flip(
-                self.sensor_manager.sensor_list['semantic_bev_camera'][1].get_save_queue().get(True, 10.0),
+                self._sensor_manager.sensor_list['semantic_bev_camera'][1].get_save_queue().get(True, 10.0),
                 axis=0
             )
 
@@ -766,9 +766,9 @@ class GTManager:
 
             mask['road'] = binary_closing(np.logical_or(wp_road_mask, bev_road_mask))
             
-            if self.config['use_bev_for_sidewalks']:
+            if self._config['use_bev_for_sidewalks']:
                 mask['sidewalk'] = binary_closing(np.logical_or(top_bev_image[:, :, 0] == 232, wp_sidewalk_mask))
-            elif self.map_name == 'Town06':
+            elif self._map_name == 'Town06':
                 mask['sidewalk'] = binary_closing(np.logical_or(
                     wp_sidewalk_mask,
                     np.logical_and(
@@ -779,7 +779,7 @@ class GTManager:
             else:
                 mask['sidewalk'] = binary_closing(wp_sidewalk_mask)
 
-            if self.map_name in ['Town12', 'Town13']:
+            if self._map_name in ['Town12', 'Town13']:
                 bev_crosswalk_mask = binary_opening(
                     np.logical_or(top_bev_image[:, :, 2] == 157, crosswalk_mask),
                     footprint=np.ones((3, 3))
@@ -819,14 +819,14 @@ class GTManager:
         '''
         actors = []
 
-        actor_list = self.world.get_actors()
+        actor_list = self._world.get_actors()
 
-        vehicle_location = self.vehicle.get_location()
+        vehicle_location = self._vehicle.get_location()
 
         for actor in actor_list:
             actor_location = actor.get_location()
 
-            if vehicle_location.distance(actor_location) < self.config['bbox_collection_radius'] \
+            if vehicle_location.distance(actor_location) < self._config['bbox_collection_radius'] \
                 and all(x not in actor.type_id for x in ['spectator', 'sensor', 'controller']) \
                     and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]):
                 actor_properties = self._get_basic_actor_properties(actor)
@@ -857,8 +857,8 @@ class GTManager:
                 actors.append(actor_properties)
 
             # Get the traffic lights.
-            if self.config['collect_traffic_light_bbox'] and isinstance(actor, carla.TrafficLight) \
-                and vehicle_location.distance(actor_location) < self.config['bbox_collection_radius']:
+            if self._config['collect_traffic_light_bbox'] and isinstance(actor, carla.TrafficLight) \
+                and vehicle_location.distance(actor_location) < self._config['bbox_collection_radius']:
                 bounding_boxes = actor.get_light_boxes()
 
                 for bounding_box in bounding_boxes:
@@ -871,7 +871,7 @@ class GTManager:
                         # relative to the map tile, so we use the location of
                         # the actor to find their coordinates in the global
                         # coordinate frame.
-                        if self.map_name in ['Town12', 'Town13']:
+                        if self._map_name in ['Town12', 'Town13']:
                             tile_bounding_box = carla_vector_to_numpy(bounding_box.get_local_vertices())
 
                             x_difference = np.round((actor_location.x - bounding_box.location.x) / 1000.0) * 1000.0
@@ -900,14 +900,14 @@ class GTManager:
         
         # Get the list of objects (props) in the scene, i.e. parked cars,
         # trucks, etc. that are within a certain radius of the ego vehicle.
-        car_list = self.world.get_environment_objects(carla.CityObjectLabel.Car)
-        truck_list = self.world.get_environment_objects(carla.CityObjectLabel.Truck)
-        bus_list = self.world.get_environment_objects(carla.CityObjectLabel.Bus)
-        motorcycle_list = self.world.get_environment_objects(carla.CityObjectLabel.Motorcycle)
-        bicycle_list = self.world.get_environment_objects(carla.CityObjectLabel.Bicycle)
+        car_list = self._world.get_environment_objects(carla.CityObjectLabel.Car)
+        truck_list = self._world.get_environment_objects(carla.CityObjectLabel.Truck)
+        bus_list = self._world.get_environment_objects(carla.CityObjectLabel.Bus)
+        motorcycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Motorcycle)
+        bicycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Bicycle)
 
-        if self.config['collect_traffic_sign_bbox']:
-            traffic_sign_list = self.world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
+        if self._config['collect_traffic_sign_bbox']:
+            traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
 
             object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
         else:
@@ -916,10 +916,10 @@ class GTManager:
         for obj in object_list:
             object_properties = {}
             
-            object_location = obj.transform.location if self.map_name not in ['Town12', 'Town13'] \
+            object_location = obj.transform.location if self._map_name not in ['Town12', 'Town13'] \
                 else obj.bounding_box.location
 
-            if vehicle_location.distance(object_location) < self.config['bbox_collection_radius']:
+            if vehicle_location.distance(object_location) < self._config['bbox_collection_radius']:
                 object_properties['id'] = obj.id
                 object_properties['type'] = str(obj.type)
                 object_properties['is_alive'] = False
@@ -941,7 +941,7 @@ class GTManager:
                         if sign in obj.name:
                             object_properties['sign_type'] = TRAFFIC_SIGN[sign]
 
-                    if self.map_name not in ['Town12', 'Town13', 'Town15'] and \
+                    if self._map_name not in ['Town12', 'Town13', 'Town15'] and \
                         'speed_limit' in object_properties['sign_type']:
                         object_properties['sign_type'] = 'speed_limit'
                 elif obj.type == carla.CityObjectLabel.Car:
@@ -1000,7 +1000,7 @@ class GTManager:
         hd_map_info = {}
 
         # Get the waypoint at the vehicle's current location.
-        wp = self.map.get_waypoint(self.vehicle.get_location())
+        wp = self._map.get_waypoint(self._vehicle.get_location())
 
         hd_map_info['id'] = wp.id
         hd_map_info['s'] = wp.s
@@ -1059,16 +1059,16 @@ class GTManager:
         '''
         background = (255, 255, 255)
     
-        canvas = np.zeros((self.config['bev_dim'], self.config['bev_dim'], 3), dtype=np.uint8)
+        canvas = np.zeros((self._config['bev_dim'], self._config['bev_dim'], 3), dtype=np.uint8)
         canvas[:] = background
 
-        if self.config['use_cityscapes_palette']:
+        if self._config['use_cityscapes_palette']:
             PALETTE = CITYSCAPE_PALETTE
         else:
             PALETTE = MAP_PALETTE
         
         for k, name in enumerate(PALETTE):
-            canvas[self.bev_gt[k], :] = PALETTE[name]
+            canvas[self._bev_gt[k], :] = PALETTE[name]
 
         canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
 
@@ -1081,37 +1081,37 @@ class GTManager:
         # semantic cameras and road waypoints. Otherwise (i.e. when near
         # an overpass/underpass), get the ground truth using bounding
         # boxes and road waypoints.
-        if self.map_name not in ['Town04', 'Town05', 'Town12', 'Town13']:
-            self.bev_gt = self.get_bev_gt()
-            self.warning_flag = False
-        elif np.max(self.local_road_midlines[:, 2]) - np.min(self.local_road_midlines[:, 2]) < 6.4:
-            self.bev_gt = self.get_bev_gt()
-            self.warning_flag = False
+        if self._map_name not in ['Town04', 'Town05', 'Town12', 'Town13']:
+            self._bev_gt = self.get_bev_gt()
+            self._warning_flag = False
+        elif np.max(self._local_road_midlines[:, 2]) - np.min(self._local_road_midlines[:, 2]) < 6.4:
+            self._bev_gt = self.get_bev_gt()
+            self._warning_flag = False
         else:
-            mid = (np.max(self.local_road_midlines[:, 2]) + np.min(self.local_road_midlines[:, 2])) / 2.0
+            mid = (np.max(self._local_road_midlines[:, 2]) + np.min(self._local_road_midlines[:, 2])) / 2.0
 
-            highs = self.local_road_midlines[self.local_road_midlines[:, 2] > (mid + 3.2)]
-            lows = self.local_road_midlines[self.local_road_midlines[:, 2] < (mid - 3.2)]
+            highs = self._local_road_midlines[self._local_road_midlines[:, 2] > (mid + 3.2)]
+            lows = self._local_road_midlines[self._local_road_midlines[:, 2] < (mid - 3.2)]
 
             dists = cdist(highs[:, :2], lows[:, :2])
 
             if np.min(dists) > 48.0:
-                self.bev_gt = self.get_bev_gt()
-                self.warning_flag = False
+                self._bev_gt = self.get_bev_gt()
+                self._warning_flag = False
             else:
-                self.bev_gt = self.get_bev_gt(elevation_difference=True)
+                self._bev_gt = self.get_bev_gt(elevation_difference=True)
 
-                if self.warning_flag is False:
+                if self._warning_flag is False:
                     logger.warning('Using alternative ground truth generation method due to elevation difference '
                                     'in the road.')
 
-                    self.warning_flag = True
+                    self._warning_flag = True
         
-        self.canvas = self._prepare_canvas()
+        self._canvas = self._prepare_canvas()
     
     def render(self):
         '''Render the BEV ground truth.'''
-        cv2.imshow('Ground Truth', self.canvas)
+        cv2.imshow('Ground Truth', self._canvas)
         cv2.waitKey(1)
     
     def save(self, path, scene, frame):
@@ -1124,11 +1124,11 @@ class GTManager:
             frame: frame number.
         '''
         with open(f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz', 'wb') as f:
-            np.savez_compressed(f, data=self.bev_gt)
+            np.savez_compressed(f, data=self._bev_gt)
 
         cv2.imwrite(
             f'{path}/simbev/ground-truth/seg_viz/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG_VIZ.jpg',
-            self.canvas
+            self._canvas
         )
         
         actors = self.get_bounding_boxes()
