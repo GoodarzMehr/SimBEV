@@ -779,15 +779,7 @@ class GTManager:
             else:
                 mask['sidewalk'] = binary_closing(wp_sidewalk_mask)
 
-            if self._map_name in ['Town12', 'Town13']:
-                bev_crosswalk_mask = binary_opening(
-                    np.logical_or(top_bev_image[:, :, 2] == 157, crosswalk_mask),
-                    footprint=np.ones((3, 3))
-                )
-            else:
-                bev_crosswalk_mask = crosswalk_mask
-
-            mask['crosswalk'] = binary_closing(np.logical_and(bev_crosswalk_mask, mask['road']))
+            mask['crosswalk'] = binary_closing(np.logical_and(crosswalk_mask, mask['road']))
 
             mask['car'] = np.logical_or(bottom_bev_image[:, :, 0] == 142, top_bev_image[:, :, 0] == 142)
             mask['truck'] = np.logical_or(

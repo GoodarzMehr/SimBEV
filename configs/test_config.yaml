@@ -23,9 +23,9 @@ val_scene_config:
   # Town05: 1
   # Town06: 1
   # Town07: 1
-  Town10HD: 4
-  # Town12: 1
-  # Town13: 1
+  # Town10HD: 2
+  # Town12: 2
+  # Town13: 8
   # Town15: 1
 
 test_scene_config:
@@ -71,7 +71,7 @@ render_gpu: 0
 
 max_io_workers: 48
 
-use_scene_number_for_random_seed: True
+use_scene_number_for_random_seed: False
 random_seed_offset: 27
 
 tile_stream_distance: 960.0
@@ -114,7 +114,7 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
-wheelchair_use_percentage: 4.0
+wheelchair_use_percentage: 100.0
 
 weather_shift: True
 
@@ -216,8 +216,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-# n_vehicles: 0
-# n_walkers: 0
+n_vehicles: 0
+n_walkers: 0
 
 # walker_cross_factor: 0.6
 
