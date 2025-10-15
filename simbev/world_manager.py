@@ -336,6 +336,7 @@ class WorldManager:
             self._scenario_manager.scene_info['vehicle'] = self._vehicle_manager.vehicle.type_id
             self._scenario_manager.scene_info['expected_scene_duration'] = self._scenario_manager.scene_duration
             self._scenario_manager.scene_info['terminated_early'] = False
+            self._scenario_manager.scene_info['seed'] = seed
             
             self._set_spectator_view()
 
