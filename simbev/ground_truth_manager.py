@@ -7,6 +7,7 @@ object bounding boxes, and HD map information.
 
 import cv2
 import json
+import copy
 import carla
 import logging
 
@@ -376,11 +377,11 @@ class GTManager:
                 if not roads:
                     if self._map_name == 'Town15':
                         if key == (156, -5) and section_id == 3:
-                            s = 300.0
-                        elif key == (117, 4) and section_id == 3:
-                            s = 70.0
-                        elif key == (203, -5) and section_id == 2:
-                            s = 200.0
+                            s = 308.0
+                        elif key == (117, 4) and section_id == 4:
+                            s = 73.0
+                        elif key == (203, -5) and section_id == 4:
+                            s = 230.0
 
                 while wp is None and start_point_counter < 2000:
                     s += self._config['waypoint_distance']
@@ -536,7 +537,7 @@ class GTManager:
 
         # For Town06, also trim sidewalk meshes.
         if self._map_name == 'Town06':
-            self._local_sidewalk_meshes = [sidewalk.copy() for sidewalk in self._sidewalk_meshes if \
+            self._local_sidewalk_meshes = [sidewalk for sidewalk in self._sidewalk_meshes if \
                                           np.min(cdist(sidewalk, vehicle_location)) < \
                                             self._config['nearby_mapping_area_radius']]
     
@@ -652,13 +653,14 @@ class GTManager:
         # map sections and only keep those that are within a certain elevation
         # of the ego vehicle.
         level_roads = self._process_level_sections(self._local_roads) \
-            if elevation_difference else self._local_roads
+            if elevation_difference else copy.deepcopy(self._local_roads)
         level_road_lines = self._process_level_sections(self._local_road_lines) \
-            if elevation_difference else self._local_road_lines
+            if elevation_difference else copy.deepcopy(self._local_road_lines)
         level_sidewalks = self._process_level_sections(self._local_sidewalks) \
-            if elevation_difference else self._local_sidewalks
-        level_crosswalks = [cw for cw in self._local_crosswalks if abs(cw[0, 2] - vehicle_transform.location.z) < 4.8] \
-            if elevation_difference else self._local_crosswalks
+            if elevation_difference else copy.deepcopy(self._local_sidewalks)
+        level_crosswalks = [cw for cw in copy.deepcopy(self._local_crosswalks) if \
+                            abs(cw[0, 2] - vehicle_transform.location.z) < 4.8] \
+            if elevation_difference else copy.deepcopy(self._local_crosswalks)
 
         # Get the road mask from road sections.
         wp_road_mask = get_multi_polygon_mask(
@@ -820,7 +822,8 @@ class GTManager:
 
             if vehicle_location.distance(actor_location) < self._config['bbox_collection_radius'] \
                 and all(x not in actor.type_id for x in ['spectator', 'sensor', 'controller']) \
-                    and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]):
+                    and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]) \
+                        and 5 not in actor.semantic_tags:
                 actor_properties = self._get_basic_actor_properties(actor)
                 
                 actor_properties['semantic_tags'] = actor.semantic_tags
@@ -845,7 +848,7 @@ class GTManager:
                 )
 
                 actor_properties['bounding_box'][:, 1] *= -1.0
-
+                
                 actors.append(actor_properties)
 
             # Get the traffic lights.

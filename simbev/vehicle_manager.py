@@ -52,7 +52,9 @@ class VehicleManager:
         try:
             scene_info = {}
             
-            bev_fov = 2 * np.rad2deg(np.arctan(self._config['bev_dim'] * self._config['bev_res'] / 2000))
+            bev_fov = 2 * np.rad2deg(
+                np.arctan(self._config['bev_dim'] * self._config['bev_res'] / (2 * self._config['bev_camera_height'])))
+            
 
             self._config['bev_properties'] = {'fov': str(bev_fov)}
             
@@ -62,7 +64,6 @@ class VehicleManager:
 
             while self.vehicle is None:
                 self.vehicle = self._world.try_spawn_actor(bp, random.choice(spawn_points))
-                # self.vehicle = self._world.try_spawn_actor(bp, spawn_points[0])
 
             self.vehicle.set_autopilot(True, tm_port)
             self.vehicle.set_simulate_physics(self._config['simulate_physics'])
@@ -292,8 +293,14 @@ class VehicleManager:
                 )
             
             # Create BEV semantic cameras for obtaining the ground truth.
-            bev_location_above = carla.Transform(carla.Location(x=0.0, y=0.0, z=1000.0), carla.Rotation(pitch=-90))
-            bev_location_below = carla.Transform(carla.Location(x=0.0, y=0.0, z=-1000.0), carla.Rotation(pitch=90))
+            bev_location_above = carla.Transform(
+                carla.Location(x=0.0, y=0.0, z=self._config['bev_camera_height']),
+                carla.Rotation(pitch=-90)
+            )
+            bev_location_below = carla.Transform(
+                carla.Location(x=0.0, y=0.0, z=-self._config['bev_camera_height']),
+                carla.Rotation(pitch=90)
+            )
 
             bev_locations = [bev_location_above, bev_location_below]
             
@@ -355,7 +362,6 @@ class VehicleManager:
             time.sleep(1.0)
 
             self.vehicle.set_transform(random.choice(spawn_points))
-            # self.vehicle.set_transform(spawn_points[0])
             self.vehicle.disable_constant_velocity()
             self.vehicle.set_autopilot(True, tm_port)
 
