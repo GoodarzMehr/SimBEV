@@ -1,2 +1,13 @@
 /carla
 __pycache__/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.so
+*.pyd
+
+# CUDA compilation cache
+.ninja_log
+.ninja_deps

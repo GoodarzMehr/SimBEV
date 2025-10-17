@@ -11,6 +11,14 @@ import numpy as np
 
 from pyquaternion import Quaternion as Q
 
+# Import the compiled CUDA extension
+try:
+    from tools.bbox_cuda import is_inside_bbox_cuda as bbox_cuda_kernel
+    CUDA_AVAILABLE = True
+except ImportError:
+    print("Warning: CUDA extension not available. Performance will be degraded.")
+    CUDA_AVAILABLE = False
+
 RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
 DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -23,33 +31,21 @@ argparser.add_argument(
     default='/dataset',
     help='path to the dataset (default: /dataset)')
 
-args = argparser.parse_args()
+# Parse args only when run as script
+args = None
 
 
-def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
+def _is_inside_bbox_cpu(points, bbox):
     '''
-    Determine if a point (or array of points) is inside a 3D bounding box.
-
+    CPU fallback implementation for bounding box checking.
+    
     Args:
-        points: coordinate(s) of the point(s).
-        bbox: array of the coordinates of the bounding box corners.
-        device: device to use for computation, can be 'cpu' or 'cuda:i' where
-            i is the GPU index.
-        dType: data type to use for calculations.
-
+        points: coordinate(s) of the point(s) (N, 3).
+        bbox: array of the coordinates of the bounding box corners (8, 3).
+        
     Returns:
         mask: mask indicating if the point(s) are inside the bounding box.
     '''
-    if not isinstance(points, torch.Tensor):
-        points = torch.from_numpy(points).to(device, dType)
-    else:
-        points = points.to(device, dType)
-
-    if not isinstance(bbox, torch.Tensor):
-        bbox = torch.from_numpy(bbox).to(device, dType)
-    else:
-        bbox = bbox.to(device, dType)
-
     # Define the reference point, i.e. first corner of the bounding box.
     p0 = bbox[0]
     
@@ -85,8 +81,48 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
     
     return inside_u & inside_v & inside_w
 
-def main():
+
+def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
+    '''
+    Determine if a point (or array of points) is inside a 3D bounding box.
+
+    Args:
+        points: coordinate(s) of the point(s) (N, 3).
+        bbox: array of the coordinates of the bounding box corners (8, 3).
+        device: device to use for computation.
+        dType: data type to use for calculations.
+
+    Returns:
+        mask: mask indicating if the point(s) are inside the bounding box.
+    '''
+    if not isinstance(points, torch.Tensor):
+        points = torch.from_numpy(points).to(device, dType)
+    else:
+        points = points.to(device, dType)
+
+    if not isinstance(bbox, torch.Tensor):
+        bbox = torch.from_numpy(bbox).to(device, dType)
+    else:
+        bbox = bbox.to(device, dType)
+
+    # Flatten bbox to 1D: (8, 3) -> (24,)
+    bbox_flat = bbox.reshape(-1).contiguous()
+    
+    # Call CUDA kernel if available
+    if CUDA_AVAILABLE and device.startswith('cuda'):
+        return bbox_cuda_kernel(points.contiguous(), bbox_flat)
+    else:
+        # Fallback to CPU implementation
+        return _is_inside_bbox_cpu(points, bbox)
+
+
+
+def main(args=None):
+    if args is None:
+        args = argparser.parse_args()
+    
     try:
+        start = time.perf_counter()
         os.makedirs(f'{args.path}/simbev/ground-truth/new_det', exist_ok=True)
 
         for split in ['train', 'val', 'test']:
@@ -208,6 +244,9 @@ def main():
         os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
         os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
+        end = time.perf_counter()
+        print(f'Post-processing completed in {end - start:.2f} seconds.')
+
     except Exception:
         print(traceback.format_exc())
 
@@ -215,7 +254,7 @@ def main():
 
         time.sleep(3.0)
 
-if __name__ == '__main__':
+def entry():
     try:
         main()
     except KeyboardInterrupt:
@@ -224,3 +263,7 @@ if __name__ == '__main__':
         time.sleep(3.0)
     finally:
         print('Done.')
+
+
+if __name__ == '__main__':
+    entry()

@@ -9,7 +9,10 @@ import cv2
 
 import numpy as np
 
-from utils import CustomTimer
+try:
+    from .utils import CustomTimer
+except ImportError:
+    from utils import CustomTimer
 
 from concurrent.futures import ThreadPoolExecutor
 

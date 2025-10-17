@@ -12,9 +12,14 @@ import random
 import logging
 import subprocess
 
-from utils import is_used
+try:
+    from .utils import is_used
 
-from world_manager import WorldManager
+    from .world_manager import WorldManager
+except ImportError:
+    from utils import is_used
+
+    from world_manager import WorldManager
 
 
 logger = logging.getLogger(__name__)

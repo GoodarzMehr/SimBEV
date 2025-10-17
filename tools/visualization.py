@@ -117,8 +117,13 @@ argparser.add_argument(
     nargs='+',
     help='frame number(s) (default: -1, i.e. all frames)'
 )
+argparser.add_argument(
+    '--ignore-valid-flag',
+    action='store_true',
+    help='render sensor data')
 
-args = argparser.parse_args()
+# Parse args only when run as script
+args = None
 
 
 def draw_bbox(canvas, corners, labels, bbox_color=None, thickness=1):
@@ -338,7 +343,7 @@ def transform_bbox(gt_det, transform):
     # Transform bounding boxes from the global coordinate system to the
     # desired coordinate system.
     for det_object in gt_det:
-        if det_object['valid_flag']:
+        if args.ignore_valid_flag or det_object['valid_flag']:
             for tag in det_object['semantic_tags']:
                 if tag in OBJECT_CLASSES.keys():
                     global_bbox_corners = np.append(det_object['bounding_box'], np.ones((8, 1)), 1)
@@ -353,7 +358,10 @@ def transform_bbox(gt_det, transform):
     return corners, labels
 
 
-def main(mode):
+def main(mode, args=None):
+    if args is None:
+        args = argparser.parse_args()
+    
     try:
         print(f'Visualizing {mode}...')
         
@@ -783,8 +791,9 @@ def main(mode):
 
         time.sleep(3.0)
 
-
-if __name__ == '__main__':
+def entry():
+    args = argparser.parse_args()
+    
     try:
         os.makedirs(f'{args.path}/simbev/viz', exist_ok=True)
 
@@ -808,7 +817,7 @@ if __name__ == '__main__':
             mode_list = args.mode
 
         for mode in mode_list:
-            main(mode)
+            main(mode, args)
     
     except KeyboardInterrupt:
         print('Killing the process...')
@@ -817,3 +826,7 @@ if __name__ == '__main__':
     
     finally:
         print('Done.')
+
+
+if __name__ == '__main__':
+    entry()

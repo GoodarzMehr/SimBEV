@@ -1,0 +1,5 @@
+include README.md
+include LICENSE
+include requirements.txt
+recursive-include tools/cuda_extensions *.cu *.cpp
+recursive-include configs *.yaml
