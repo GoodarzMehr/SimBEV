@@ -1,10 +1,10 @@
 ninja
 numpy
+torch
 open3d
+networkx
 flow_vis
 matplotlib
 scikit-image
 pyquaternion
 opencv-python
-networkx==2.7.1
-torch==1.10.1+cu113

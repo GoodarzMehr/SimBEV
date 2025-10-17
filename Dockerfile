@@ -67,6 +67,6 @@ libglib2.0-0 libgtk2.0-dev libnvidia-gl-550 libnvidia-common-550 libvulkan-dev v
 mesa-utils
 
 RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
-networkx==2.7.1 torch==1.10.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
+networkx torch psutil
 
 USER ${USER}
