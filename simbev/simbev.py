@@ -16,8 +16,12 @@ import numpy as np
 
 from datetime import datetime
 
-from utils import kill_all_servers
-from carla_core import CarlaCore
+try:
+    from .utils import kill_all_servers
+    from .carla_core import CarlaCore
+except ImportError:
+    from utils import kill_all_servers
+    from carla_core import CarlaCore
 
 
 CAM2EGO_T = [
@@ -230,7 +234,7 @@ def generate_metadata(config: dict) -> dict:
         
     return metadata
 
-def main():
+def main(logger: logging.Logger):
     config = parse_config(args)
 
     metadata = generate_metadata(config)
@@ -575,11 +579,11 @@ def main():
 
         time.sleep(3.0)
 
-if __name__ == '__main__':
+def entry():
     try:
         logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
         
-        main()
+        main(logger)
     
     except KeyboardInterrupt:
         logger.warning('The process was interrupted by the user.')
@@ -591,3 +595,6 @@ if __name__ == '__main__':
     
     finally:
         logger.info('Done.')
+
+if __name__ == '__main__':
+    entry()

@@ -66,7 +66,7 @@ libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-c
 libglib2.0-0 libgtk2.0-dev libnvidia-gl-550 libnvidia-common-550 libvulkan-dev vulkan-utils python-is-python3 \
 mesa-utils
 
-RUN pip install --no-cache-dir numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
+RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
 networkx==2.7.1 torch==1.10.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
 
 USER ${USER}

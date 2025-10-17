@@ -10,10 +10,16 @@ import time
 import carla
 import logging
 
-from utils import is_used, kill_all_servers
+try:
+    from .utils import is_used, kill_all_servers
 
-from vehicle_manager import VehicleManager
-from scenario_manager import ScenarioManager
+    from .vehicle_manager import VehicleManager
+    from .scenario_manager import ScenarioManager
+except ImportError:
+    from utils import is_used, kill_all_servers
+
+    from vehicle_manager import VehicleManager
+    from scenario_manager import ScenarioManager
 
 
 logger = logging.getLogger(__name__)
@@ -104,6 +110,8 @@ class WorldManager:
         settings.max_culling_distance = 0.0
 
         self._world.apply_settings(settings)
+
+        self._world.set_annotations_traverse_translucency(True)
 
         # Set up the Traffic Manager.
         logger.debug('Setting up the Traffic Manager...')

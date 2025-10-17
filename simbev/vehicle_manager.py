@@ -10,14 +10,22 @@ import logging
 
 import numpy as np
 
-from sensors import *
-
 from typing import List
 
-from utils import kill_all_servers
+try:
+    from .sensors import *
+    
+    from .utils import kill_all_servers
 
-from sensor_manager import SensorManager
-from ground_truth_manager import GTManager
+    from .sensor_manager import SensorManager
+    from .ground_truth_manager import GTManager
+except ImportError:
+    from sensors import *
+    
+    from utils import kill_all_servers
+
+    from sensor_manager import SensorManager
+    from ground_truth_manager import GTManager
 
 
 logger = logging.getLogger(__name__)
