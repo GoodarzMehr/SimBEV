@@ -196,7 +196,7 @@ walker_speed_min: 0.8 # speed in meters per second
 
 # The following setting controls whether to continuously shift the weather
 # during the scene.
-weather_shift: True
+dynamic_weather: True
 
 # The following setting controls whether to randomize the color of building
 # lights. Does not work in Town12, Town13, or Town15.

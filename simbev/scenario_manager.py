@@ -14,6 +14,7 @@ import numpy as np
 
 from typing import List
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -102,8 +103,8 @@ class ScenarioManager:
 
         # If weather shift is enabled, calculate how much each weather
         # attribute should change at each time step.
-        if self._config['weather_shift']:
-            self.scene_info['weather_shift'] = True
+        if self._config['dynamic_weather']:
+            self.scene_info['dynamic_weather'] = True
 
             final_weather = self._world.get_weather()
         
@@ -155,7 +156,7 @@ class ScenarioManager:
 
         self.scene_info['initial_weather_parameters'] = initial_weather_parameters
 
-        if self._config['weather_shift']:
+        if self._config['dynamic_weather']:
             logger.info(f'Final weather...')
             logger.info(f'Cloudiness: {final_weather.cloudiness:.2f}%, '
                         f'precipitation: {final_weather.precipitation:4.2f}%, '
@@ -674,8 +675,8 @@ class ScenarioManager:
                 elif role_name in self._tried_to_open_door_list and vehicle.get_velocity().length() > 1.0:
                     self._tried_to_open_door_list.remove(role_name)
     
-    def shift_weather(self):
-        '''Shift weather conditions.'''
+    def adjust_weather(self):
+        '''Adjust weather conditions.'''
         weather = self._world.get_weather()
 
         old_sun_altitude_angle = weather.sun_altitude_angle

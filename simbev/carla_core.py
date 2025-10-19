@@ -16,6 +16,7 @@ try:
     from .utils import is_used
 
     from .world_manager import WorldManager
+
 except ImportError:
     from utils import is_used
 

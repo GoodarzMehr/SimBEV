@@ -25,8 +25,8 @@ val_scene_config:
   # Town07: 2
   Town10HD: 1
   # Town12: 1
-  # Town13: 4
-  # Town15: 1
+  # Town13: 8
+  # Town15: 8
 
 test_scene_config:
   # Town01: 1
@@ -52,10 +52,10 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 8
+min_scene_duration: 40
 max_scene_duration: 40
 
-early_scene_termination: True
+early_scene_termination: False
 termination_timeout: 8
 
 host: 'localhost'
@@ -118,7 +118,7 @@ walker_speed_min: 0.8
 
 wheelchair_use_percentage: 4.0
 
-weather_shift: True
+dynamic_weather: True
 
 random_building_light_colors: True
 
@@ -142,22 +142,22 @@ use_rgb_camera: True
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: True
+use_semantic_camera: False
 
 semantic_camera_properties:
   {}
 
-use_instance_camera: True
+use_instance_camera: False
 
 instance_camera_properties:
  {}
 
-use_depth_camera: True
+use_depth_camera: False
 
 depth_camera_properties:
  {}
 
-use_flow_camera: True
+use_flow_camera: False
 
 flow_camera_properties:
  {}
@@ -174,7 +174,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.01'
 
-use_semantic_lidar: True
+use_semantic_lidar: False
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -184,7 +184,7 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: True
+use_radar: False
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
@@ -192,7 +192,7 @@ radar_vertical_fov: 12.0
 radar_properties:
   points_per_second: '40000'
 
-use_gnss: True
+use_gnss: False
 
 gnss_properties:
   noise_seed: '27'
@@ -200,7 +200,7 @@ gnss_properties:
   noise_lat_stddev: '0.0000004'
   noise_lon_stddev: '0.0000004'
 
-use_imu: True
+use_imu: False
 
 imu_properties:
   noise_seed: '27'

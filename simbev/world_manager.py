@@ -15,6 +15,7 @@ try:
 
     from .vehicle_manager import VehicleManager
     from .scenario_manager import ScenarioManager
+
 except ImportError:
     from utils import is_used, kill_all_servers
 
@@ -421,8 +422,8 @@ class WorldManager:
         self._scenario_manager.manage_doors()
 
         # Change the weather if configured to do so.
-        if self._config['weather_shift'] and scene is not None:
-            self._scenario_manager.shift_weather()
+        if self._config['dynamic_weather'] and scene is not None:
+            self._scenario_manager.adjust_weather()
         
         if frame is not None and frame == 0:
             time.sleep(0.5)

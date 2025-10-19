@@ -110,7 +110,7 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
-weather_shift: True
+dynamic_weather: True
 
 random_building_light_colors: True
 

@@ -16,6 +16,7 @@ from queue import Queue
 
 from matplotlib import colormaps as cm
 
+
 RANGE = np.linspace(0.0, 1.0, 256)
 
 RAINBOW = np.array(cm.get_cmap('rainbow')(RANGE))[:, :3]

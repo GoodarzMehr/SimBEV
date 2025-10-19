@@ -18,9 +18,12 @@ from datetime import datetime
 
 try:
     from .utils import kill_all_servers
+    
     from .carla_core import CarlaCore
+
 except ImportError:
     from utils import kill_all_servers
+    
     from carla_core import CarlaCore
 
 

@@ -105,14 +105,43 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
     else:
         bbox = bbox.to(device, dType)
 
-    # Flatten bbox to 1D: (8, 3) -> (24,)
-    bbox_flat = bbox.reshape(-1).contiguous()
+    # Ensure proper shape and contiguity
+    if points.dim() == 1:
+        points = points.unsqueeze(0)
+    
+    # Handle empty point clouds
+    if points.shape[0] == 0:
+        return torch.zeros(0, dtype=torch.bool, device=device)
+    
+    # Ensure bbox is the right shape (8, 3) -> (24,)
+    if bbox.dim() == 2:
+        bbox = bbox.reshape(-1)
+    
+    # Make contiguous
+    points = points.contiguous()
+    bbox = bbox.contiguous()
+    
+    # Validate shapes
+    assert points.shape[1] == 3, f"Points must have 3 coordinates, got shape {points.shape}"
+    assert bbox.shape[0] == 24, f"Bbox must have 24 elements (8 corners * 3 coords), got {bbox.shape[0]}"
     
     # Call CUDA kernel if available
     if CUDA_AVAILABLE and device.startswith('cuda'):
-        return bbox_cuda_kernel(points.contiguous(), bbox_flat)
+        try:
+            return bbox_cuda_kernel(points, bbox)
+        except RuntimeError as e:
+            print(f"CUDA kernel failed: {e}")
+            print(f"Falling back to CPU implementation")
+            print(f"Points shape: {points.shape}, dtype: {points.dtype}")
+            print(f"Bbox shape: {bbox.shape}, dtype: {bbox.dtype}")
+            # Fall back to CPU
+            points_cpu = points.cpu()
+            bbox_cpu = bbox.reshape(8, 3).cpu()
+            return _is_inside_bbox_cpu(points_cpu, bbox_cpu).to(device)
     else:
         # Fallback to CPU implementation
+        if bbox.dim() == 1:
+            bbox = bbox.reshape(8, 3)
         return _is_inside_bbox_cpu(points, bbox)
 
 
@@ -241,8 +270,8 @@ def main(args=None):
                         ) as f:
                             np.save(f, np.array(new_det_objects), allow_pickle=True)
 
-        os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
-        os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
+        # os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
+        # os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
         end = time.perf_counter()
         print(f'Post-processing completed in {end - start:.2f} seconds.')

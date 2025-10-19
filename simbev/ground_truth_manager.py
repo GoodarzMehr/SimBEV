@@ -13,16 +13,17 @@ import logging
 
 import numpy as np
 
-try:
-    from .utils import *
-except ImportError:
-    from utils import *
-
 from typing import List
 
 from scipy.spatial.distance import cdist
 
 from skimage.morphology import binary_closing
+
+try:
+    from .utils import *
+
+except ImportError:
+    from utils import *
 
 
 logger = logging.getLogger(__name__)
@@ -943,9 +944,9 @@ class GTManager:
                         'speed_limit' in object_properties['sign_type']:
                         object_properties['sign_type'] = 'speed_limit'
 
-                    if self._map_name in ['Town12', 'Town13'] and '_Stop_' in obj.name:
-                        object_properties['bounding_box'][:, 2] += \
-                            (obj.transform.location.z - obj.bounding_box.location.z - obj.bounding_box.extent.z + 0.09)
+                    # if self._map_name in ['Town12', 'Town13'] and '_Stop_' in obj.name:
+                    #     object_properties['bounding_box'][:, 2] += \
+                    #         (obj.transform.location.z - obj.bounding_box.location.z - obj.bounding_box.extent.z + 0.09)
                 elif obj.type == carla.CityObjectLabel.Car:
                     object_properties['semantic_tags'] = [14]
                 elif obj.type == carla.CityObjectLabel.Truck:

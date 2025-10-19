@@ -9,14 +9,15 @@ import cv2
 
 import numpy as np
 
-try:
-    from .utils import CustomTimer
-except ImportError:
-    from utils import CustomTimer
-
 from concurrent.futures import ThreadPoolExecutor
 
 from scipy.spatial.transform import Rotation as R
+
+try:
+    from .utils import CustomTimer
+
+except ImportError:
+    from utils import CustomTimer
 
 class SensorManager:
     '''
