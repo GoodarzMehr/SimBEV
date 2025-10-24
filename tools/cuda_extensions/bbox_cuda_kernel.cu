@@ -99,7 +99,7 @@ torch::Tensor is_inside_bbox_cuda(torch::Tensor points, torch::Tensor bbox)
     // Allocate a single integer for the count
     auto count = torch::zeros({1}, torch::dtype(torch::kInt32).device(points.device()));
     
-    const int threads = 256;
+    const int threads = 128;
     const int blocks = (n_points + threads - 1) / threads;
     
     AT_DISPATCH_FLOATING_TYPES(points.scalar_type(), "is_inside_bbox_cuda", ([&] {

@@ -317,15 +317,16 @@ def main(logger: logging.Logger):
                     
                     scene_counter += len(infos['data'])
 
-            # Remove any stale files from the previous run.
-            if os.path.exists(f'{args.path}/simbev'):
-                stale_scene_id = f'{scene_counter:04d}'
+            if args.save:
+                # Remove any stale files from the previous run.
+                if os.path.exists(f'{args.path}/simbev'):
+                    stale_scene_id = f'{scene_counter:04d}'
 
-                logger.debug(f'Removing stale files for scene {stale_scene_id}...')
+                    logger.debug(f'Removing stale files for scene {stale_scene_id}...')
 
-                os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
-                
-                logger.debug(f'Removed stale files for scene {stale_scene_id}.')
+                    os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
+                    
+                    logger.debug(f'Removed stale files for scene {stale_scene_id}.')
 
             for split in ['train', 'val', 'test']:
                 data = {}

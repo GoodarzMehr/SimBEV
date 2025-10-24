@@ -26,7 +26,7 @@ val_scene_config:
   # Town10HD: 4
   # Town12: 8
   # Town13: 8
-  # Town15: 1
+  Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -52,8 +52,8 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 400
-max_scene_duration: 400
+min_scene_duration: 4
+max_scene_duration: 4
 
 early_scene_termination: False
 termination_timeout: 8
