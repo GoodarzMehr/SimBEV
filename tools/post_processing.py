@@ -111,7 +111,7 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
     
     # Handle empty point clouds
     if points.shape[0] == 0:
-        return torch.zeros(0, dtype=torch.bool, device=device)
+        return 0
     
     # Ensure bbox is the right shape (8, 3) -> (24,)
     if bbox.dim() == 2:
@@ -128,7 +128,8 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
     # Call CUDA kernel if available
     if CUDA_AVAILABLE and device.startswith('cuda'):
         try:
-            return bbox_cuda_kernel(points, bbox)
+            count_tensor = bbox_cuda_kernel(points, bbox)
+            return count_tensor.item()
         except RuntimeError as e:
             print(f"CUDA kernel failed: {e}")
             print(f"Falling back to CPU implementation")
@@ -137,12 +138,14 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
             # Fall back to CPU
             points_cpu = points.cpu()
             bbox_cpu = bbox.reshape(8, 3).cpu()
-            return _is_inside_bbox_cpu(points_cpu, bbox_cpu).to(device)
+            mask = _is_inside_bbox_cpu(points_cpu, bbox_cpu)
+            return mask.sum().item()
     else:
         # Fallback to CPU implementation
         if bbox.dim() == 1:
             bbox = bbox.reshape(8, 3)
-        return _is_inside_bbox_cpu(points, bbox)
+        mask = _is_inside_bbox_cpu(points, bbox)
+        return mask.sum().item()
 
 
 
@@ -199,13 +202,13 @@ def main(args=None):
 
                             lidar_points_global = (
                                 torch.from_numpy(lidar2global).to(DEVICE, dType) @ torch.cat(
-                                    (lidar_points, torch.ones(dim0, 1).to(DEVICE, dType)), dim=1
+                                    (lidar_points, torch.ones(dim0, 1, device=DEVICE, dtype=dType)), dim=1
                                 ).T
                             )[:3].T
                         else:
                             lidar_points_global = torch.empty((0, 3), device=DEVICE, dtype=dType)
-
-                        radar_points_global = torch.empty((0, 3), device=DEVICE, dtype=dType)
+                        
+                        radar_points_list = []
 
                         for radar in RAD_NAME:
                             # Radar to ego transformation.
@@ -238,11 +241,16 @@ def main(args=None):
 
                                 points_global = (
                                     torch.from_numpy(radar2global).to(DEVICE, dType) @ torch.cat(
-                                        (points, torch.ones(dim0, 1).to(DEVICE, dType)), dim=1
+                                        (points, torch.ones(dim0, 1, device=DEVICE, dtype=dType)), dim=1
                                     ).T
                                 )[:3].T
 
-                                radar_points_global = torch.cat((radar_points_global, points_global), dim=0)
+                                radar_points_list.append(points_global)
+
+                        if len(radar_points_list) > 0:
+                            radar_points_global = torch.cat(radar_points_list, dim=0).contiguous()
+                        else:
+                            radar_points_global = torch.empty((0, 3), device=DEVICE, dtype=dType)
                         
                         # Load object bounding boxes.
                         det_objects = np.load(info['GT_DET'], allow_pickle=True)
@@ -250,12 +258,9 @@ def main(args=None):
                         new_det_objects = []
 
                         for obj in det_objects:
-                            lidar_mask = is_inside_bbox(lidar_points_global, obj['bounding_box'], DEVICE, dType)       
-                            radar_mask = is_inside_bbox(radar_points_global, obj['bounding_box'], DEVICE, dType)
+                            num_lidar_points = is_inside_bbox(lidar_points_global, obj['bounding_box'], DEVICE, dType)
+                            num_radar_points = is_inside_bbox(radar_points_global, obj['bounding_box'], DEVICE, dType)
 
-                            num_lidar_points = lidar_mask.sum().item()
-                            num_radar_points = radar_mask.sum().item()
-                            
                             valid_flag = (num_lidar_points > 0) or (num_radar_points > 0)
 
                             obj['num_lidar_pts'] = num_lidar_points
@@ -263,15 +268,15 @@ def main(args=None):
                             obj['valid_flag'] = valid_flag
 
                             new_det_objects.append(obj)
-                    
+                        
                         with open(
                             f'{args.path}/simbev/ground-truth/new_det/SimBEV-scene-{scene_number:04d}-frame-{i:04d}-GT_DET.bin',
                             'wb'
                         ) as f:
                             np.save(f, np.array(new_det_objects), allow_pickle=True)
 
-        os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
-        os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
+        # os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
+        # os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
         end = time.perf_counter()
         print(f'Post-processing completed in {end - start:.2f} seconds.')

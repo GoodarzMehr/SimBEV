@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  Town01: 2
-  Town02: 2
-  Town03: 4
-  Town04: 4
-  Town05: 4
-  Town06: 4
-  Town07: 4
-  Town10HD: 4
-  Town12: 8
-  Town13: 8
-  Town15: 8
+  # Town01: 2
+  # Town02: 2
+  # Town03: 4
+  # Town04: 4
+  # Town05: 4
+  # Town06: 4
+  # Town07: 4
+  # Town10HD: 4
+  # Town12: 8
+  # Town13: 8
+  # Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -52,8 +52,8 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 20
-max_scene_duration: 20
+min_scene_duration: 400
+max_scene_duration: 400
 
 early_scene_termination: False
 termination_timeout: 8
@@ -109,7 +109,7 @@ emergency_lights_percentage: 50.0
 reckless_ego_percentage: 1.0
 reckless_npc_percentage: 1.0
 
-distracted_ego_percentage: 100.0
+distracted_ego_percentage: 4.0
 distracted_npc_percentage: 4.0
 
 walker_spawn_attempts: 100
@@ -142,7 +142,7 @@ use_rgb_camera: True
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: False
+use_semantic_camera: True
 
 semantic_camera_properties:
   {}
@@ -184,7 +184,7 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: False
+use_radar: True
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
@@ -218,8 +218,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-n_vehicles: 0
-n_walkers: 0
+# n_vehicles: 0
+# n_walkers: 0
 
 # walker_cross_factor: 0.6
 
