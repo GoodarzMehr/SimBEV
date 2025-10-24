@@ -344,14 +344,14 @@ def transform_bbox(gt_det, transform):
     # desired coordinate system.
     for det_object in gt_det:
         # if args.ignore_valid_flag or det_object['valid_flag']:
-        # if det_object['valid_flag']:
-        for tag in det_object['semantic_tags']:
-            if tag in OBJECT_CLASSES.keys():
-                global_bbox_corners = np.append(det_object['bounding_box'], np.ones((8, 1)), 1)
-                bbox_corners = (transform @ global_bbox_corners.T)[:3].T
+        if det_object['valid_flag']:
+            for tag in det_object['semantic_tags']:
+                if tag in OBJECT_CLASSES.keys():
+                    global_bbox_corners = np.append(det_object['bounding_box'], np.ones((8, 1)), 1)
+                    bbox_corners = (transform @ global_bbox_corners.T)[:3].T
 
-                corners.append(bbox_corners)
-                labels.append(OBJECT_CLASSES[tag])
+                    corners.append(bbox_corners)
+                    labels.append(OBJECT_CLASSES[tag])
 
     corners = np.array(corners)
     labels = np.array(labels)

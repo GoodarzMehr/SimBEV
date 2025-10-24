@@ -270,8 +270,8 @@ def main(args=None):
                         ) as f:
                             np.save(f, np.array(new_det_objects), allow_pickle=True)
 
-        # os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
-        # os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
+        os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
+        os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
         end = time.perf_counter()
         print(f'Post-processing completed in {end - start:.2f} seconds.')

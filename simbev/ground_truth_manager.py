@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 TRAFFIC_SIGN = {
     'highwaySign': 'highway',
     'pole_': 'billboard',
+    '_Parking': 'parking',
     'DoNoEnter': 'do_not_enter',
     'Interchange': 'interchange',
     'NoTrunLeft': 'no_left_turn',
@@ -40,9 +41,13 @@ TRAFFIC_SIGN = {
     'minPark': 'parking_time_limit',
     'noBicyc': 'no_bicycles',
     'noPark': 'no_parking',
+    'MaximumHeight': 'no_parking',
+    'NoParking': 'no_parking_towing_enforced',
     'noPed': 'no_pedestrians',
     'noStand': 'no_standing',
     'onlyCrossw': 'cross_only_at_crosswalk',
+    'CrossWalk': 'pedestrian_crossing',
+    'Pedestrian_Cicle': 'frequent_pedestrian_cyclist',
     'photo': 'photo_enforced',
     'reserved': 'reserved_parking',
     'school': 'school_zone',
@@ -60,6 +65,9 @@ TRAFFIC_SIGN = {
     'noTurn': 'no_turns',
     'OneWay': 'one_way',
     'oneWay': 'one_way',
+    'Traffic_Circl': 'roundabout',
+    'BumpAhead': 'bump_ahead',
+    'LevelDifference': 'uneven_road',
     'stopSign': 'stop',
     'STOP_': 'stop',
     '_Stop': 'stop',
@@ -862,6 +870,11 @@ class GTManager:
 
                 for bounding_box in bounding_boxes:
                     if bounding_box.extent.z > 0.3:
+                        if bounding_box.extent.x < 0.18:
+                            bounding_box.extent.x = max(bounding_box.extent.y, 0.18)
+                        if bounding_box.extent.y < 0.18:
+                            bounding_box.extent.y = max(bounding_box.extent.x, 0.18)
+
                         actor_properties = self._get_basic_actor_properties(actor)
 
                         actor_properties['semantic_tags'] = [7]
@@ -908,6 +921,13 @@ class GTManager:
         if self._config['collect_traffic_sign_bbox']:
             traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
 
+            if self._map_name == 'Town15':
+                static_list = self._world.get_environment_objects(carla.CityObjectLabel.Static)
+
+                for obj in static_list:
+                    if 'SM_Signal' in obj.name:
+                        traffic_sign_list.append(obj)
+
             object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
         else:
             object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
@@ -926,13 +946,20 @@ class GTManager:
                 object_properties['is_dormant'] = False
                 object_properties['parent'] = None
                 object_properties['attributes'] = {}
-                object_properties['bounding_box'] = carla_vector_to_numpy(obj.bounding_box.get_local_vertices())
                 object_properties['linear_velocity'] = np.zeros(3)
                 object_properties['angular_velocity'] = np.zeros(3)
 
+                bbox = obj.bounding_box
+
+                bbox.extent.x = max(bbox.extent.x, 0.03)
+                bbox.extent.y = max(bbox.extent.y, 0.03)
+                bbox.extent.z = max(bbox.extent.z, 0.03)
+
+                object_properties['bounding_box'] = carla_vector_to_numpy(bbox.get_local_vertices())
+
                 object_properties['bounding_box'][:, 1] *= -1.0
 
-                if obj.type == carla.CityObjectLabel.TrafficSigns:
+                if obj.type in [carla.CityObjectLabel.TrafficSigns, carla.CityObjectLabel.Static]:
                     object_properties['semantic_tags'] = [8]
                     object_properties['sign_type'] = ''
 
@@ -944,9 +971,20 @@ class GTManager:
                         'speed_limit' in object_properties['sign_type']:
                         object_properties['sign_type'] = 'speed_limit'
 
-                    # if self._map_name in ['Town12', 'Town13'] and '_Stop_' in obj.name:
-                    #     object_properties['bounding_box'][:, 2] += \
-                    #         (obj.transform.location.z - obj.bounding_box.location.z - obj.bounding_box.extent.z + 0.09)
+                    if self._map_name in ['Town12', 'Town13'] and any(x in obj.name for x in ['_Stop_', '_Yield_']):
+                        object_properties['bounding_box'][:, 2] -= 2.24
+                    
+                    if self._map_name == 'Town15' and obj.type == carla.CityObjectLabel.Static:
+                        max_extent = max(obj.bounding_box.extent.x, obj.bounding_box.extent.y)
+
+                        frac = max_extent / obj.bounding_box.extent.z
+
+                        object_properties['bounding_box'][::2, 2] = object_properties['bounding_box'][1::2, 2] - \
+                            2 * max_extent
+                        
+                        object_properties['bounding_box'][::2, :1] = object_properties['bounding_box'][1::2, :1] + \
+                            frac * (object_properties['bounding_box'][::2, :1] - \
+                                    object_properties['bounding_box'][1::2, :1])
                 elif obj.type == carla.CityObjectLabel.Car:
                     object_properties['semantic_tags'] = [14]
                 elif obj.type == carla.CityObjectLabel.Truck:
