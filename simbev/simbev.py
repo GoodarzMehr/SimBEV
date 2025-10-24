@@ -14,6 +14,7 @@ import logging.handlers
 
 import numpy as np
 
+from tqdm import tqdm
 from datetime import datetime
 
 try:
@@ -396,7 +397,14 @@ def main(logger: logging.Logger):
 
                                 # Run the simulation for a few seconds so
                                 # everything gets going.
-                                for _ in range(round(config['warmup_duration'] / config['timestep'])):
+                                pbar = tqdm(
+                                    range(round(config['warmup_duration'] / config['timestep'])),
+                                    desc='Warming up',
+                                    ncols=120,
+                                    colour='red'
+                                )
+
+                                for _ in pbar:
                                     core.tick()
 
                                 # Start logging the scene.
@@ -407,7 +415,14 @@ def main(logger: logging.Logger):
                                     )
 
                                 # Start data collection.
-                                for j in range(round(scene_duration / config['timestep'])):
+                                pbar = tqdm(
+                                    range(round(scene_duration / config['timestep'])),
+                                    desc=f'Scene {scene_counter:04d}',
+                                    ncols=120,
+                                    colour='green'
+                                )
+
+                                for j in pbar:
                                     if not (core.get_world_manager().get_terminate_scene() and \
                                             j % round(1.0 / config['timestep']) == 0):
                                         core.tick(args.path, scene_counter, j, args.render, args.save)
@@ -522,7 +537,14 @@ def main(logger: logging.Logger):
 
                             # Run the simulation for a few seconds so
                             # everything gets going.
-                            for _ in range(round(config['warmup_duration'] / config['timestep'])):
+                            pbar = tqdm(
+                                range(round(config['warmup_duration'] / config['timestep'])),
+                                desc='Warming up',
+                                ncols=120,
+                                colour='red'
+                            )
+                            
+                            for _ in pbar:
                                 core.tick()
 
                             # Start logging the scene.
@@ -532,7 +554,14 @@ def main(logger: logging.Logger):
                             )
 
                             # Start data collection.
-                            for j in range(round(scene_duration / config['timestep'])):
+                            pbar = tqdm(
+                                range(round(scene_duration / config['timestep'])),
+                                desc=f'Scene {scene_counter:04d}',
+                                ncols=120,
+                                colour='green'
+                            )
+
+                            for j in pbar:
                                 if not (core.get_world_manager().get_terminate_scene() and \
                                         j % round(1.0 / config['timestep']) == 0):
                                     core.tick(args.path, scene_counter, j, args.render, args.save)

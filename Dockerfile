@@ -66,7 +66,7 @@ libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libvulkan-dev v
 mesa-utils
 
 RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
-networkx psutil
+networkx psutil tqdm
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu130
 

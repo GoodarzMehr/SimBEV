@@ -9,15 +9,19 @@ import traceback
 
 import numpy as np
 
+from tqdm import tqdm
+
 from pyquaternion import Quaternion as Q
 
-# Import the compiled CUDA extension
 try:
     from tools.bbox_cuda import is_inside_bbox_cuda as bbox_cuda_kernel
+    
     CUDA_AVAILABLE = True
+
 except ImportError:
     print("Warning: CUDA extension not available. Performance will be degraded.")
     CUDA_AVAILABLE = False
+
 
 RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
@@ -30,9 +34,12 @@ argparser.add_argument(
     '--path',
     default='/dataset',
     help='path to the dataset (default: /dataset)')
+argparser.add_argument(
+    '--use-seg',
+    action='store_true',
+    help='use semantic segmentation images for post-processing')
 
-# Parse args only when run as script
-args = None
+args = argparser.parse_args()
 
 
 def _is_inside_bbox_cpu(points, bbox):
@@ -149,10 +156,7 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
 
 
 
-def main(args=None):
-    if args is None:
-        args = argparser.parse_args()
-    
+def main():
     try:
         start = time.perf_counter()
         os.makedirs(f'{args.path}/simbev/ground-truth/new_det', exist_ok=True)
@@ -167,14 +171,19 @@ def main(args=None):
                 for scene in infos['data']:
                     scene_number = int(scene[-4:])
 
-                    print(f'Processing scene {scene_number}...')
-
                     if infos['data'][scene]['scene_info']['map'] in ['Town12', 'Town13', 'Town15']:
                         dType = torch.double
                     else:
                         dType = torch.float32
 
-                    for i, info in enumerate(infos['data'][scene]['scene_data']):
+                    pbar = tqdm(
+                        infos['data'][scene]['scene_data'],
+                        desc=f'Scene {scene_number:04d}',
+                        ncols=80,
+                        colour='cyan'
+                    )
+                    
+                    for i, info in enumerate(pbar):
                         # Ego to global transformation.
                         ego2global = np.eye(4).astype(np.float32)
 
