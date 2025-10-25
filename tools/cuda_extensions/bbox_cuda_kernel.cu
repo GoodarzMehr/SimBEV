@@ -13,7 +13,7 @@ __device__ __forceinline__ scalar_t norm3d(scalar_t x, scalar_t y, scalar_t z) {
 }
 
 template <typename scalar_t>
-__global__ void is_inside_bbox_kernel(
+__global__ void num_inside_bbox_kernel(
     const scalar_t* __restrict__ points,
     const scalar_t* __restrict__ bbox,
     int* __restrict__ count,
@@ -88,7 +88,7 @@ __global__ void is_inside_bbox_kernel(
     }
 }
 
-torch::Tensor is_inside_bbox_cuda(torch::Tensor points, torch::Tensor bbox)
+torch::Tensor num_inside_bbox_cuda(torch::Tensor points, torch::Tensor bbox)
 {
     const int n_points = points.size(0);
     
@@ -102,8 +102,8 @@ torch::Tensor is_inside_bbox_cuda(torch::Tensor points, torch::Tensor bbox)
     const int threads = 128;
     const int blocks = (n_points + threads - 1) / threads;
     
-    AT_DISPATCH_FLOATING_TYPES(points.scalar_type(), "is_inside_bbox_cuda", ([&] {
-        is_inside_bbox_kernel<scalar_t><<<blocks, threads>>>(
+    AT_DISPATCH_FLOATING_TYPES(points.scalar_type(), "num_inside_bbox_cuda", ([&] {
+        num_inside_bbox_kernel<scalar_t><<<blocks, threads>>>(
             points.data_ptr<scalar_t>(),
             bbox.data_ptr<scalar_t>(),
             count.data_ptr<int>(),

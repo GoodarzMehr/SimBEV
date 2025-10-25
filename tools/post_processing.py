@@ -14,7 +14,7 @@ from tqdm import tqdm
 from pyquaternion import Quaternion as Q
 
 try:
-    from tools.bbox_cuda import is_inside_bbox_cuda as bbox_cuda_kernel
+    from tools.bbox_cuda import num_inside_bbox_cuda as bbox_cuda_kernel
     
     CUDA_AVAILABLE = True
 
@@ -42,7 +42,7 @@ argparser.add_argument(
 args = argparser.parse_args()
 
 
-def _is_inside_bbox_cpu(points, bbox):
+def _num_inside_bbox_cpu(points, bbox):
     '''
     CPU fallback implementation for bounding box checking.
     
@@ -89,7 +89,12 @@ def _is_inside_bbox_cpu(points, bbox):
     return inside_u & inside_v & inside_w
 
 
-def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
+def num_inside_bbox(
+        points: torch.Tensor | np.ndarray,
+        bbox: torch.Tensor | np.ndarray,
+        device: str = 'cuda:0',
+        dType: torch.dtype = torch.float
+    ) -> int:
     '''
     Determine if a point (or array of points) is inside a 3D bounding box.
 
@@ -145,20 +150,19 @@ def is_inside_bbox(points, bbox, device='cuda:0', dType=torch.float):
             # Fall back to CPU
             points_cpu = points.cpu()
             bbox_cpu = bbox.reshape(8, 3).cpu()
-            mask = _is_inside_bbox_cpu(points_cpu, bbox_cpu)
+            mask = _num_inside_bbox_cpu(points_cpu, bbox_cpu)
             return mask.sum().item()
     else:
         # Fallback to CPU implementation
         if bbox.dim() == 1:
             bbox = bbox.reshape(8, 3)
-        mask = _is_inside_bbox_cpu(points, bbox)
+        mask = _num_inside_bbox_cpu(points, bbox)
         return mask.sum().item()
-
-
 
 def main():
     try:
         start = time.perf_counter()
+        
         os.makedirs(f'{args.path}/simbev/ground-truth/new_det', exist_ok=True)
 
         for split in ['train', 'val', 'test']:
@@ -167,6 +171,12 @@ def main():
                     infos = json.load(f)
 
                 metadata = infos['metadata']
+
+                # Lidar to ego transformation.
+                lidar2ego = np.eye(4).astype(np.float32)
+
+                lidar2ego[:3, :3] = Q(metadata['LIDAR']['sensor2ego_rotation']).rotation_matrix
+                lidar2ego[:3, 3] = metadata['LIDAR']['sensor2ego_translation']
 
                 for scene in infos['data']:
                     scene_number = int(scene[-4:])
@@ -179,8 +189,8 @@ def main():
                     pbar = tqdm(
                         infos['data'][scene]['scene_data'],
                         desc=f'Scene {scene_number:04d}',
-                        ncols=80,
-                        colour='cyan'
+                        ncols=120,
+                        colour='blue'
                     )
                     
                     for i, info in enumerate(pbar):
@@ -189,12 +199,6 @@ def main():
 
                         ego2global[:3, :3] = Q(info['ego2global_rotation']).rotation_matrix
                         ego2global[:3, 3] = info['ego2global_translation']
-
-                        # Lidar to ego transformation.
-                        lidar2ego = np.eye(4).astype(np.float32)
-
-                        lidar2ego[:3, :3] = Q(metadata['LIDAR']['sensor2ego_rotation']).rotation_matrix
-                        lidar2ego[:3, 3] = metadata['LIDAR']['sensor2ego_translation']
 
                         lidar2global = ego2global @ lidar2ego
 
@@ -210,9 +214,11 @@ def main():
                             dim0 = lidar_points.shape[0]
 
                             lidar_points_global = (
-                                torch.from_numpy(lidar2global).to(DEVICE, dType) @ torch.cat(
-                                    (lidar_points, torch.ones(dim0, 1, device=DEVICE, dtype=dType)), dim=1
-                                ).T
+                                torch.from_numpy(lidar2global).to(DEVICE, dType) \
+                                    @ torch.cat(
+                                        (lidar_points, torch.ones(dim0, 1, device=DEVICE, dtype=dType)),
+                                        dim=1
+                                    ).T
                             )[:3].T
                         else:
                             lidar_points_global = torch.empty((0, 3), device=DEVICE, dtype=dType)
@@ -249,9 +255,11 @@ def main():
                                 dim0 = points.shape[0]
 
                                 points_global = (
-                                    torch.from_numpy(radar2global).to(DEVICE, dType) @ torch.cat(
-                                        (points, torch.ones(dim0, 1, device=DEVICE, dtype=dType)), dim=1
-                                    ).T
+                                    torch.from_numpy(radar2global).to(DEVICE, dType) \
+                                        @ torch.cat(
+                                            (points, torch.ones(dim0, 1, device=DEVICE, dtype=dType)),
+                                            dim=1
+                                        ).T
                                 )[:3].T
 
                                 radar_points_list.append(points_global)
@@ -267,8 +275,8 @@ def main():
                         new_det_objects = []
 
                         for obj in det_objects:
-                            num_lidar_points = is_inside_bbox(lidar_points_global, obj['bounding_box'], DEVICE, dType)
-                            num_radar_points = is_inside_bbox(radar_points_global, obj['bounding_box'], DEVICE, dType)
+                            num_lidar_points = num_inside_bbox(lidar_points_global, obj['bounding_box'], DEVICE, dType)
+                            num_radar_points = num_inside_bbox(radar_points_global, obj['bounding_box'], DEVICE, dType)
 
                             valid_flag = (num_lidar_points > 0) or (num_radar_points > 0)
 
@@ -288,7 +296,8 @@ def main():
         # os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
         end = time.perf_counter()
-        print(f'Post-processing completed in {end - start:.2f} seconds.')
+        
+        print(f'Post-processing completed in {end - start:.3f} seconds.')
 
     except Exception:
         print(traceback.format_exc())
@@ -300,10 +309,12 @@ def main():
 def entry():
     try:
         main()
+    
     except KeyboardInterrupt:
         print('Killing the process...')
 
         time.sleep(3.0)
+    
     finally:
         print('Done.')
 

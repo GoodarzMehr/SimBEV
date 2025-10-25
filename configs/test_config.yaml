@@ -26,7 +26,7 @@ val_scene_config:
   # Town10HD: 4
   # Town12: 8
   # Town13: 8
-  Town15: 3
+  Town15: 1
 
 test_scene_config:
   # Town01: 1

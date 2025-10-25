@@ -5,10 +5,10 @@
 #include <torch/extension.h>
 
 // Forward declaration of CUDA function.
-torch::Tensor is_inside_bbox_cuda(torch::Tensor points, torch::Tensor bbox);
+torch::Tensor num_inside_bbox_cuda(torch::Tensor points, torch::Tensor bbox);
 
 // C++ interface.
-torch::Tensor is_inside_bbox(torch::Tensor points, torch::Tensor bbox) {
+torch::Tensor num_inside_bbox(torch::Tensor points, torch::Tensor bbox) {
     // Validate inputs.
     TORCH_CHECK(points.is_cuda(), "points must be a CUDA tensor.");
     TORCH_CHECK(bbox.is_cuda(), "bbox must be a CUDA tensor.");
@@ -17,9 +17,9 @@ torch::Tensor is_inside_bbox(torch::Tensor points, torch::Tensor bbox) {
     TORCH_CHECK(points.is_contiguous(), "points must be contiguous.");
     TORCH_CHECK(bbox.is_contiguous(), "bbox must be contiguous.");
     
-    return is_inside_bbox_cuda(points, bbox);
+    return num_inside_bbox_cuda(points, bbox);
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("is_inside_bbox_cuda", &is_inside_bbox, "Check if points are inside a 3D bounding box (CUDA).");
+    m.def("num_inside_bbox_cuda", &num_inside_bbox, "Check if points are inside a 3D bounding box (CUDA).");
 }
