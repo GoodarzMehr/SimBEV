@@ -42,21 +42,22 @@ argparser.add_argument(
 args = argparser.parse_args()
 
 
-def _num_inside_bbox_cpu(points, bbox):
+def _num_inside_bbox_cpu(points: torch.Tensor, bbox: torch.Tensor) -> int:
     '''
-    CPU fallback implementation for bounding box checking.
+    Determine how many points from an array of points are inside a 3D bounding
+    box (CPU implementation).
     
     Args:
         points: coordinate(s) of the point(s) (N, 3).
-        bbox: array of the coordinates of the bounding box corners (8, 3).
+        bbox: coordinates of the bounding box corners (8, 3).
         
     Returns:
-        mask: mask indicating if the point(s) are inside the bounding box.
+        number of points inside the bounding box.
     '''
-    # Define the reference point, i.e. first corner of the bounding box.
+    # Define the reference point, i.e. the first corner of the bounding box.
     p0 = bbox[0]
     
-    # Define local coordinate axes of the bounding box using edges of the box.
+    # Define the local coordinate axes of the bounding box using the edges of the box.
     u = bbox[2] - p0
     v = bbox[4] - p0
     w = bbox[1] - p0
@@ -70,11 +71,9 @@ def _num_inside_bbox_cpu(points, bbox):
     # coordinate system of the bounding box.
     R = torch.vstack([u_norm, v_norm, w_norm]).T
     
-    # Translate points so that p0 is the origin.
-    points_translated = points - p0
-    
-    # Transform points to the local bounding box coordinate system.
-    points_local = points_translated @ R
+    # Translate the points so that p0 is the origin, then transform the points
+    # to the local bounding box coordinate system.
+    points_local = (points - p0) @ R
     
     # Calculate the extents of the bounding box in the local coordinate system
     u_len = torch.linalg.norm(u)
@@ -86,7 +85,7 @@ def _num_inside_bbox_cpu(points, bbox):
     inside_v = (points_local[:, 1] >= 0) & (points_local[:, 1] <= v_len)
     inside_w = (points_local[:, 2] >= 0) & (points_local[:, 2] <= w_len)
     
-    return inside_u & inside_v & inside_w
+    return (inside_u & inside_v & inside_w).sum()
 
 
 def num_inside_bbox(
@@ -96,68 +95,71 @@ def num_inside_bbox(
         dType: torch.dtype = torch.float
     ) -> int:
     '''
-    Determine if a point (or array of points) is inside a 3D bounding box.
+    Determine how many points from an array of points are inside a 3D bounding
+    box.
 
     Args:
         points: coordinate(s) of the point(s) (N, 3).
-        bbox: array of the coordinates of the bounding box corners (8, 3).
-        device: device to use for computation.
+        bbox: coordinates of the bounding box corners (8, 3).
+        device: device to use for computation, can be 'cpu' or 'cuda:i' where
+            i is the GPU index.
         dType: data type to use for calculations.
 
     Returns:
-        mask: mask indicating if the point(s) are inside the bounding box.
+        number of points inside the bounding box.
     '''
     if not isinstance(points, torch.Tensor):
         points = torch.from_numpy(points).to(device, dType)
-    else:
-        points = points.to(device, dType)
 
     if not isinstance(bbox, torch.Tensor):
         bbox = torch.from_numpy(bbox).to(device, dType)
-    else:
-        bbox = bbox.to(device, dType)
 
-    # Ensure proper shape and contiguity
+    # Ensure proper shape.
     if points.dim() == 1:
         points = points.unsqueeze(0)
     
-    # Handle empty point clouds
+    # Handle empty point clouds.
     if points.shape[0] == 0:
         return 0
     
-    # Ensure bbox is the right shape (8, 3) -> (24,)
+    # Ensure bbox is the right shape (8, 3) -> (24,).
     if bbox.dim() == 2:
         bbox = bbox.reshape(-1)
     
-    # Make contiguous
+    # Make contiguous.
     points = points.contiguous()
     bbox = bbox.contiguous()
     
-    # Validate shapes
-    assert points.shape[1] == 3, f"Points must have 3 coordinates, got shape {points.shape}"
-    assert bbox.shape[0] == 24, f"Bbox must have 24 elements (8 corners * 3 coords), got {bbox.shape[0]}"
-    
-    # Call CUDA kernel if available
+    # Validate shapes.
+    assert points.shape[1] == 3, f'Points must have 3 coordinates, got shape {points.shape}'
+    assert bbox.shape[0] == 24, f'Bounding box must have 24 elements (8 corners * 3 coordinates), got {bbox.shape[0]}'
+
+    # Use CUDA kernel if available.
     if CUDA_AVAILABLE and device.startswith('cuda'):
         try:
             count_tensor = bbox_cuda_kernel(points, bbox)
+            
             return count_tensor.item()
+        
         except RuntimeError as e:
-            print(f"CUDA kernel failed: {e}")
-            print(f"Falling back to CPU implementation")
-            print(f"Points shape: {points.shape}, dtype: {points.dtype}")
-            print(f"Bbox shape: {bbox.shape}, dtype: {bbox.dtype}")
-            # Fall back to CPU
+            print(f'CUDA kernel failed: {e}')
+            print(f'Falling back to CPU implementation')
+            
+            # Fall back to CPU implementation.
             points_cpu = points.cpu()
+            
             bbox_cpu = bbox.reshape(8, 3).cpu()
-            mask = _num_inside_bbox_cpu(points_cpu, bbox_cpu)
-            return mask.sum().item()
+            
+            count = _num_inside_bbox_cpu(points_cpu, bbox_cpu)
+            
+            return count.item()
     else:
-        # Fallback to CPU implementation
-        if bbox.dim() == 1:
-            bbox = bbox.reshape(8, 3)
-        mask = _num_inside_bbox_cpu(points, bbox)
-        return mask.sum().item()
+        # Fall back to CPU implementation.
+        bbox = bbox.reshape(8, 3)
+
+        count = _num_inside_bbox_cpu(points, bbox)
+        
+        return count.item()
 
 def main():
     try:
