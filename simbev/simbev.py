@@ -18,12 +18,12 @@ from tqdm import tqdm
 from datetime import datetime
 
 try:
-    from .utils import kill_all_servers
+    from .utils import TqdmLoggingHandler, kill_all_servers
     
     from .carla_core import CarlaCore
 
 except ImportError:
-    from utils import kill_all_servers
+    from utils import TqdmLoggingHandler, kill_all_servers
     
     from carla_core import CarlaCore
 
@@ -141,7 +141,7 @@ def setup_logger(name=None, log_level=logging.INFO, log_dir: str = 'logs', save:
     )
     
     # Create the console handler.
-    console_handler = logging.StreamHandler()
+    console_handler = TqdmLoggingHandler()
     
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)

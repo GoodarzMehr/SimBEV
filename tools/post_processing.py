@@ -180,6 +180,15 @@ def main():
                 lidar2ego[:3, :3] = Q(metadata['LIDAR']['sensor2ego_rotation']).rotation_matrix
                 lidar2ego[:3, 3] = metadata['LIDAR']['sensor2ego_translation']
 
+                # Radar to ego transformations.
+                radar2ego = {}
+
+                for radar in RAD_NAME:
+                    radar2ego[radar] = np.eye(4).astype(np.float32)
+
+                    radar2ego[radar][:3, :3] = Q(metadata[radar]['sensor2ego_rotation']).rotation_matrix
+                    radar2ego[radar][:3, 3] = metadata[radar]['sensor2ego_translation']
+
                 for scene in infos['data']:
                     scene_number = int(scene[-4:])
 
@@ -228,13 +237,7 @@ def main():
                         radar_points_list = []
 
                         for radar in RAD_NAME:
-                            # Radar to ego transformation.
-                            radar2ego = np.eye(4).astype(np.float32)
-
-                            radar2ego[:3, :3] = Q(metadata[radar]['sensor2ego_rotation']).rotation_matrix
-                            radar2ego[:3, 3] = metadata[radar]['sensor2ego_translation']
-
-                            radar2global = ego2global @ radar2ego
+                            radar2global = ego2global @ radar2ego[radar]
 
                             # Load radar point cloud.
                             if radar in info:

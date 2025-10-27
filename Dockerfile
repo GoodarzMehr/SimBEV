@@ -5,7 +5,7 @@
 # This script performs all the necessary steps for creating a SimBEV Docker
 # image.
 #
-# The base Docker image is Ubuntu 22.04 with CUDA 12.4 and Vulkan SDK
+# The base Docker image is Ubuntu 22.04 with CUDA 13.0 and Vulkan SDK
 # 1.3.204.1. If you want to use a different base image, you may have to modify
 # "ubuntu2204/x86_64" when fetching keys, based on your Ubuntu release and
 # system architecture.
@@ -13,7 +13,7 @@
 # Build Arguments (Case Sensitive):
 #
 # USER:          username inside each container, set to "sb" by default.
-# CARLA_VERSION: installed version of CARLA, set to "0.9.15" by default.
+# CARLA_VERSION: installed version of CARLA, set to "0.9.16" by default.
 
 # Installation:
 #
@@ -66,7 +66,7 @@ libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libvulkan-dev v
 mesa-utils
 
 RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
-networkx psutil tqdm
+networkx psutil tqdm pynput
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu130
 

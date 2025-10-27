@@ -10,7 +10,10 @@ import time
 import carla
 import random
 import logging
+import threading
 import subprocess
+
+from pynput import keyboard
 
 try:
     from .utils import is_used
@@ -39,6 +42,8 @@ class CarlaCore:
 
         self._init_server()
         self.connect_client()
+
+        self._setup_keyboard_listener()
 
     def __getstate__(self):
         logger.warning('No pickles for CARLA! Copyright © 2025 Goodarz Mehr')
@@ -147,6 +152,36 @@ class CarlaCore:
 
         raise Exception('Cannot connect to the CARLA server. Good bye!')
     
+    def _setup_keyboard_listener(self):
+        '''Set up keyboard listener to pause/resume the simulation.'''
+        self._pause = threading.Event()
+        self._pause.set()
+
+        self._listener = keyboard.Listener(on_press=self._on_key_press)
+        self._listener.daemon = True
+        self._listener.start()
+    
+    def _on_key_press(self, key):
+        '''
+        Handle key press events.
+
+        Args:
+            key: the key that was pressed.
+        '''
+        try:
+            if key.char == 'p':
+                if self._pause.is_set():
+                    self._pause.clear()
+
+                    logger.warning('Simulation paused.')
+                else:
+                    self._pause.set()
+
+                    logger.info('Simulation resumed.')
+        
+        except AttributeError:
+            pass
+    
     def load_map(self, map_name: str):
         '''
         Load a map in CARLA.
@@ -154,14 +189,20 @@ class CarlaCore:
         Args:
             map_name: name of the map to load.
         '''
+        self._pause.wait()
+
         return self._world_manager.load_map(map_name)
     
     def spawn_vehicle(self):
         '''Spawn a vehicle.'''
+        self._pause.wait()
+
         return self._world_manager.spawn_vehicle()
 
     def move_vehicle(self):
         '''Move the vehicle.'''
+        self._pause.wait()
+
         return self._world_manager.move_vehicle()
     
     def start_scene(self, seed: int = None):
@@ -171,6 +212,8 @@ class CarlaCore:
         Args:
             seed: random seed for the scene.
         '''
+        self._pause.wait()
+
         return self._world_manager.start_scene(seed)
 
     def tick(self, path: str = None, scene: int = None, frame: int = None, render: bool = False, save: bool = False):
@@ -184,14 +227,20 @@ class CarlaCore:
             render: whether to render sensor data.
             save: whether to save sensor data to file.
         '''
+        self._pause.wait()
+
         return self._world_manager.tick(path, scene, frame, render, save)
     
     def stop_scene(self):
         '''Stop the scene.'''
+        self._pause.wait()
+
         return self._world_manager.stop_scene()
     
     def destroy_vehicle(self):
         '''Destroy the vehicle.'''
+        self._pause.wait()
+        
         return self._world_manager.destroy_vehicle()
     
     def package_data(self):

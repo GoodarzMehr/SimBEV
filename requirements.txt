@@ -1,6 +1,8 @@
+tqdm
 ninja
 numpy
 torch
+pynput
 open3d
 networkx
 flow_vis

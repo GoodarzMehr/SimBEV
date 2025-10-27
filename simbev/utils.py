@@ -10,9 +10,11 @@ import time
 import carla
 import psutil
 import signal
+import logging
 
 import numpy as np
 
+from tqdm import tqdm
 from typing import List
 
 
@@ -225,3 +227,23 @@ class CustomTimer:
 
     def time(self):
         return self.timer()
+
+
+class TqdmLoggingHandler(logging.StreamHandler):
+    '''Logging handler for tqdm progress bars.'''
+    def emit(self, record):
+        '''
+        Emit a log record.
+
+        Args:
+            record: log record.
+        '''
+        try:
+            msg = self.format(record)
+            
+            tqdm.write(msg)
+            
+            self.flush()
+        
+        except Exception:
+            self.handleError(record)
