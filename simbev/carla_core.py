@@ -169,7 +169,7 @@ class CarlaCore:
             key: the key that was pressed.
         '''
         try:
-            if key.char == 'p':
+            if key == keyboard.Key.f9:
                 if self._pause.is_set():
                     self._pause.clear()
 
