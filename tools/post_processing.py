@@ -1,6 +1,7 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 import os
+import cv2
 import json
 import time
 import torch
@@ -22,6 +23,15 @@ except ImportError:
     print("Warning: CUDA extension not available. Performance will be degraded.")
     CUDA_AVAILABLE = False
 
+
+CAM_NAME = [
+    'CAM_FRONT_LEFT',
+    'CAM_FRONT',
+    'CAM_FRONT_RIGHT',
+    'CAM_BACK_LEFT',
+    'CAM_BACK',
+    'CAM_BACK_RIGHT'
+]
 
 RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
@@ -268,11 +278,30 @@ def main():
                                 )[:3].T
 
                                 radar_points_list.append(points_global)
-
+                        
                         if len(radar_points_list) > 0:
                             radar_points_global = torch.cat(radar_points_list, dim=0).contiguous()
                         else:
                             radar_points_global = torch.empty((0, 3), device=DEVICE, dtype=dType)
+                        
+                        if args.use_seg:
+                            instance_images = {}
+                            color_hashes = {}
+
+                            for camera in CAM_NAME:
+                                if f'IST-{camera}' in info:
+                                    image = torch.from_numpy(cv2.imread(info[f'IST-{camera}'])).to(DEVICE)
+
+                                    instance_images[camera] = image
+
+                                    # Convert the BGR image to a single
+                                    # integer: B + G*256 + R*65536
+                                    color_hash = (image[:, :, 0].to(torch.int32) + \
+                                                  (image[:, :, 1].to(torch.int32) << 8) + \
+                                                  (image[:, :, 2].to(torch.int32) << 16))
+                                    
+                                    # Get the unique color hashes.
+                                    color_hashes[camera] = set(torch.unique(color_hash))
                         
                         # Load object bounding boxes.
                         det_objects = np.load(info['GT_DET'], allow_pickle=True)
@@ -280,11 +309,26 @@ def main():
                         new_det_objects = []
 
                         for obj in det_objects:
+                            
                             num_lidar_points = num_inside_bbox(lidar_points_global, obj['bounding_box'], DEVICE, dType)
                             num_radar_points = num_inside_bbox(radar_points_global, obj['bounding_box'], DEVICE, dType)
 
                             valid_flag = (num_lidar_points > 0) or (num_radar_points > 0)
 
+                            if not valid_flag and args.use_seg:
+                                blue = (obj['id'] >> 8) & 0xFF
+                                green = obj['id'] & 0xFF
+                                
+                                for camera in CAM_NAME:
+                                    if camera in color_hashes:
+                                        for red in obj['semantic_tags']:
+                                            target_hash = blue + (green << 8) + (red << 16)
+
+                                            if target_hash in color_hashes[camera]:
+                                                valid_flag = True
+
+                                                break
+                            
                             obj['num_lidar_pts'] = num_lidar_points
                             obj['num_radar_pts'] = num_radar_points
                             obj['valid_flag'] = valid_flag

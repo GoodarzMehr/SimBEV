@@ -122,8 +122,7 @@ argparser.add_argument(
     action='store_true',
     help='render sensor data')
 
-# Parse args only when run as script
-args = None
+args = argparser.parse_args()
 
 
 def draw_bbox(canvas, corners, labels, bbox_color=None, thickness=1):
@@ -359,10 +358,7 @@ def transform_bbox(gt_det, transform):
     return corners, labels
 
 
-def main(mode, args=None):
-    if args is None:
-        args = argparser.parse_args()
-    
+def main(mode):
     try:
         print(f'Visualizing {mode}...')
         
@@ -793,8 +789,6 @@ def main(mode, args=None):
         time.sleep(3.0)
 
 def entry():
-    args = argparser.parse_args()
-    
     try:
         os.makedirs(f'{args.path}/simbev/viz', exist_ok=True)
 
@@ -818,7 +812,7 @@ def entry():
             mode_list = args.mode
 
         for mode in mode_list:
-            main(mode, args)
+            main(mode)
     
     except KeyboardInterrupt:
         print('Killing the process...')
