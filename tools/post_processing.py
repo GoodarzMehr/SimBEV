@@ -1,10 +1,10 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 import os
-import cv2
 import json
 import time
 import torch
+import pyspng
 import argparse
 import traceback
 
@@ -21,6 +21,7 @@ try:
 
 except ImportError:
     print("Warning: CUDA extension not available. Performance will be degraded.")
+    
     CUDA_AVAILABLE = False
 
 
@@ -285,24 +286,22 @@ def main():
                             radar_points_global = torch.empty((0, 3), device=DEVICE, dtype=dType)
                         
                         if args.use_seg:
-                            instance_images = {}
-                            color_hashes = {}
+                            color_hashes = set()
 
                             for camera in CAM_NAME:
                                 if f'IST-{camera}' in info:
-                                    image = torch.from_numpy(cv2.imread(info[f'IST-{camera}'])).to(DEVICE)
+                                    with open(info[f'IST-{camera}'], 'rb') as f:
+                                        image = pyspng.load(f.read()).astype(np.uint32)
 
-                                    instance_images[camera] = image
-
-                                    # Convert the BGR image to a single
-                                    # integer: B + G*256 + R*65536
-                                    color_hash = (image[:, :, 0].to(torch.int32) + \
-                                                  (image[:, :, 1].to(torch.int32) << 8) + \
-                                                  (image[:, :, 2].to(torch.int32) << 16))
+                                    # Convert the RGB image to a single
+                                    # integer: B + G * 256 + R * 65536
+                                    color_hash = (image[:, :, 2] + \
+                                                  (image[:, :, 1] << 8) + \
+                                                  (image[:, :, 0] << 16))
                                     
                                     # Get the unique color hashes.
-                                    color_hashes[camera] = set(torch.unique(color_hash))
-                        
+                                    color_hashes.update(np.unique(color_hash))
+                      
                         # Load object bounding boxes.
                         det_objects = np.load(info['GT_DET'], allow_pickle=True)
 
@@ -319,15 +318,13 @@ def main():
                                 blue = (obj['id'] >> 8) & 0xFF
                                 green = obj['id'] & 0xFF
                                 
-                                for camera in CAM_NAME:
-                                    if camera in color_hashes:
-                                        for red in obj['semantic_tags']:
-                                            target_hash = blue + (green << 8) + (red << 16)
+                                for red in obj['semantic_tags']:
+                                    target_hash = blue + (green << 8) + (red << 16)
 
-                                            if target_hash in color_hashes[camera]:
-                                                valid_flag = True
+                                    if target_hash in color_hashes:
+                                        valid_flag = True
 
-                                                break
+                                        break
                             
                             obj['num_lidar_pts'] = num_lidar_points
                             obj['num_radar_pts'] = num_radar_points
@@ -341,8 +338,8 @@ def main():
                         ) as f:
                             np.save(f, np.array(new_det_objects), allow_pickle=True)
 
-        # os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
-        # os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
+        os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
+        os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
         end = time.perf_counter()
         
