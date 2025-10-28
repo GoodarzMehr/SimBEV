@@ -23,8 +23,8 @@ val_scene_config:
   # Town05: 4
   # Town06: 4
   # Town07: 4
-  Town10HD: 1
-  # Town12: 4
+  # Town10HD: 1
+  Town12: 4
   # Town13: 4
   # Town15: 2
 
@@ -52,8 +52,8 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 40
-max_scene_duration: 40
+min_scene_duration: 10
+max_scene_duration: 10
 
 early_scene_termination: False
 termination_timeout: 8
@@ -73,6 +73,8 @@ max_io_workers: 48
 
 use_scene_number_for_random_seed: False
 random_seed_offset: 27
+
+dynamic_settings_adjustments: True
 
 tile_stream_distance: 1600.0
 actor_active_distance: 1600.0
@@ -137,7 +139,7 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: False
+use_rgb_camera: True
 
 rgb_camera_properties:
   fstop: '1.8'
@@ -147,7 +149,7 @@ use_semantic_camera: False
 semantic_camera_properties:
   {}
 
-use_instance_camera: False
+use_instance_camera: True
 
 instance_camera_properties:
  {}
@@ -162,7 +164,7 @@ use_flow_camera: False
 flow_camera_properties:
  {}
 
-use_lidar: False
+use_lidar: True
 
 lidar_channels: 128
 lidar_range: 120.0
@@ -184,7 +186,7 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: False
+use_radar: True
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
@@ -218,8 +220,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-n_vehicles: 10
-n_walkers: 0
+# n_vehicles: 10
+# n_walkers: 0
 
 # walker_cross_factor: 0.6
 

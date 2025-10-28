@@ -340,6 +340,21 @@ class WorldManager:
                 self._world.set_pedestrians_seed(seed)
                 self._traffic_manager.set_random_device_seed(seed)
 
+            # Adjust settings based on the current map.
+            if self._config['dynamic_settings_adjustments']:
+                if self._map_name in ['Town12', 'Town13']:
+                    settings = self._world.get_settings()
+
+                    settings.tile_stream_distance = 35.0 * \
+                        (self._scenario_manager.scene_duration + self._config['warmup_duration'])
+                    settings.actor_active_distance = 35.0 * \
+                        (self._scenario_manager.scene_duration + self._config['warmup_duration'])
+                    
+                    self._world.apply_settings(settings)
+                    
+                    logger.debug(f'Changed tile stream distance to {settings.tile_stream_distance}.')
+                    logger.debug(f'Changed actor active distance to {settings.actor_active_distance}.')
+            
             # Add information about the scene to the scene info.
             self._scenario_manager.scene_info['map'] = self._map_name
             self._scenario_manager.scene_info['vehicle'] = self._vehicle_manager.vehicle.type_id
@@ -353,7 +368,10 @@ class WorldManager:
 
             # Preprocess the waypoints and crosswalks for ground truth
             # generation.
-            self._vehicle_manager.get_ground_truth_manager().augment_waypoints(self._waypoints)
+            self._vehicle_manager.get_ground_truth_manager().augment_waypoints(
+                self._waypoints,
+                self._scenario_manager.scene_duration
+            )
             self._vehicle_manager.get_ground_truth_manager().get_area_crosswalks(self._crosswalks)
             self._vehicle_manager.get_ground_truth_manager().get_bounding_boxes()
 

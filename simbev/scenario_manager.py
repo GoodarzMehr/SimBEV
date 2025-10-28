@@ -205,10 +205,17 @@ class ScenarioManager:
         # Spawn NPCs.
         logger.debug('Spawning NPCs...')
 
+        self._npc_spawn_radius = self._config['npc_spawn_radius']
+
+        if self._config['dynamic_settings_adjustments']:
+            self._npc_spawn_radius = 20.0 * (self.scene_duration + self._config['warmup_duration'])
+        
+            logger.debug(f'Changed NPC spawn radius to {self._npc_spawn_radius:.2f} m.')
+
         npc_spawn_points = [
             sp for sp in spawn_points if vehicle_location.distance(
                 sp.location
-            ) < self._config['npc_spawn_radius']
+            ) < self._npc_spawn_radius
         ]
 
         logger.debug(f'{len(npc_spawn_points)} NPC spawn points available.')
@@ -556,7 +563,7 @@ class ScenarioManager:
                 spawn_location = self._world.get_random_location_from_navigation()
 
                 if spawn_location is not None:
-                    if vehicle_location.distance(spawn_location) < self._config['npc_spawn_radius']:
+                    if vehicle_location.distance(spawn_location) < self._npc_spawn_radius:
                         spawn_locations.append(spawn_location)
                     else:
                         spawn_location = None
@@ -636,7 +643,7 @@ class ScenarioManager:
                 go_to_location = self._world.get_random_location_from_navigation()
 
                 if go_to_location is not None:
-                    if vehicle_location.distance(go_to_location) >= self._config['npc_spawn_radius']:
+                    if vehicle_location.distance(go_to_location) >= 1.6 * self._npc_spawn_radius:
                         go_to_location = None
 
                 counter += 1
