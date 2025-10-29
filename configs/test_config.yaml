@@ -20,13 +20,13 @@ val_scene_config:
   # Town02: 2
   # Town03: 4
   # Town04: 4
-  # Town05: 4
+  # Town05: 1
   # Town06: 4
   # Town07: 4
-  # Town10HD: 1
-  Town12: 4
+  Town10HD: 1
+  # Town12: 1
   # Town13: 4
-  # Town15: 2
+  # Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -51,8 +51,8 @@ vehicle_color: '0,0,0'
 show_debug_telemetry: False
 simulate_physics: True
 
-warmup_duration: 4
-min_scene_duration: 10
+warmup_duration: 2
+min_scene_duration: 4
 max_scene_duration: 10
 
 early_scene_termination: False
@@ -144,7 +144,7 @@ use_rgb_camera: True
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: False
+use_semantic_camera: True
 
 semantic_camera_properties:
   {}
@@ -154,12 +154,12 @@ use_instance_camera: True
 instance_camera_properties:
  {}
 
-use_depth_camera: False
+use_depth_camera: True
 
 depth_camera_properties:
  {}
 
-use_flow_camera: False
+use_flow_camera: True
 
 flow_camera_properties:
  {}
@@ -176,7 +176,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.01'
 
-use_semantic_lidar: False
+use_semantic_lidar: True
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -194,7 +194,7 @@ radar_vertical_fov: 12.0
 radar_properties:
   points_per_second: '40000'
 
-use_gnss: False
+use_gnss: True
 
 gnss_properties:
   noise_seed: '27'
@@ -202,7 +202,7 @@ gnss_properties:
   noise_lat_stddev: '0.0000004'
   noise_lon_stddev: '0.0000004'
 
-use_imu: False
+use_imu: True
 
 imu_properties:
   noise_seed: '27'

@@ -7,6 +7,8 @@ Post-processing and visualization utilities for SimBEV datasets.
 '''
 
 __version__ = '2.0.0'
+__author__ = 'Goodarz Mehr'
+__email__ = 'goodarzm@vt.edu'
 
 # Note: Import functions only when needed to avoid triggering argparse at
 # import time
@@ -14,4 +16,16 @@ __version__ = '2.0.0'
 #   from tools.post_processing import main as postprocess
 #   from tools.visualization import main as visualize
 
-__all__ = ['__version__']
+# Utility functions
+from .visualization_utils import *
+
+# Handlers
+from .visualization_handlers import *
+
+__all__ = [
+    '__version__',
+    '__author__',
+    '__email__',
+    'visualization_utils',
+    'visualization_handlers'
+]
