@@ -12,8 +12,6 @@ import logging
 
 import numpy as np
 
-from typing import List
-
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +84,7 @@ class ScenarioManager:
         '''
         self.scene_info.update(info)
 
-    def setup_scenario(self, vehicle_location: carla.Location, spawn_points: List[carla.Waypoint], tm_port: int):
+    def setup_scenario(self, vehicle_location: carla.Location, spawn_points: list[carla.Waypoint], tm_port: int):
         '''Set up the scenario by configuring the weather, lights, and traffic.'''
         
         # Configure the weather.

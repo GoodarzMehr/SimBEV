@@ -10,8 +10,6 @@ import logging
 
 import numpy as np
 
-from typing import List
-
 try:
     from .sensors import *
     
@@ -56,7 +54,7 @@ class VehicleManager:
         '''Get the Ground Truth Manager.'''
         return self._ground_truth_manager
     
-    def spawn_vehicle(self, bp: carla.ActorBlueprint, spawn_points: List[carla.Waypoint], tm_port: int) -> dict:
+    def spawn_vehicle(self, bp: carla.ActorBlueprint, spawn_points: list[carla.Waypoint], tm_port: int) -> dict:
         '''Spawn the ego vehicle and its sensors.'''
         try:
             scene_info = {}
@@ -352,7 +350,7 @@ class VehicleManager:
 
             raise Exception('Cannot spawn the vehicle. Good bye!')
     
-    def move_vehicle(self, spawn_points: List[carla.Waypoint], tm_port: int) -> dict:
+    def move_vehicle(self, spawn_points: list[carla.Waypoint], tm_port: int) -> dict:
         '''
         Move the ego vehicle to a random spawn point and configure its
         behavior at the start of a new scene.

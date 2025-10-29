@@ -15,7 +15,6 @@ import logging
 import numpy as np
 
 from tqdm import tqdm
-from typing import List
 
 
 def is_used(port: int) -> bool:
@@ -37,7 +36,7 @@ def kill_all_servers():
     for process in processes:
         os.kill(process.pid, signal.SIGKILL)
 
-def carla_vector_to_numpy(vector_list: List[carla.Vector3D]) -> np.ndarray:
+def carla_vector_to_numpy(vector_list: list[carla.Vector3D]) -> np.ndarray:
     '''
     Convert a list of CARLA vectors to a NumPy array.
 
@@ -91,7 +90,7 @@ def local_to_global(location: carla.Location, rotation: carla.Rotation) -> np.nd
                      [0, 0, 1]])
 
 def get_multi_polygon_mask(
-        polygons: List[np.ndarray],
+        polygons: list[np.ndarray],
         ego_tf: carla.Transform,
         xDim: int,
         xRes: float,
@@ -153,7 +152,7 @@ def get_multi_polygon_mask(
     return polygon_mask.astype(bool)
 
 def get_multi_line_mask(
-        lines: List[np.ndarray],
+        lines: list[np.ndarray],
         ego_tf: carla.Transform,
         xDim: int,
         xRes: float,

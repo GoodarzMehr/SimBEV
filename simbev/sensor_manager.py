@@ -60,6 +60,7 @@ class SensorManager:
             'depth': 'DPT',
             'flow': 'FLW'
         }
+        
         self._other_sensor_abbrevs = {
             'lidar': 'LIDAR',
             'semantic_lidar': 'SEG-LIDAR',
