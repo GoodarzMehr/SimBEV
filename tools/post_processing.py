@@ -48,7 +48,7 @@ argparser.add_argument(
 argparser.add_argument(
     '--use-seg',
     action='store_true',
-    help='use semantic segmentation images for post-processing')
+    help='use instance segmentation images for post-processing')
 
 args = argparser.parse_args()
 
