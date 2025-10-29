@@ -53,6 +53,20 @@ class SensorManager:
             'bev_camera': ['TOP_VIEW', 'BOTTOM_VIEW']
         }
 
+        self._camera_type_abbrevs = {
+            'rgb': 'RGB',
+            'semantic': 'SEG',
+            'instance': 'IST',
+            'depth': 'DPT',
+            'flow': 'FLW'
+        }
+        self._other_sensor_abbrevs = {
+            'lidar': 'LIDAR',
+            'semantic_lidar': 'SEG-LIDAR',
+            'gnss': 'GNSS',
+            'imu': 'IMU'
+        }
+
         self._timer = CustomTimer()
         
         self._data = []
@@ -92,26 +106,13 @@ class SensorManager:
     
     def render(self):
         '''Render sensor data.'''
-        for camera, window_name in zip(self.sensor_list['rgb_camera'], self._name_list['camera']):
-            camera.render(window_name)
-
-        for semantic_camera, window_name in zip(self.sensor_list['semantic_camera'], self._name_list['camera']):
-            semantic_camera.render('SEG ' + window_name)
-
-        for instance_camera, window_name in zip(self.sensor_list['instance_camera'], self._name_list['camera']):
-            instance_camera.render('IST ' + window_name)
-
-        for depth_camera, window_name in zip(self.sensor_list['depth_camera'], self._name_list['camera']):
-            depth_camera.render('DPT ' + window_name)
-
-        for flow_camera, window_name in zip(self.sensor_list['flow_camera'], self._name_list['camera']):
-            flow_camera.render('FLW ' + window_name)
+        for type, abbrev in self._camera_type_abbrevs.items():
+            for camera, window_name in zip(self.sensor_list[f'{type}_camera'], self._name_list['camera']):
+                camera.render(f'{abbrev}-' + window_name)
         
-        for lidar in self.sensor_list['lidar']:
-            lidar.render()
-
-        for semantic_lidar in self.sensor_list['semantic_lidar']:
-            semantic_lidar.render()
+        for type in ['lidar', 'semantic_lidar']:
+            for sensor in self.sensor_list[type]:
+                sensor.render()
         
         for radar, window_name in zip(self.sensor_list['radar'], self._name_list['radar']):
             radar.render(window_name)
@@ -160,38 +161,22 @@ class SensorManager:
         scene_data['timestamp'] = round(self._timer.time() * 10e6)
 
         for camera_name in self._name_list['camera']:
-            if self._config['use_rgb_camera']:
-                scene_data[f'RGB-{camera_name}'] = f'{path}/simbev/sweeps/RGB-{camera_name}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-RGB-{camera_name}.jpg'
-            if self._config['use_semantic_camera']:
-                scene_data[f'SEG-{camera_name}'] = f'{path}/simbev/sweeps/SEG-{camera_name}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-{camera_name}.png'
-            if self._config['use_instance_camera']:
-                scene_data[f'IST-{camera_name}'] = f'{path}/simbev/sweeps/IST-{camera_name}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IST-{camera_name}.png'
-            if self._config['use_depth_camera']:
-                scene_data[f'DPT-{camera_name}'] = f'{path}/simbev/sweeps/DPT-{camera_name}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-DPT-{camera_name}.png'
-            if self._config['use_flow_camera']:
-                scene_data[f'FLW-{camera_name}'] = f'{path}/simbev/sweeps/FLW-{camera_name}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-FLW-{camera_name}.npz'
-
-        if self._config['use_lidar']:
-            scene_data['LIDAR'] = f'{path}/simbev/sweeps/LIDAR/SimBEV-scene-{scene:04d}-frame-{frame:04d}-LIDAR.npz'
-        if self._config['use_semantic_lidar']:
-            scene_data['SEG-LIDAR'] = f'{path}/simbev/sweeps/SEG-LIDAR' \
-            f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-SEG-LIDAR.npz'
+            for type, abbrev in self._camera_type_abbrevs.items():
+                if self._config[f'use_{type}_camera']:
+                    scene_data[f'{abbrev}-{camera_name}'] = f'{path}/simbev/sweeps/{abbrev}-{camera_name}' \
+                    f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}-{camera_name}.' + \
+                    ('jpg' if type == 'rgb' else 'png' if type in ['semantic', 'instance', 'depth'] else 'npz')
 
         if self._config['use_radar']:
             for radar_name in self._name_list['radar']:
                 scene_data[f'{radar_name}'] = f'{path}/simbev/sweeps/{radar_name}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{radar_name}.npz'
-
-        if self._config['use_gnss']:
-            scene_data['GNSS'] = f'{path}/simbev/sweeps/GNSS/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GNSS.bin'
         
-        if self._config['use_imu']:
-            scene_data['IMU'] = f'{path}/simbev/sweeps/IMU/SimBEV-scene-{scene:04d}-frame-{frame:04d}-IMU.bin'
+        for type, abbrev in self._other_sensor_abbrevs.items():
+            if self._config[f'use_{type}']:
+                scene_data[f'{abbrev}'] = f'{path}/simbev/sweeps/{abbrev}' \
+                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}.' + \
+                ('npz' if type in ['lidar', 'semantic_lidar'] else 'bin')
         
         scene_data['GT_SEG'] = f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz'
         scene_data['GT_SEG_VIZ'] = f'{path}/simbev/ground-truth/seg_viz' \
