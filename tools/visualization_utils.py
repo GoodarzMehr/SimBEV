@@ -110,20 +110,101 @@ def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR'):
 
     return global2sensor
 
-def draw_bbox(canvas, corners, labels, bbox_color=None, thickness=1):
-    '''Draw bounding boxes on the canvas.'''
-    # Filter out bounding boxes that are behind the camera
+def transform_bbox(gt_det: list, transform: np.ndarray, ignore_valid_flag: bool = False):
+    '''
+    Transform bounding boxes from the global coordinate system to the desired
+    coordinate system.
+
+    Args:
+        gt_det: list of 3D object bounding boxes.
+        transform: coordinate transformation matrix.
+        ignore_valid_flag: whether to ignore valid_flag when transforming
+            the bounding boxes.
+    
+    Returns:
+        corners: array of transformed bounding box corners.
+        labels: array of object class labels.
+    '''
+    corners = []
+    labels = []
+
+    for det_object in gt_det:
+        if ignore_valid_flag or det_object['valid_flag']:
+            for tag in det_object['semantic_tags']:
+                if tag in OBJECT_CLASSES.keys():
+                    global_bbox_corners = np.append(det_object['bounding_box'], np.ones((8, 1)), 1)
+                    bbox_corners = (transform @ global_bbox_corners.T)[:3].T
+
+                    corners.append(bbox_corners)
+                    labels.append(OBJECT_CLASSES[tag])
+
+    corners = np.array(corners)
+    labels = np.array(labels)
+
+    return corners, labels
+
+def visualize_image(
+        fpath: str,
+        image: np.ndarray,
+        corners: np.ndarray = None,
+        labels: np.ndarray = None,
+        color: tuple = None,
+        thickness: int = 2
+    ):
+    '''
+    Visualize image with bounding boxes.
+
+    Args:
+        fpath: file path for saving the image.
+        image: image to visualize.
+        corners: array of bounding box corners.
+        labels: array of bounding box labels.
+        color: bounding box color.
+        thickness: bounding box line thickness.
+    '''
+    canvas = image.copy()
+
+    if corners is not None and corners.shape[0] > 0:
+        canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
+        
+        canvas = draw_bbox(canvas, corners, labels, bbox_color=color, thickness=thickness)
+        
+        canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+
+    cv2.imwrite(fpath, canvas)
+
+def draw_bbox(
+        canvas: np.ndarray,
+        corners: np.ndarray,
+        labels: np.ndarray,
+        bbox_color: tuple = None,
+        thickness: int = 1
+    ):
+    '''
+    Draw bounding boxes on the canvas.
+
+    Args:
+        canvas: canvas to draw on.
+        corners: array of bounding box corners.
+        labels: array of bounding box labels.
+        bbox_color: bounding box color.
+        thickness: bounding box line thickness.
+    '''
+    # Filter out bounding boxes that are behind the camera.
     indices = np.all(corners[..., 2] > 0, axis=1)
+    
     corners = corners[indices]
     labels = labels[indices]
 
-    # Sort bounding boxes by their distance to the camera
+    # Sort bounding boxes by their distance to the camera.
     indices = np.argsort(-np.min(corners[..., 2], axis=1))
+    
     corners = corners[indices]
     labels = labels[indices]
 
-    # Find the pixels corresponding to bounding box corners
+    # Find the pixels corresponding to bounding box corners.
     corners = corners.reshape(-1, 3)
+    
     corners[:, 2] = np.clip(corners[:, 2], a_min=1e-5, a_max=1e5)
     corners[:, 0] /= corners[:, 2]
     corners[:, 1] /= corners[:, 2]
@@ -136,8 +217,7 @@ def draw_bbox(canvas, corners, labels, bbox_color=None, thickness=1):
             name = labels[index]
             
             for start, end in [
-                (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3),
-                (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7)
+                (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3), (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7)
             ]:
                 cv2.line(
                     canvas,
@@ -152,16 +232,29 @@ def draw_bbox(canvas, corners, labels, bbox_color=None, thickness=1):
     
     return canvas
 
-def visualize_image(fpath, image, corners=None, labels=None, bbox_color=None, thickness=2):
-    '''Visualize image with bounding boxes.'''
-    canvas = image.copy()
-
-    if corners is not None and corners.shape[0] > 0:
-        canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
-        canvas = draw_bbox(canvas, corners, labels, bbox_color=bbox_color, thickness=thickness)
-        canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
-
-    cv2.imwrite(fpath, canvas)
+def flow_to_color_opencv(flow):
+    '''
+    Ultra-fast flow visualization using OpenCV.
+    
+    Args:
+        flow: (H, W, 2) array with flow vectors
+    
+    Returns:
+        (H, W, 3) uint8 BGR image
+    '''
+    # Compute magnitude and angle
+    mag, ang = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1])
+    
+    # Create HSV image
+    hsv = np.zeros((flow.shape[0], flow.shape[1], 3), dtype=np.uint8)
+    hsv[:, :, 0] = ang * 180 / np.pi / 2  # Hue (angle in degrees / 2 for 0-180 range)
+    hsv[:, :, 1] = 255  # Saturation
+    hsv[:, :, 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)  # Value
+    
+    # Convert HSV to BGR
+    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    
+    return bgr
 
 def visualize_point_cloud(
         fpath,
@@ -239,26 +332,6 @@ def visualize_point_cloud_3d(
     
     canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
     cv2.imwrite(fpath, canvas)
-
-def transform_bbox(gt_det, transform, ignore_valid_flag=False):
-    '''Transform bounding boxes from global to desired coordinate system.'''
-    corners = []
-    labels = []
-
-    for det_object in gt_det:
-        if ignore_valid_flag or det_object['valid_flag']:
-            for tag in det_object['semantic_tags']:
-                if tag in OBJECT_CLASSES.keys():
-                    global_bbox_corners = np.append(det_object['bounding_box'], np.ones((8, 1)), 1)
-                    bbox_corners = (transform @ global_bbox_corners.T)[:3].T
-
-                    corners.append(bbox_corners)
-                    labels.append(OBJECT_CLASSES[tag])
-
-    corners = np.array(corners)
-    labels = np.array(labels)
-
-    return corners, labels
 
 def get_3d_view_transforms(metadata):
     '''Get 3D view camera transformations.'''

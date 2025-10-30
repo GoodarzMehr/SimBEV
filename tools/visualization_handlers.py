@@ -2,7 +2,7 @@
 
 import cv2
 import time
-import flow_vis
+import pyspng
 
 import numpy as np
 
@@ -139,10 +139,11 @@ def visualize_rgb(ctx: VisualizationContext):
 def visualize_depth(ctx: VisualizationContext):
     '''Visualize depth images.'''
     for camera in CAM_NAME:
-        image = cv2.imread(ctx.frame_data['DPT-' + camera])
+        with open(ctx.frame_data['DPT-' + camera], 'rb') as f:
+            image = pyspng.load(f.read()).astype(np.float32)
 
         normalized_distance = (
-            image[:, :, 2] + image[:, :, 1] * 256.0 + image[:, :, 0] * 256.0 * 256.0
+            image[:, :, 0] + image[:, :, 1] * 256.0 + image[:, :, 2] * 256.0 * 256.0
         ) / (256.0 * 256.0 * 256.0 - 1)
 
         log_distance = 255 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
@@ -157,7 +158,7 @@ def visualize_flow(ctx: VisualizationContext):
     '''Visualize optical flow.'''
     for camera in CAM_NAME:
         flow = np.load(ctx.frame_data['FLW-' + camera])['data']
-        image = flow_vis.flow_to_color(flow, convert_to_bgr=True)
+        image = flow_to_color_opencv(flow)
         cv2.imwrite(ctx.get_output_path('FLW', camera), image)
 
 

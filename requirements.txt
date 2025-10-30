@@ -6,7 +6,6 @@ pynput
 pyspng
 open3d
 networkx
-flow_vis
 matplotlib
 scikit-image
 pyquaternion

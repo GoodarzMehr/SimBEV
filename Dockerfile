@@ -65,8 +65,8 @@ libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-c
 libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libvulkan-dev vulkan-tools python-is-python3 \
 mesa-utils
 
-RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image flow_vis pyquaternion \
-networkx psutil tqdm pynput pyspng
+RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image pyquaternion networkx psutil \
+tqdm pynput pyspng
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu130
 
