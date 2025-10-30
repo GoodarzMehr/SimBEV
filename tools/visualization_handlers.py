@@ -1,16 +1,14 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 import cv2
-import time
-import pyspng
 
 import numpy as np
-
-from pyquaternion import Quaternion as Q
 
 from tools.visualization_utils import *
 
 from concurrent.futures import ThreadPoolExecutor
+
+from pyquaternion import Quaternion as Q
 
 
 CAM_NAME = [
@@ -143,40 +141,55 @@ def visualize_rgb(ctx: VisualizationContext):
         executor.map(process_rgb, CAM_NAME)
 
 def visualize_depth(ctx: VisualizationContext):
-    '''Visualize depth images (parallel processing).'''
+    '''
+    Visualize depth images.
+    
+    Args:
+        ctx: visualization context.
+    '''
+    normalizing_factor = 256.0 * 256.0 * 256.0 - 1
     
     def process_depth(camera):
         image = cv2.imread(ctx.frame_data['DPT-' + camera]).astype(np.float32)
 
-        normalized_distance = (
-            image[:, :, 0] + image[:, :, 1] * 256.0 + image[:, :, 2] * 256.0 * 256.0
-        ) / (256.0 * 256.0 * 256.0 - 1)
+        normalized_distance = (image[:, :, 2] + image[:, :, 1] * 256.0 + image[:, :, 0] * 65536.0) / normalizing_factor
 
-        log_distance = 255 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
+        log_distance = 255.0 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
 
-        cv2.imwrite(
-            ctx.get_output_path('DPT', camera),
-            log_distance.astype(np.uint8)
-        )
+        cv2.imwrite(ctx.get_output_path('DPT', camera), log_distance.astype(np.uint8))
     
-    # Process all 6 cameras in parallel
+    # Process all 6 cameras in parallel.
     with ThreadPoolExecutor(max_workers=6) as executor:
-        list(executor.map(process_depth, CAM_NAME))
-
+        executor.map(process_depth, CAM_NAME)
 
 def visualize_flow(ctx: VisualizationContext):
-    '''Visualize optical flow.'''
-    for camera in CAM_NAME:
+    '''
+    Visualize optical flow images.
+    
+    Args:
+        ctx: visualization context.
+    '''
+    def process_flow(camera):
         flow = np.load(ctx.frame_data['FLW-' + camera])['data']
+        
         image = flow_to_color(flow)
+        
         cv2.imwrite(ctx.get_output_path('FLW', camera), image)
 
+    # Process all 6 cameras in parallel.
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        executor.map(process_flow, CAM_NAME)
 
 def visualize_lidar(ctx: VisualizationContext):
-    '''Visualize LiDAR point cloud (top-down view).'''
+    '''
+    Visualize lidar point clouds from above.
+    
+    Args:
+        ctx: visualization context.
+    '''
     point_cloud = np.load(ctx.frame_data['LIDAR'])['data']
-    visualize_point_cloud_vectorized(ctx.get_output_path('LIDAR'), point_cloud)
 
+    visualize_point_cloud(ctx.get_output_path('LIDAR'), point_cloud)
 
 def visualize_lidar_with_bbox(ctx: VisualizationContext):
     '''Visualize LiDAR with bounding boxes (top-down view).'''
@@ -186,7 +199,7 @@ def visualize_lidar_with_bbox(ctx: VisualizationContext):
     global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
     corners, labels = transform_bbox(gt_det, global2lidar, ctx.ignore_valid_flag)
 
-    visualize_point_cloud_vectorized(
+    visualize_point_cloud(
         ctx.get_output_path('LIDARwBBOX'),
         point_cloud,
         corners=corners,
@@ -252,7 +265,7 @@ def visualize_semantic_lidar(ctx: VisualizationContext):
     labels = np.array(data['ObjTag'])
     label_color = LABEL_COLORS[labels]
 
-    visualize_point_cloud_vectorized(
+    visualize_point_cloud(
         ctx.get_output_path('SEG-LIDAR'),
         point_cloud,
         color=label_color
@@ -283,8 +296,6 @@ def visualize_semantic_lidar3d(ctx: VisualizationContext):
 
 def load_radar_data(ctx: VisualizationContext):
     '''Load and transform radar data from all sensors.'''
-    global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
-    
     point_cloud = []
     velocity = []
     

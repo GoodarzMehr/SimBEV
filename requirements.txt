@@ -3,7 +3,6 @@ ninja
 numpy
 torch
 pynput
-pyspng
 open3d
 networkx
 matplotlib

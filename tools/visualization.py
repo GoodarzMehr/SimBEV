@@ -129,6 +129,8 @@ def setup_output_directories(path: str, mode):
 def main(mode, path: str):
     try:
         print(f'Visualizing {mode}...')
+
+        start = time.perf_counter()
         
         if mode not in VISUALIZATION_MODES:
             print(f'Warning: unknown mode "{mode}", skipping.')
@@ -202,6 +204,10 @@ def main(mode, path: str):
 
                     # Call the handler.
                     handler(ctx)
+        
+        end = time.perf_counter()
+
+        print(f'Visualizing {mode} completed in {end - start:.3f} seconds.')
     
     except Exception:
         print(traceback.format_exc())
@@ -213,6 +219,8 @@ def main(mode, path: str):
 
 def entry():
     try:
+        start = time.perf_counter()
+
         os.makedirs(f'{args.path}/simbev/viz', exist_ok=True)
 
         # Determine modes to process
@@ -224,6 +232,10 @@ def entry():
         # Process each mode
         for mode in mode_list:
             main(mode, args.path)
+        
+        end = time.perf_counter()
+
+        print(f'Visualization completed in {end - start:.3f} seconds.')
     
     except KeyboardInterrupt:
         print('Killing the process...')
