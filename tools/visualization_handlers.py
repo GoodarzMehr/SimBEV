@@ -10,6 +10,8 @@ from pyquaternion import Quaternion as Q
 
 from tools.visualization_utils import *
 
+from concurrent.futures import ThreadPoolExecutor
+
 
 CAM_NAME = [
     'CAM_FRONT_LEFT',
@@ -136,11 +138,64 @@ def visualize_rgb(ctx: VisualizationContext):
 
         visualize_image(ctx.get_output_path('RGB', camera), image, corners=corners, labels=labels)
 
+# def visualize_rgb(ctx: VisualizationContext):
+#     '''
+#     Visualize RGB images with bounding boxes (batch loading).
+    
+#     Args:
+#         ctx: visualization context.
+#     '''
+#     gt_det = ctx.gt_det.copy()
+    
+#     # Pre-compute camera intrinsics
+#     camera_intrinsics = np.eye(4, dtype=np.float32)
+#     camera_intrinsics[:3, :3] = ctx.metadata['camera_intrinsics']
+    
+#     # Load all images in parallel
+#     def load_image(camera):
+#         return camera, cv2.imread(ctx.frame_data['RGB-' + camera])
+    
+#     with ThreadPoolExecutor(max_workers=6) as executor:
+#         images = dict(executor.map(load_image, CAM_NAME))
+    
+#     # Process each camera
+#     for camera in CAM_NAME:
+#         global2camera = get_global2sensor(ctx.frame_data, ctx.metadata, camera)
+#         global2image = camera_intrinsics @ global2camera
+#         corners, labels = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
+        
+#         visualize_image(
+#             ctx.get_output_path('RGB', camera),
+#             images[camera],
+#             corners=corners,
+#             labels=labels
+#         )
+
+# def visualize_depth(ctx: VisualizationContext):
+#     '''Visualize depth images.'''
+#     for camera in CAM_NAME:
+#         with open(ctx.frame_data['DPT-' + camera], 'rb') as f:
+#             image = pyspng.load(f.read()).astype(np.float32)
+
+#         normalized_distance = (
+#             image[:, :, 0] + image[:, :, 1] * 256.0 + image[:, :, 2] * 256.0 * 256.0
+#         ) / (256.0 * 256.0 * 256.0 - 1)
+
+#         log_distance = 255 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
+
+#         cv2.imwrite(
+#             ctx.get_output_path('DPT', camera),
+#             log_distance.astype(np.uint8)
+#         )
+
 def visualize_depth(ctx: VisualizationContext):
-    '''Visualize depth images.'''
-    for camera in CAM_NAME:
-        with open(ctx.frame_data['DPT-' + camera], 'rb') as f:
-            image = pyspng.load(f.read()).astype(np.float32)
+    '''Visualize depth images (parallel processing).'''
+    
+    def process_camera(camera):
+        # with open(ctx.frame_data['DPT-' + camera], 'rb') as f:
+        #     image = pyspng.load(f.read()).astype(np.float32)
+
+        image = cv2.imread(ctx.frame_data['DPT-' + camera]).astype(np.float32)
 
         normalized_distance = (
             image[:, :, 0] + image[:, :, 1] * 256.0 + image[:, :, 2] * 256.0 * 256.0
@@ -152,20 +207,24 @@ def visualize_depth(ctx: VisualizationContext):
             ctx.get_output_path('DPT', camera),
             log_distance.astype(np.uint8)
         )
+    
+    # Process all 6 cameras in parallel
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        list(executor.map(process_camera, CAM_NAME))
 
 
 def visualize_flow(ctx: VisualizationContext):
     '''Visualize optical flow.'''
     for camera in CAM_NAME:
         flow = np.load(ctx.frame_data['FLW-' + camera])['data']
-        image = flow_to_color_opencv(flow)
+        image = flow_to_color(flow)
         cv2.imwrite(ctx.get_output_path('FLW', camera), image)
 
 
 def visualize_lidar(ctx: VisualizationContext):
     '''Visualize LiDAR point cloud (top-down view).'''
     point_cloud = np.load(ctx.frame_data['LIDAR'])['data']
-    visualize_point_cloud(ctx.get_output_path('LIDAR'), point_cloud)
+    visualize_point_cloud_vectorized(ctx.get_output_path('LIDAR'), point_cloud)
 
 
 def visualize_lidar_with_bbox(ctx: VisualizationContext):
@@ -176,7 +235,7 @@ def visualize_lidar_with_bbox(ctx: VisualizationContext):
     global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
     corners, labels = transform_bbox(gt_det, global2lidar, ctx.ignore_valid_flag)
 
-    visualize_point_cloud(
+    visualize_point_cloud_vectorized(
         ctx.get_output_path('LIDARwBBOX'),
         point_cloud,
         corners=corners,
@@ -242,7 +301,7 @@ def visualize_semantic_lidar(ctx: VisualizationContext):
     labels = np.array(data['ObjTag'])
     label_color = LABEL_COLORS[labels]
 
-    visualize_point_cloud(
+    visualize_point_cloud_vectorized(
         ctx.get_output_path('SEG-LIDAR'),
         point_cloud,
         color=label_color

@@ -232,7 +232,7 @@ def draw_bbox(
     
     return canvas
 
-def flow_to_color_opencv(flow):
+def flow_to_color(flow):
     '''
     Ultra-fast flow visualization using OpenCV.
     
@@ -312,6 +312,113 @@ def visualize_point_cloud(
     
     fig.savefig(fpath, dpi=16, facecolor='white', format='jpg', bbox_inches='tight', pad_inches=0)
     plt.close()
+
+def visualize_point_cloud_vectorized(
+        fpath,
+        point_cloud,
+        corners=None,
+        labels=None,
+        color=None,
+        xlim=(-72, 72),
+        ylim=(-72, 72),
+        radius=16,
+        thickness=16
+    ):
+    '''
+    Ultra-fast point cloud visualization using vectorized operations.
+    '''
+    pixels_per_meter = 16
+    
+    width = int((xlim[1] - xlim[0]) * pixels_per_meter)
+    height = int((ylim[1] - ylim[0]) * pixels_per_meter)
+    
+    # Create white canvas
+    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255
+    
+    # Filter points
+    mask = (
+        (point_cloud[:, 0] >= xlim[0]) & (point_cloud[:, 0] < xlim[1]) &
+        (point_cloud[:, 1] >= ylim[0]) & (point_cloud[:, 1] < ylim[1])
+    )
+    point_cloud_filtered = point_cloud[mask]
+    
+    if len(point_cloud_filtered) == 0:
+        # Only draw bboxes if no points
+        if corners is not None:
+            canvas = draw_bboxes_on_canvas(canvas, corners, labels, xlim, ylim, pixels_per_meter, thickness)
+        cv2.imwrite(fpath, canvas)
+        return
+    
+    # Convert to pixel coordinates
+    px = ((point_cloud_filtered[:, 0] - xlim[0]) * pixels_per_meter).astype(np.int32)
+    py = ((ylim[1] - point_cloud_filtered[:, 1]) * pixels_per_meter).astype(np.int32)
+    
+    # Clip to valid range
+    valid = (px >= 0) & (px < width) & (py >= 0) & (py < height)
+    px = px[valid]
+    py = py[valid]
+    
+    # Compute colors
+    if color is None:
+        distances = np.linalg.norm(point_cloud_filtered[valid], axis=1)
+        log_distances = np.log(distances + 1e-6)
+        log_normalized = (log_distances - log_distances.min()) / (log_distances.max() - log_distances.min() + 1e-6)
+        
+        point_colors = np.c_[
+            np.interp(log_normalized, RANGE, RAINBOW[:, 2]),
+            np.interp(log_normalized, RANGE, RAINBOW[:, 1]),
+            np.interp(log_normalized, RANGE, RAINBOW[:, 0])
+        ] * 255
+    else:
+        color_filtered = color[mask][valid]
+        if color_filtered.max() <= 1.0:
+            color_filtered = color_filtered * 255
+        point_colors = color_filtered[:, [2, 1, 0]]
+    
+    point_colors = point_colors.astype(np.uint8)
+    
+    # Vectorized point drawing (directly assign colors to pixels)
+    point_radius = max(1, radius // 16)
+    
+    if point_radius == 1:
+        # Direct pixel assignment (fastest)
+        canvas[py, px] = point_colors
+    else:
+        # Draw circles (slower but supports larger points)
+        for i in range(len(px)):
+            cv2.circle(canvas, (px[i], py[i]), point_radius, point_colors[i].tolist(), -1)
+    
+    # Draw bounding boxes
+    if corners is not None:
+        canvas = draw_bboxes_on_canvas(canvas, corners, labels, xlim, ylim, pixels_per_meter, thickness)
+    
+    cv2.imwrite(fpath, canvas)
+
+
+def draw_bboxes_on_canvas(canvas, corners, labels, xlim, ylim, pixels_per_meter, thickness):
+    '''Helper function to draw bounding boxes on canvas.'''
+    coords = corners[:, [0, 2, 6, 4, 0], :2]
+    
+    for index in range(coords.shape[0]):
+        name = labels[index]
+        bbox_color = tuple(int(c) for c in SIMBEV_PALETTE[name])
+        
+        # Convert to pixel coordinates
+        bbox_px = ((coords[index, :, 0] - xlim[0]) * pixels_per_meter).astype(np.int32)
+        bbox_py = ((ylim[1] - coords[index, :, 1]) * pixels_per_meter).astype(np.int32)
+        
+        # Draw polygon (faster than individual lines)
+        points = np.column_stack([bbox_px, bbox_py])
+        cv2.polylines(
+            canvas,
+            [points],
+            isClosed=False,
+            color=bbox_color,
+            thickness=max(1, thickness // 4),
+            lineType=cv2.LINE_AA
+        )
+    
+    return canvas
 
 def visualize_point_cloud_3d(
         fpath,

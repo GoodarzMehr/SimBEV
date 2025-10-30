@@ -1,10 +1,10 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 import os
+import cv2
 import json
 import time
 import torch
-import pyspng
 import argparse
 import traceback
 
@@ -13,6 +13,8 @@ import numpy as np
 from tqdm import tqdm
 
 from pyquaternion import Quaternion as Q
+
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     from tools.bbox_cuda import num_inside_bbox_cuda as bbox_cuda_kernel
@@ -288,19 +290,28 @@ def main():
                         if args.use_seg:
                             color_hashes = set()
 
-                            for camera in CAM_NAME:
+                            def process_camera(camera):
                                 if f'IST-{camera}' in info:
-                                    with open(info[f'IST-{camera}'], 'rb') as f:
-                                        image = pyspng.load(f.read()).astype(np.uint32)
+                                    image = cv2.imread(info[f'IST-{camera}']).astype(np.uint32)
 
-                                    # Convert the RGB image to a single
-                                    # integer: B + G * 256 + R * 65536
-                                    color_hash = (image[:, :, 2] + \
+                                    # Convert the BGR image to a single
+                                    # integer: B + G * 256 + R * 65536.
+                                    color_hash = (image[:, :, 0] + \
                                                   (image[:, :, 1] << 8) + \
-                                                  (image[:, :, 0] << 16))
+                                                    (image[:, :, 2] << 16))
                                     
                                     # Get the unique color hashes.
-                                    color_hashes.update(np.unique(color_hash))
+                                    return np.unique(color_hash)
+                                
+                                return np.array([], dtype=np.uint32)
+                            
+                            # Process all 6 cameras in parallel
+                            with ThreadPoolExecutor(max_workers=6) as executor:
+                                results = executor.map(process_camera, CAM_NAME)
+                            
+                            # Combine all unique hashes
+                            for hashes in results:
+                                color_hashes.update(hashes)
                       
                         # Load object bounding boxes.
                         det_objects = np.load(info['GT_DET'], allow_pickle=True)
