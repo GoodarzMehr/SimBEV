@@ -145,7 +145,7 @@ def visualize_rgb(ctx: VisualizationContext):
 def visualize_depth(ctx: VisualizationContext):
     '''Visualize depth images (parallel processing).'''
     
-    def process_camera(camera):
+    def process_depth(camera):
         image = cv2.imread(ctx.frame_data['DPT-' + camera]).astype(np.float32)
 
         normalized_distance = (
@@ -161,7 +161,7 @@ def visualize_depth(ctx: VisualizationContext):
     
     # Process all 6 cameras in parallel
     with ThreadPoolExecutor(max_workers=6) as executor:
-        list(executor.map(process_camera, CAM_NAME))
+        list(executor.map(process_depth, CAM_NAME))
 
 
 def visualize_flow(ctx: VisualizationContext):
