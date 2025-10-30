@@ -121,15 +121,15 @@ def visualize_rgb(ctx: VisualizationContext):
     '''
     gt_det = ctx.gt_det.copy()
 
-    for camera in CAM_NAME:
+    # Camera intrinsics.
+    camera_intrinsics = np.eye(4, dtype=np.float32)
+    
+    camera_intrinsics[:3, :3] = ctx.metadata['camera_intrinsics']
+
+    def process_rgb(camera):
         global2camera = get_global2sensor(ctx.frame_data, ctx.metadata, camera)
 
-        # Camera intrinsics
-        camera_intrinsics = np.eye(4, dtype=np.float32)
-        
-        camera_intrinsics[:3, :3] = ctx.metadata['camera_intrinsics']
-
-        # Global to image transformation
+        # Global to image transformation.
         global2image = camera_intrinsics @ global2camera
 
         corners, labels = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
@@ -137,64 +137,15 @@ def visualize_rgb(ctx: VisualizationContext):
         image = cv2.imread(ctx.frame_data['RGB-' + camera])
 
         visualize_image(ctx.get_output_path('RGB', camera), image, corners=corners, labels=labels)
-
-# def visualize_rgb(ctx: VisualizationContext):
-#     '''
-#     Visualize RGB images with bounding boxes (batch loading).
     
-#     Args:
-#         ctx: visualization context.
-#     '''
-#     gt_det = ctx.gt_det.copy()
-    
-#     # Pre-compute camera intrinsics
-#     camera_intrinsics = np.eye(4, dtype=np.float32)
-#     camera_intrinsics[:3, :3] = ctx.metadata['camera_intrinsics']
-    
-#     # Load all images in parallel
-#     def load_image(camera):
-#         return camera, cv2.imread(ctx.frame_data['RGB-' + camera])
-    
-#     with ThreadPoolExecutor(max_workers=6) as executor:
-#         images = dict(executor.map(load_image, CAM_NAME))
-    
-#     # Process each camera
-#     for camera in CAM_NAME:
-#         global2camera = get_global2sensor(ctx.frame_data, ctx.metadata, camera)
-#         global2image = camera_intrinsics @ global2camera
-#         corners, labels = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
-        
-#         visualize_image(
-#             ctx.get_output_path('RGB', camera),
-#             images[camera],
-#             corners=corners,
-#             labels=labels
-#         )
-
-# def visualize_depth(ctx: VisualizationContext):
-#     '''Visualize depth images.'''
-#     for camera in CAM_NAME:
-#         with open(ctx.frame_data['DPT-' + camera], 'rb') as f:
-#             image = pyspng.load(f.read()).astype(np.float32)
-
-#         normalized_distance = (
-#             image[:, :, 0] + image[:, :, 1] * 256.0 + image[:, :, 2] * 256.0 * 256.0
-#         ) / (256.0 * 256.0 * 256.0 - 1)
-
-#         log_distance = 255 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
-
-#         cv2.imwrite(
-#             ctx.get_output_path('DPT', camera),
-#             log_distance.astype(np.uint8)
-#         )
+    # Process all 6 cameras in parallel.
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        executor.map(process_rgb, CAM_NAME)
 
 def visualize_depth(ctx: VisualizationContext):
     '''Visualize depth images (parallel processing).'''
     
     def process_camera(camera):
-        # with open(ctx.frame_data['DPT-' + camera], 'rb') as f:
-        #     image = pyspng.load(f.read()).astype(np.float32)
-
         image = cv2.imread(ctx.frame_data['DPT-' + camera]).astype(np.float32)
 
         normalized_distance = (
