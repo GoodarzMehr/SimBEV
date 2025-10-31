@@ -15,67 +15,67 @@ VISUALIZATION_MODES = {
     'rgb': {
         'handler': visualize_rgb,
         'output_dirs': [f'RGB-{camera}' for camera in CAM_NAME],
-        'color': '#000077'
+        'color': '#FF00FF'
     },
     'depth': {
         'handler': visualize_depth,
         'output_dirs': [f'DPT-{camera}' for camera in CAM_NAME],
-        'color': '#0000FF'
+        'color': '#FF7700'
     },
     'flow': {
         'handler': visualize_flow,
         'output_dirs': [f'FLW-{camera}' for camera in CAM_NAME],
-        'color': '#007700'
+        'color': '#FFFF00'
     },
     'lidar': {
         'handler': visualize_lidar,
         'output_dirs': [f'LIDAR-{distance}' for distance in VIEWS.keys()],
-        'color': '#007777'
-    },
-    'lidar3d': {
-        'handler': visualize_lidar3d,
-        'output_dirs': [f'LIDAR3D-{distance}' for distance in VIEWS.keys()],
-        'color': '#0077FF'
+        'color': '#99FF00'
     },
     'lidar-with-bbox': {
         'handler': visualize_lidar_with_bbox,
         'output_dirs': [f'LIDARwBBOX-{distance}' for distance in VIEWS.keys()],
-        'color': '#00FF00'
+        'color': '#55FF00'
+    },
+    'lidar3d': {
+        'handler': visualize_lidar3d,
+        'output_dirs': [f'LIDAR3D-{distance}' for distance in VIEWS.keys()],
+        'color': '#00FF99'
     },
     'lidar3d-with-bbox': {
         'handler': visualize_lidar3d_with_bbox,
         'output_dirs': [f'LIDAR3DwBBOX-{distance}' for distance in VIEWS.keys()],
-        'color': '#00FFFF'
+        'color': '#00FF55'
     },
     'semantic-lidar': {
         'handler': visualize_semantic_lidar,
         'output_dirs': [f'SEG-LIDAR-{distance}' for distance in VIEWS.keys()],
-        'color': '#770000'
+        'color': '#0099FF'
     },
     'semantic-lidar3d': {
         'handler': visualize_semantic_lidar3d,
         'output_dirs': [f'SEG-LIDAR3D-{distance}' for distance in VIEWS.keys()],
-        'color': '#770077'
+        'color': '#0055FF'
     },
     'radar': {
         'handler': visualize_radar,
         'output_dirs': [f'RADAR-{distance}' for distance in VIEWS.keys()],
-        'color': '#7700FF'
-    },
-    'radar3d': {
-        'handler': visualize_radar3d,
-        'output_dirs': [f'RADAR3D-{distance}' for distance in VIEWS.keys()],
-        'color': '#777700'
+        'color': '#9900FF'
     },
     'radar-with-bbox': {
         'handler': visualize_radar_with_bbox,
         'output_dirs': [f'RADARwBBOX-{distance}' for distance in VIEWS.keys()],
-        'color': '#777777'
+        'color': '#5500FF'
+    },
+    'radar3d': {
+        'handler': visualize_radar3d,
+        'output_dirs': [f'RADAR3D-{distance}' for distance in VIEWS.keys()],
+        'color': '#FF0099'
     },
     'radar3d-with-bbox': {
         'handler': visualize_radar3d_with_bbox,
         'output_dirs': [f'RADAR3DwBBOX-{distance}' for distance in VIEWS.keys()],
-        'color': '#7777FF'
+        'color': '#FF0055'
     },
 }
 

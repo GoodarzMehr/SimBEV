@@ -265,7 +265,7 @@ def visualize_lidar3d(ctx: VisualizationContext):
             VIEWS[view]['view2lidar_rotation']
         )
 
-        point_cloud_3d, point_distance, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
+        point_cloud_3d, point_distance, _, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
 
         color = compute_rainbow_colors(point_distance) * 255.0
 
@@ -295,7 +295,7 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
             VIEWS[view]['view2lidar_rotation']
         )
 
-        point_cloud_3d, point_distance, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
+        point_cloud_3d, point_distance, _, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
 
         color = compute_rainbow_colors(point_distance) * 255.0
 
@@ -317,78 +317,250 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
         executor.map(process_lidar3d_with_bbox, VIEWS.keys())
 
 def visualize_semantic_lidar(ctx: VisualizationContext):
-    '''Visualize semantic LiDAR (top-down view).'''
+    '''
+    Visualize semantic lidar point clouds from above.
+    
+    Args:
+        ctx: visualization context.
+    '''
     data = np.load(ctx.frame_data['SEG-LIDAR'])['data']
+    
     point_cloud = np.array([data['x'], data['y'], data['z']]).T
+    
     labels = np.array(data['ObjTag'])
+    
     label_color = LABEL_COLORS[labels]
 
-    visualize_point_cloud(
-        ctx.get_output_path('SEG-LIDAR'),
-        point_cloud,
-        color=label_color
-    )
-
+    def process_semantic_lidar(view):
+        visualize_point_cloud(
+            ctx.get_output_path('SEG-LIDAR', view),
+            point_cloud,
+            xlim=VIEWS[view]['xlim'],
+            ylim=VIEWS[view]['ylim'],
+            pixels_per_meter=VIEWS[view]['pixels_per_meter'],
+            color=label_color
+        )
+    
+    # Process both near and far views in parallel.
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_semantic_lidar, VIEWS.keys())
 
 def visualize_semantic_lidar3d(ctx: VisualizationContext):
-    '''Visualize semantic LiDAR in 3D view.'''
+    '''
+    Visualize a 3D view of semantic lidar point clouds.
+    
+    Args:
+        ctx: visualization context.
+    '''
     data = np.load(ctx.frame_data['SEG-LIDAR'])['data']
+    
     point_cloud = np.array([data['x'], data['y'], data['z']]).T
+    
     labels = np.array(data['ObjTag'])
+    
     label_color = LABEL_COLORS[labels]
     
-    lidar2image, camera_intrinsics = get_3d_view_transforms(ctx.metadata)
-    point_cloud_3d, canvas, indices, mask = project_to_3d_view(
-        point_cloud, lidar2image, camera_intrinsics
-    )
+    def process_semantic_lidar3d(view):
+        lidar2image, camera_intrinsics = get_3d_view_transforms(
+            ctx.metadata,
+            VIEWS[view]['view2lidar_translation'],
+            VIEWS[view]['view2lidar_rotation']
+        )
+
+        point_cloud_3d, _, color, canvas = project_to_3d_view(
+            point_cloud,
+            lidar2image,
+            camera_intrinsics,
+            label_color=label_color
+        )
+
+        visualize_point_cloud_3d(
+            ctx.get_output_path('SEG-LIDAR3D', view),
+            point_cloud_3d,
+            canvas,
+            color=(color * 255.0).astype(np.uint8)
+        )
     
-    label_color = label_color[indices][mask]
+    # Process both near and far views in parallel.
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_semantic_lidar3d, VIEWS.keys())
 
-    visualize_point_cloud_3d(
-        ctx.get_output_path('SEG-LIDAR3D'),
-        point_cloud_3d,
-        canvas,
-        color=(label_color * 255.0).astype(np.uint8)
-    )
+def visualize_radar(ctx: VisualizationContext):
+    '''
+    Visualize radar point clouds from above.
+    
+    Args:
+        ctx: visualization context.
+    '''
+    point_cloud, color = load_radar_data(ctx)
 
+    def process_radar(view):
+        visualize_point_cloud(
+            ctx.get_output_path('RADAR', view),
+            point_cloud,
+            color=color,
+            xlim = VIEWS[view]['xlim'],
+            ylim = VIEWS[view]['ylim'],
+            pixels_per_meter = VIEWS[view]['pixels_per_meter'],
+            radius=2
+        )
+    
+    # Process both near and far views in parallel.
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_radar, VIEWS.keys())
+
+def visualize_radar_with_bbox(ctx: VisualizationContext):
+    '''
+    Visualize radar point clouds with bounding boxes from above.
+    
+    Args:
+        ctx: visualization context.
+    '''
+    point_cloud, color = load_radar_data(ctx)
+    
+    gt_det = ctx.gt_det.copy()
+    
+    global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
+    
+    corners, labels = transform_bbox(gt_det, global2lidar)
+
+    def process_radar_with_bbox(view):
+        visualize_point_cloud(
+            ctx.get_output_path('RADARwBBOX', view),
+            point_cloud,
+            corners=corners,
+            labels=labels,
+            color=color,
+            xlim = VIEWS[view]['xlim'],
+            ylim = VIEWS[view]['ylim'],
+            pixels_per_meter = VIEWS[view]['pixels_per_meter'],
+            radius=2
+        )
+    
+    # Process both near and far views in parallel.
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_radar_with_bbox, VIEWS.keys())
+
+def visualize_radar3d(ctx: VisualizationContext):
+    '''
+    Visualize a 3D view of radar point clouds.
+    
+    Args:
+        ctx: visualization context.
+    '''
+    point_cloud, point_color = load_radar_data(ctx)
+    
+    def process_radar3d(view):
+        lidar2image, camera_intrinsics = get_3d_view_transforms(
+            ctx.metadata,
+            VIEWS[view]['view2lidar_translation'],
+            VIEWS[view]['view2lidar_rotation']
+        )
+
+        point_cloud_3d, _, color, canvas = project_to_3d_view(
+            point_cloud,
+            lidar2image,
+            camera_intrinsics,
+            label_color=point_color
+        )
+
+        visualize_point_cloud_3d(
+            ctx.get_output_path('RADAR3D', view),
+            point_cloud_3d,
+            canvas,
+            color=(color * 255.0).astype(np.uint8)
+        )
+    
+    # Process both near and far views in parallel.
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_radar3d, VIEWS.keys())
+
+def visualize_radar3d_with_bbox(ctx: VisualizationContext):
+    '''
+    Visualize a 3D view of radar point clouds.
+    
+    Args:
+        ctx: visualization context.
+    '''
+    point_cloud, point_color = load_radar_data(ctx)
+
+    gt_det = ctx.gt_det.copy()
+
+    global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
+    
+    def process_radar3d_with_bbox(view):
+        lidar2image, camera_intrinsics = get_3d_view_transforms(
+            ctx.metadata,
+            VIEWS[view]['view2lidar_translation'],
+            VIEWS[view]['view2lidar_rotation']
+        )
+
+        point_cloud_3d, _, color, canvas = project_to_3d_view(
+            point_cloud,
+            lidar2image,
+            camera_intrinsics,
+            label_color=point_color
+        )
+
+        global2image = lidar2image @ global2lidar
+        
+        corners, labels = transform_bbox(gt_det, global2image)
+
+        visualize_point_cloud_3d(
+            ctx.get_output_path('RADAR3DwBBOX', view),
+            point_cloud_3d,
+            canvas,
+            corners=corners,
+            labels=labels,
+            color=(color * 255.0).astype(np.uint8)
+        )
+    
+    # Process both near and far views in parallel.
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_radar3d_with_bbox, VIEWS.keys())
 
 def load_radar_data(ctx: VisualizationContext):
-    '''Load and transform radar data from all sensors.'''
+    '''
+    Load and combine data from all radars.
+    
+    Args:
+        ctx: visualization context.
+    '''
     point_cloud = []
     velocity = []
     
     for radar in RAD_NAME:
         # Radar to lidar transformation
         radar2lidar = np.eye(4, dtype=np.float32)
+        
         radar2lidar[:3, :3] = Q(ctx.metadata[radar]['sensor2lidar_rotation']).rotation_matrix
         radar2lidar[:3, 3] = ctx.metadata[radar]['sensor2lidar_translation']
 
         radar_points = np.load(ctx.frame_data[radar])['data']
+        
         velocity.append(radar_points[:, -1])
+        
         radar_points = radar_points[:, :-1]
 
-        # Convert spherical to Cartesian
+        # Convert the radar values of depth, altitude angle, and azimuth angle
+        # to x, y, and z coordinates.
         x = radar_points[:, 0] * np.cos(radar_points[:, 1]) * np.cos(radar_points[:, 2])
         y = radar_points[:, 0] * np.cos(radar_points[:, 1]) * np.sin(radar_points[:, 2])
         z = radar_points[:, 0] * np.sin(radar_points[:, 1])
 
         points = np.stack((x, y, z), axis=1)
-        points_transformed = (
-            radar2lidar @ np.append(points, np.ones((points.shape[0], 1)), 1).T
-        )[:3].T
+        
+        points_transformed = (radar2lidar @ np.append(points, np.ones((points.shape[0], 1)), 1).T)[:3].T
 
         point_cloud.append(points_transformed)
     
     point_cloud = np.concatenate(point_cloud, axis=0)
     velocity = np.concatenate(velocity, axis=0)
     
-    # Compute velocity-based colors
+    # Calculate velocity-based colors.
     log_velocity = np.log(1.0 + np.abs(velocity))
-    log_velocity_normalized = (
-        log_velocity - log_velocity.min()
-    ) / (
-        log_velocity.max() - log_velocity.min() + 1e-6
-    )
+    
+    log_velocity_normalized = (log_velocity - log_velocity.min()) / (log_velocity.max() - log_velocity.min() + 1e-6)
 
     color = np.c_[
         np.interp(log_velocity_normalized, RANGE, RAINBOW[:, 0]),
@@ -397,78 +569,3 @@ def load_radar_data(ctx: VisualizationContext):
     ]
     
     return point_cloud, color
-
-
-def visualize_radar(ctx: VisualizationContext):
-    '''Visualize radar point cloud (top-down view).'''
-    point_cloud, color = load_radar_data(ctx)
-    visualize_point_cloud(
-        ctx.get_output_path('RADAR'),
-        point_cloud,
-        color=color,
-        radius=128
-    )
-
-
-def visualize_radar_with_bbox(ctx: VisualizationContext):
-    '''Visualize radar with bounding boxes (top-down view).'''
-    point_cloud, color = load_radar_data(ctx)
-    gt_det = ctx.gt_det.copy()
-    
-    global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
-    corners, labels = transform_bbox(gt_det, global2lidar)
-
-    visualize_point_cloud(
-        ctx.get_output_path('RADARwBBOX'),
-        point_cloud,
-        corners=corners,
-        labels=labels,
-        color=color,
-        radius=128
-    )
-
-
-def visualize_radar3d(ctx: VisualizationContext):
-    '''Visualize radar in 3D view.'''
-    point_cloud, color = load_radar_data(ctx)
-    
-    lidar2image, camera_intrinsics = get_3d_view_transforms(ctx.metadata)
-    point_cloud_3d, canvas, indices, mask = project_to_3d_view(
-        point_cloud, lidar2image, camera_intrinsics
-    )
-    
-    color = color[indices][mask]
-
-    visualize_point_cloud_3d(
-        ctx.get_output_path('RADAR3D'),
-        point_cloud_3d,
-        canvas,
-        color=(color * 255.0).astype(np.uint8)
-    )
-
-
-def visualize_radar3d_with_bbox(ctx: VisualizationContext):
-    '''Visualize radar in 3D view with bounding boxes.'''
-    point_cloud, color = load_radar_data(ctx)
-    gt_det = ctx.gt_det.copy()
-    
-    global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
-    lidar2image, camera_intrinsics = get_3d_view_transforms(ctx.metadata)
-    
-    point_cloud_3d, canvas, indices, mask = project_to_3d_view(
-        point_cloud, lidar2image, camera_intrinsics
-    )
-    
-    color = color[indices][mask]
-    
-    global2image = lidar2image @ global2lidar
-    corners, labels = transform_bbox(gt_det, global2image)
-
-    visualize_point_cloud_3d(
-        ctx.get_output_path('RADAR3DwBBOX'),
-        point_cloud_3d,
-        canvas,
-        corners=corners,
-        labels=labels,
-        color=(color * 255.0).astype(np.uint8)
-    )

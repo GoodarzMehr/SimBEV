@@ -143,7 +143,8 @@ def get_3d_view_transforms(
 def project_to_3d_view(
         point_cloud: np.ndarray,
         lidar2image: np.ndarray,
-        camera_intrinsics: np.ndarray
+        camera_intrinsics: np.ndarray,
+        label_color: np.ndarray = None
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Project point cloud to a 3D view and remove the points that are outside
@@ -169,6 +170,9 @@ def project_to_3d_view(
     point_cloud_3d = point_cloud_3d[indices]
     distance = distance[indices]
 
+    if label_color is not None:
+        label_color = label_color[indices]
+
     # Project to image coordinates.
     point_cloud_3d[:, 2] = np.clip(point_cloud_3d[:, 2], a_min=1e-5, a_max=1e5)
     point_cloud_3d[:, 0] /= point_cloud_3d[:, 2]
@@ -193,7 +197,10 @@ def project_to_3d_view(
     point_cloud_3d = point_cloud_3d[mask]
     distance = distance[mask]
 
-    return point_cloud_3d, distance, canvas
+    if label_color is not None:
+        label_color = label_color[mask]
+
+    return point_cloud_3d, distance, label_color, canvas
 
 def transform_bbox(
         gt_det: list,

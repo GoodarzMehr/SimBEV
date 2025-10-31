@@ -401,7 +401,7 @@ def main(logger: logging.Logger):
                                     range(round(config['warmup_duration'] / config['timestep'])),
                                     desc='Warming up',
                                     ncols=120,
-                                    colour='red'
+                                    colour='#FF0000'
                                 )
 
                                 for _ in pbar:
@@ -419,7 +419,7 @@ def main(logger: logging.Logger):
                                     range(round(scene_duration / config['timestep'])),
                                     desc=f'Scene {scene_counter:04d}',
                                     ncols=120,
-                                    colour='green'
+                                    colour='#00FF00'
                                 )
 
                                 for j in pbar:
@@ -541,7 +541,7 @@ def main(logger: logging.Logger):
                                 range(round(config['warmup_duration'] / config['timestep'])),
                                 desc='Warming up',
                                 ncols=120,
-                                colour='red'
+                                colour='#FF0000'
                             )
                             
                             for _ in pbar:
@@ -558,7 +558,7 @@ def main(logger: logging.Logger):
                                 range(round(scene_duration / config['timestep'])),
                                 desc=f'Scene {scene_counter:04d}',
                                 ncols=120,
-                                colour='green'
+                                colour='#00FF00'
                             )
 
                             for j in pbar:
