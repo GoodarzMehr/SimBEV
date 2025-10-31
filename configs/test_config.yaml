@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  # Town01: 2
-  # Town02: 2
-  # Town03: 4
-  # Town04: 4
-  # Town05: 1
-  # Town06: 4
-  # Town07: 4
+  Town01: 1
+  Town02: 1
+  Town03: 1
+  Town04: 1
+  Town05: 1
+  Town06: 1
+  Town07: 1
   Town10HD: 1
-  # Town12: 1
-  # Town13: 4
-  # Town15: 1
+  Town12: 2
+  Town13: 2
+  Town15: 2
 
 test_scene_config:
   # Town01: 1
@@ -51,11 +51,11 @@ vehicle_color: '0,0,0'
 show_debug_telemetry: False
 simulate_physics: True
 
-warmup_duration: 2
-min_scene_duration: 4
-max_scene_duration: 10
+warmup_duration: 4
+min_scene_duration: 8
+max_scene_duration: 40
 
-early_scene_termination: False
+early_scene_termination: True
 termination_timeout: 8
 
 host: 'localhost'

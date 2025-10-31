@@ -206,7 +206,12 @@ class ScenarioManager:
         self._npc_spawn_radius = self._config['npc_spawn_radius']
 
         if self._config['dynamic_settings_adjustments']:
-            self._npc_spawn_radius = 20.0 * (self.scene_duration + self._config['warmup_duration'])
+            if self.scene_duration <= 12.0:
+                self._npc_spawn_radius = 30.0 * (self.scene_duration + self._config['warmup_duration'])
+            elif self.scene_duration <= 16.0:
+                self._npc_spawn_radius = 25.0 * (self.scene_duration + self._config['warmup_duration'])
+            else:
+                self._npc_spawn_radius = 20.0 * (self.scene_duration + self._config['warmup_duration'])
         
             logger.debug(f'Changed NPC spawn radius to {self._npc_spawn_radius:.2f} m.')
 
