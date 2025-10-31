@@ -9,6 +9,7 @@ import traceback
 from tqdm import tqdm
 
 from tools.visualization_handlers import *
+from tools.visualization_interactive import *
 
 
 VISUALIZATION_MODES = {
@@ -77,6 +78,21 @@ VISUALIZATION_MODES = {
         'output_dirs': [f'RADAR3DwBBOX-{distance}' for distance in VIEWS.keys()],
         'color': '#FF0055'
     },
+    'lidar-live': {
+        'handler': visualize_lidar_live,
+        'output_dirs': [],  # No output files
+        'color': '#00FFAA'
+    },
+    'semantic-lidar-live': {
+        'handler': visualize_semantic_lidar_live,
+        'output_dirs': [],
+        'color': '#00AAFF'
+    },
+    'radar-live': {
+        'handler': visualize_radar_live,
+        'output_dirs': [],
+        'color': '#AA00FF'
+    }
 }
 
 
@@ -231,7 +247,12 @@ def entry():
 
         # Determine modes to process
         if 'all' in args.mode:
-            mode_list = list(VISUALIZATION_MODES.keys())
+            mode_list = [
+                mode for mode in VISUALIZATION_MODES.keys() if mode not in [
+                    'lidar-live',
+                    'semantic-lidar-live',
+                    'radar-live']
+                ]
         else:
             mode_list = args.mode
 

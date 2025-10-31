@@ -22,10 +22,14 @@ from .visualization_utils import *
 # Handlers
 from .visualization_handlers import *
 
+# Interactive visualization
+from .visualization_interactive import *
+
 __all__ = [
     '__version__',
     '__author__',
     '__email__',
     'visualization_utils',
-    'visualization_handlers'
+    'visualization_handlers',
+    'visualization_interactive'
 ]
