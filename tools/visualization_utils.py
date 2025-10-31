@@ -108,6 +108,93 @@ def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR') -> 
 
     return global2sensor
 
+def get_3d_view_transforms(
+        metadata: dict,
+        view2lidar_translation: list,
+        view2lidar_rotation: list
+    ) -> tuple[np.ndarray, np.ndarray]:
+    '''
+    Get 3D view camera transformations.
+
+    Args:
+        metadata: dataset metadata.
+        view2lidar_translation: translation from view to lidar.
+        view2lidar_rotation: rotation from view to lidar.
+    
+    Returns:
+        lidar2image: transformation from lidar to image coordinates.
+        camera_intrinsics: camera intrinsics matrix.
+    '''
+    view2lidar = np.eye(4, dtype=np.float32)
+    
+    view2lidar[:3, :3] = Q(view2lidar_rotation).rotation_matrix
+    view2lidar[:3, 3] = view2lidar_translation
+
+    lidar2view = np.linalg.inv(view2lidar)
+
+    camera_intrinsics = np.eye(4, dtype=np.float32)
+    
+    camera_intrinsics[:3, :3] = metadata['camera_intrinsics']
+
+    lidar2image = camera_intrinsics @ lidar2view
+
+    return lidar2image, camera_intrinsics
+
+def project_to_3d_view(
+        point_cloud: np.ndarray,
+        lidar2image: np.ndarray,
+        camera_intrinsics: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    '''
+    Project point cloud to a 3D view and remove the points that are outside
+    the view frustum.
+
+    Args:
+        point_cloud: point cloud to project.
+        lidar2image: transformation from lidar to image coordinates.
+        camera_intrinsics: camera intrinsics matrix.
+
+    Returns:
+        point_cloud_3d: projected 3D points.
+        distance: distance of the points from the origin.
+        canvas: canvas with the projected points.
+    '''
+    distance = np.linalg.norm(point_cloud, axis=1)
+    
+    point_cloud_3d = (lidar2image @ np.append(point_cloud, np.ones((point_cloud.shape[0], 1)), 1).T)[:3].T
+    
+    # Filter out the points behind the camera.
+    indices = point_cloud_3d[:, 2] > 0.0
+    
+    point_cloud_3d = point_cloud_3d[indices]
+    distance = distance[indices]
+
+    # Project to image coordinates.
+    point_cloud_3d[:, 2] = np.clip(point_cloud_3d[:, 2], a_min=1e-5, a_max=1e5)
+    point_cloud_3d[:, 0] /= point_cloud_3d[:, 2]
+    point_cloud_3d[:, 1] /= point_cloud_3d[:, 2]
+
+    # Get canvas dimensions.
+    width = camera_intrinsics[0, 2] * 2
+    height = camera_intrinsics[1, 2] * 2
+
+    # Create canvas.
+    canvas = np.zeros((int(height), int(width), 3), dtype=np.uint8)
+    canvas[:] = (255, 255, 255)
+
+    # Filter out the points that are outside the canvas.
+    mask = np.logical_and.reduce([
+        point_cloud_3d[:, 0] >= 0,
+        point_cloud_3d[:, 0] < width,
+        point_cloud_3d[:, 1] >= 0,
+        point_cloud_3d[:, 1] < height
+    ])
+    
+    point_cloud_3d = point_cloud_3d[mask]
+    distance = distance[mask]
+
+    return point_cloud_3d, distance, canvas
+
 def transform_bbox(
         gt_det: list,
         transform: np.ndarray,
@@ -144,36 +231,6 @@ def transform_bbox(
     labels = np.array(labels)
 
     return corners, labels
-
-def visualize_image(
-        fpath: str,
-        image: np.ndarray,
-        corners: np.ndarray = None,
-        labels: np.ndarray = None,
-        color: tuple = None,
-        thickness: int = 1
-    ):
-    '''
-    Visualize image with bounding boxes.
-
-    Args:
-        fpath: file path for saving the image.
-        image: image to visualize.
-        corners: array of bounding box corners.
-        labels: array of bounding box labels.
-        color: bounding box color.
-        thickness: bounding box line thickness.
-    '''
-    canvas = image.copy()
-
-    if corners is not None and corners.shape[0] > 0:
-        canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
-        
-        canvas = draw_bbox(canvas, corners, labels, bbox_color=color, thickness=thickness)
-        
-        canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
-
-    cv2.imwrite(fpath, canvas)
 
 def draw_bbox(
         canvas: np.ndarray,
@@ -255,6 +312,58 @@ def flow_to_color(flow: np.ndarray) -> np.ndarray:
     hsv[:, :, 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+def compute_rainbow_colors(values):
+    '''
+    Compute rainbow colors for the given values.
+    
+    Args:
+        values: array of values.
+    
+    Returns:
+        color: array of RGB colors.
+    '''
+    log_values = np.log(values)
+    
+    log_values_normalized = (log_values - log_values.min()) / (log_values.max() - log_values.min() + 1e-6)
+
+    color = np.c_[
+        np.interp(log_values_normalized, RANGE, RAINBOW[:, 0]),
+        np.interp(log_values_normalized, RANGE, RAINBOW[:, 1]),
+        np.interp(log_values_normalized, RANGE, RAINBOW[:, 2])
+    ]
+    
+    return color
+
+def visualize_image(
+        fpath: str,
+        image: np.ndarray,
+        corners: np.ndarray = None,
+        labels: np.ndarray = None,
+        color: tuple = None,
+        thickness: int = 1
+    ):
+    '''
+    Visualize image with bounding boxes.
+
+    Args:
+        fpath: file path for saving the image.
+        image: image to visualize.
+        corners: array of bounding box corners.
+        labels: array of bounding box labels.
+        color: bounding box color.
+        thickness: bounding box line thickness.
+    '''
+    canvas = image.copy()
+
+    if corners is not None and corners.shape[0] > 0:
+        canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
+        
+        canvas = draw_bbox(canvas, corners, labels, bbox_color=color, thickness=thickness)
+        
+        canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+
+    cv2.imwrite(fpath, canvas)
 
 def visualize_point_cloud(
         fpath: str,
@@ -401,96 +510,3 @@ def visualize_point_cloud_3d(
     canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
     
     cv2.imwrite(fpath, canvas)
-
-def get_3d_view_transforms(
-        metadata: dict,
-        view2lidar_translation: list,
-        view2lidar_rotation: list
-    ) -> tuple[np.ndarray, np.ndarray]:
-    '''
-    Get 3D view camera transformations.
-
-    Args:
-        metadata: dataset metadata.
-        view2lidar_translation: translation from view to lidar.
-        view2lidar_rotation: rotation from view to lidar.
-    
-    Returns:
-        lidar2image: transformation from lidar to image coordinates.
-        camera_intrinsics: camera intrinsics matrix.
-    '''
-    view2lidar = np.eye(4, dtype=np.float32)
-    
-    view2lidar[:3, :3] = Q(view2lidar_rotation).rotation_matrix
-    view2lidar[:3, 3] = view2lidar_translation
-
-    lidar2view = np.linalg.inv(view2lidar)
-
-    camera_intrinsics = np.eye(4, dtype=np.float32)
-    
-    camera_intrinsics[:3, :3] = metadata['camera_intrinsics']
-
-    lidar2image = camera_intrinsics @ lidar2view
-
-    return lidar2image, camera_intrinsics
-
-def compute_rainbow_colors(values):
-    '''
-    Compute rainbow colors for the given values.
-    
-    Args:
-        values: array of values.
-    
-    Returns:
-        color: array of RGB colors.
-    '''
-    log_values = np.log(values)
-    
-    log_values_normalized = (log_values - log_values.min()) / (log_values.max() - log_values.min() + 1e-6)
-
-    color = np.c_[
-        np.interp(log_values_normalized, RANGE, RAINBOW[:, 0]),
-        np.interp(log_values_normalized, RANGE, RAINBOW[:, 1]),
-        np.interp(log_values_normalized, RANGE, RAINBOW[:, 2])
-    ]
-    
-    return color
-
-def project_to_3d_view(point_cloud, lidar2image, camera_intrinsics):
-    '''Project point cloud to 3D view and filter.'''
-    distance = np.linalg.norm(point_cloud, axis=1)
-    
-    point_cloud_3d = (
-        lidar2image @ np.append(point_cloud, np.ones((point_cloud.shape[0], 1)), 1).T
-    )[:3].T
-    
-    # Filter out points behind camera
-    indices = point_cloud_3d[:, 2] > 0.0
-    
-    point_cloud_3d = point_cloud_3d[indices]
-    distance = distance[indices]
-
-    # Project to image coordinates
-    point_cloud_3d[:, 2] = np.clip(point_cloud_3d[:, 2], a_min=1e-5, a_max=1e5)
-    point_cloud_3d[:, 0] /= point_cloud_3d[:, 2]
-    point_cloud_3d[:, 1] /= point_cloud_3d[:, 2]
-
-    # Get canvas dimensions
-    width = camera_intrinsics[0, 2] * 2
-    height = camera_intrinsics[1, 2] * 2
-
-    # Create canvas
-    canvas = np.zeros((int(height), int(width), 3), dtype=np.uint8)
-    canvas[:] = (255, 255, 255)
-
-    # Filter points within canvas bounds
-    mask = np.logical_and.reduce([
-        point_cloud_3d[:, 0] >= 0,
-        point_cloud_3d[:, 0] < width,
-        point_cloud_3d[:, 1] >= 0,
-        point_cloud_3d[:, 1] < height
-    ])
-    point_cloud_3d = point_cloud_3d[mask]
-    distance = distance[mask]
-
-    return point_cloud_3d, distance, canvas
