@@ -4,8 +4,6 @@ import cv2
 
 import numpy as np
 
-import matplotlib.pyplot as plt
-
 from matplotlib import colormaps as cm
 from pyquaternion import Quaternion as Q
 
@@ -84,7 +82,7 @@ def parse_range_argument(arg_list: list) -> list:
     
     return sorted(result)
 
-def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR'):
+def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR') -> np.ndarray:
     '''
     Get the global2sensor transformation matrix.
     
@@ -110,7 +108,11 @@ def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR'):
 
     return global2sensor
 
-def transform_bbox(gt_det: list, transform: np.ndarray, ignore_valid_flag: bool = False):
+def transform_bbox(
+        gt_det: list,
+        transform: np.ndarray,
+        ignore_valid_flag: bool = False
+    ) -> tuple[np.ndarray, np.ndarray]:
     '''
     Transform bounding boxes from the global coordinate system to the desired
     coordinate system.
@@ -179,7 +181,7 @@ def draw_bbox(
         labels: np.ndarray,
         bbox_color: tuple = None,
         thickness: int = 1
-    ):
+    ) -> np.ndarray:
     '''
     Draw bounding boxes on the canvas.
 
@@ -232,7 +234,7 @@ def draw_bbox(
     
     return canvas
 
-def flow_to_color(flow):
+def flow_to_color(flow: np.ndarray) -> np.ndarray:
     '''
     Optical flow visualization.
     
@@ -262,7 +264,8 @@ def visualize_point_cloud(
         color: np.ndarray = None,
         xlim: tuple = (-80, 80),
         ylim: tuple = (-80, 80),
-        radius: int = 16,
+        pixels_per_meter: int = 16,
+        radius: int = 1,
         thickness: int = 1
     ):
     '''
@@ -276,11 +279,10 @@ def visualize_point_cloud(
         color: array of point cloud color(s).
         xlim: x-axis limits.
         ylim: y-axis limits.
+        pixels_per_meter: number of pixels per meter.
         radius: display point radius.
         thickness: bounding box line thickness.
     '''
-    pixels_per_meter = 16
-    
     width = int((xlim[1] - xlim[0]) * pixels_per_meter)
     height = int((ylim[1] - ylim[0]) * pixels_per_meter)
     
@@ -330,7 +332,7 @@ def visualize_point_cloud(
         point_colors = point_colors.astype(np.uint8)
         
         # Directly assign colors to pixels.
-        point_radius = max(1, radius // 16)
+        point_radius = max(1, radius)
         
         if point_radius == 1:
             # Direct pixel assignment (fastest).
@@ -368,30 +370,43 @@ def visualize_point_cloud(
     cv2.imwrite(fpath, canvas)
 
 def visualize_point_cloud_3d(
-        fpath,
-        point_cloud,
-        canvas,
-        corners=None,
-        labels=None,
-        color=None,
-        bbox_color=None,
-        thickness=1
+        fpath: str,
+        point_cloud: np.ndarray,
+        canvas: np.ndarray,
+        corners: np.ndarray = None,
+        labels: np.ndarray = None,
+        color: np.ndarray = None,
+        bbox_color: tuple = None,
+        thickness: int = 1
     ):
-    '''Visualize point cloud in 3D with bounding boxes.'''
+    '''
+    Visualize a 3D view of point cloud with bounding boxes.
+
+    Args:
+        fpath: file path to save the image.
+        point_cloud: point cloud to visualize.
+        canvas: canvas to draw on.
+        corners: array of bounding box corners.
+        labels: array of bounding box labels.
+        color: array of point cloud color(s).
+        bbox_color: bounding box color.
+        thickness: bounding box line thickness.
+    '''
     if color is not None:
         canvas[point_cloud[:, 1].astype(int), point_cloud[:, 0].astype(int), :] = color
 
     if corners is not None and corners.shape[0] > 0:
         canvas = draw_bbox(canvas, corners, labels, bbox_color=bbox_color, thickness=thickness)
     
-    canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+    canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
+    
     cv2.imwrite(fpath, canvas)
 
-def get_3d_view_transforms(metadata):
+def get_3d_view_transforms(metadata, view2lidar_translation):
     '''Get 3D view camera transformations.'''
     view2lidar = np.eye(4, dtype=np.float32)
     view2lidar[:3, :3] = Q([0.415627, -0.572061, 0.572061, -0.415627]).rotation_matrix
-    view2lidar[:3, 3] = [-40.0, 0.0, 12.0]
+    view2lidar[:3, 3] = view2lidar_translation
 
     lidar2view = np.linalg.inv(view2lidar)
 
@@ -421,13 +436,17 @@ def compute_rainbow_colors(values):
 
 def project_to_3d_view(point_cloud, lidar2image, camera_intrinsics):
     '''Project point cloud to 3D view and filter.'''
+    distance = np.linalg.norm(point_cloud, axis=1)
+    
     point_cloud_3d = (
         lidar2image @ np.append(point_cloud, np.ones((point_cloud.shape[0], 1)), 1).T
     )[:3].T
     
     # Filter out points behind camera
     indices = point_cloud_3d[:, 2] > 0.0
+    
     point_cloud_3d = point_cloud_3d[indices]
+    distance = distance[indices]
 
     # Project to image coordinates
     point_cloud_3d[:, 2] = np.clip(point_cloud_3d[:, 2], a_min=1e-5, a_max=1e5)
@@ -450,5 +469,6 @@ def project_to_3d_view(point_cloud, lidar2image, camera_intrinsics):
         point_cloud_3d[:, 1] < height
     ])
     point_cloud_3d = point_cloud_3d[mask]
+    distance = distance[mask]
 
-    return point_cloud_3d, canvas, indices, mask
+    return point_cloud_3d, distance, canvas

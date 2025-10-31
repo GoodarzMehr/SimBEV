@@ -29,52 +29,52 @@ VISUALIZATION_MODES = {
     },
     'lidar': {
         'handler': visualize_lidar,
-        'output_dirs': ['LIDAR'],
+        'output_dirs': [f'LIDAR-{distance}' for distance in DISTANCES.keys()],
         'color': '#007777'
     },
     'lidar3d': {
         'handler': visualize_lidar3d,
-        'output_dirs': ['LIDAR3D'],
+        'output_dirs': [f'LIDAR3D-{distance}' for distance in DISTANCES.keys()],
         'color': '#0077FF'
     },
     'lidar-with-bbox': {
         'handler': visualize_lidar_with_bbox,
-        'output_dirs': ['LIDARwBBOX'],
+        'output_dirs': [f'LIDARwBBOX-{distance}' for distance in DISTANCES.keys()],
         'color': '#00FF00'
     },
     'lidar3d-with-bbox': {
         'handler': visualize_lidar3d_with_bbox,
-        'output_dirs': ['LIDAR3DwBBOX'],
+        'output_dirs': [f'LIDAR3DwBBOX-{distance}' for distance in DISTANCES.keys()],
         'color': '#00FFFF'
     },
     'semantic-lidar': {
         'handler': visualize_semantic_lidar,
-        'output_dirs': ['SEG-LIDAR'],
+        'output_dirs': [f'SEG-LIDAR-{distance}' for distance in DISTANCES.keys()],
         'color': '#770000'
     },
     'semantic-lidar3d': {
         'handler': visualize_semantic_lidar3d,
-        'output_dirs': ['SEG-LIDAR3D'],
+        'output_dirs': [f'SEG-LIDAR3D-{distance}' for distance in DISTANCES.keys()],
         'color': '#770077'
     },
     'radar': {
         'handler': visualize_radar,
-        'output_dirs': ['RADAR'],
+        'output_dirs': [f'RADAR-{distance}' for distance in DISTANCES.keys()],
         'color': '#7700FF'
     },
     'radar3d': {
         'handler': visualize_radar3d,
-        'output_dirs': ['RADAR3D'],
+        'output_dirs': [f'RADAR3D-{distance}' for distance in DISTANCES.keys()],
         'color': '#777700'
     },
     'radar-with-bbox': {
         'handler': visualize_radar_with_bbox,
-        'output_dirs': ['RADARwBBOX'],
+        'output_dirs': [f'RADARwBBOX-{distance}' for distance in DISTANCES.keys()],
         'color': '#777777'
     },
     'radar3d-with-bbox': {
         'handler': visualize_radar3d_with_bbox,
-        'output_dirs': ['RADAR3DwBBOX'],
+        'output_dirs': [f'RADAR3DwBBOX-{distance}' for distance in DISTANCES.keys()],
         'color': '#7777FF'
     },
 }
