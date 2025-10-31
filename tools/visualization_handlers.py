@@ -530,7 +530,6 @@ def load_radar_data(ctx: VisualizationContext):
     velocity = []
     
     for radar in RAD_NAME:
-        # Radar to lidar transformation
         radar2lidar = np.eye(4, dtype=np.float32)
         
         radar2lidar[:3, :3] = Q(ctx.metadata[radar]['sensor2lidar_rotation']).rotation_matrix
