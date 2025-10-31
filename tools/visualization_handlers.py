@@ -22,18 +22,20 @@ CAM_NAME = [
 
 RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
-DISTANCES = {
+VIEWS = {
     'NEAR': {
         'xlim': (-20, 20),
         'ylim': (-20, 20),
         'pixels_per_meter': 64,
-        'view2lidar_translation': [-15.0, 0.0, 4.5]
+        'view2lidar_translation': [-15.0, 0.0, 4.5],
+        'view2lidar_rotation': [0.415627, -0.572061, 0.572061, -0.415627]
     },
     'FAR': {
         'xlim': (-80, 80),
         'ylim': (-80, 80),
         'pixels_per_meter': 16,
-        'view2lidar_translation': [-60.0, 0.0, 18.0]
+        'view2lidar_translation': [-60.0, 0.0, 18.0],
+        'view2lidar_rotation': [0.415627, -0.572061, 0.572061, -0.415627]
     }
 }
 
@@ -152,7 +154,7 @@ def visualize_rgb(ctx: VisualizationContext):
         visualize_image(ctx.get_output_path('RGB', camera), image, corners=corners, labels=labels)
     
     # Process all 6 cameras in parallel.
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
         executor.map(process_rgb, CAM_NAME)
 
 def visualize_depth(ctx: VisualizationContext):
@@ -174,7 +176,7 @@ def visualize_depth(ctx: VisualizationContext):
         cv2.imwrite(ctx.get_output_path('DPT', camera), log_distance.astype(np.uint8))
     
     # Process all 6 cameras in parallel.
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
         executor.map(process_depth, CAM_NAME)
 
 def visualize_flow(ctx: VisualizationContext):
@@ -192,7 +194,7 @@ def visualize_flow(ctx: VisualizationContext):
         cv2.imwrite(ctx.get_output_path('FLW', camera), image)
 
     # Process all 6 cameras in parallel.
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
         executor.map(process_flow, CAM_NAME)
 
 def visualize_lidar(ctx: VisualizationContext):
@@ -204,18 +206,18 @@ def visualize_lidar(ctx: VisualizationContext):
     '''
     point_cloud = np.load(ctx.frame_data['LIDAR'])['data']
     
-    def process_lidar(distance):
+    def process_lidar(view):
         visualize_point_cloud(
-            ctx.get_output_path('LIDAR', distance),
+            ctx.get_output_path('LIDAR', view),
             point_cloud,
-            xlim = DISTANCES[distance]['xlim'],
-            ylim = DISTANCES[distance]['ylim'],
-            pixels_per_meter = DISTANCES[distance]['pixels_per_meter']
+            xlim = VIEWS[view]['xlim'],
+            ylim = VIEWS[view]['ylim'],
+            pixels_per_meter = VIEWS[view]['pixels_per_meter']
         )
     
     # Process both near and far views in parallel.
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        executor.map(process_lidar, DISTANCES.keys())
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_lidar, VIEWS.keys())
 
 def visualize_lidar_with_bbox(ctx: VisualizationContext):
     '''
@@ -232,20 +234,20 @@ def visualize_lidar_with_bbox(ctx: VisualizationContext):
     
     corners, labels = transform_bbox(gt_det, global2lidar, ctx.ignore_valid_flag)
     
-    def process_lidar_with_bbox(distance):
+    def process_lidar_with_bbox(view):
         visualize_point_cloud(
-            ctx.get_output_path('LIDARwBBOX', distance),
+            ctx.get_output_path('LIDARwBBOX', view),
             point_cloud,
             corners=corners,
             labels=labels,
-            xlim = DISTANCES[distance]['xlim'],
-            ylim = DISTANCES[distance]['ylim'],
-            pixels_per_meter = DISTANCES[distance]['pixels_per_meter']
+            xlim = VIEWS[view]['xlim'],
+            ylim = VIEWS[view]['ylim'],
+            pixels_per_meter = VIEWS[view]['pixels_per_meter']
         )
     
     # Process both near and far views in parallel.
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        executor.map(process_lidar_with_bbox, DISTANCES.keys())
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_lidar_with_bbox, VIEWS.keys())
 
 def visualize_lidar3d(ctx: VisualizationContext):
     '''
@@ -256,21 +258,22 @@ def visualize_lidar3d(ctx: VisualizationContext):
     '''
     point_cloud = np.load(ctx.frame_data['LIDAR'])['data']
     
-    def process_lidar3d(distance):
+    def process_lidar3d(view):
         lidar2image, camera_intrinsics = get_3d_view_transforms(
             ctx.metadata,
-            DISTANCES[distance]['view2lidar_translation']
+            VIEWS[view]['view2lidar_translation'],
+            VIEWS[view]['view2lidar_rotation']
         )
 
         point_cloud_3d, point_distance, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
 
         color = compute_rainbow_colors(point_distance) * 255.0
 
-        visualize_point_cloud_3d(ctx.get_output_path('LIDAR3D', distance), point_cloud_3d, canvas, color=color)
+        visualize_point_cloud_3d(ctx.get_output_path('LIDAR3D', view), point_cloud_3d, canvas, color=color)
     
     # Process both near and far views in parallel.
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        executor.map(process_lidar3d, DISTANCES.keys())
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_lidar3d, VIEWS.keys())
 
 def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
     '''
@@ -285,10 +288,11 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
 
     global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
     
-    def process_lidar3d_with_bbox(distance):
+    def process_lidar3d_with_bbox(view):
         lidar2image, camera_intrinsics = get_3d_view_transforms(
             ctx.metadata,
-            DISTANCES[distance]['view2lidar_translation']
+            VIEWS[view]['view2lidar_translation'],
+            VIEWS[view]['view2lidar_rotation']
         )
 
         point_cloud_3d, point_distance, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
@@ -300,7 +304,7 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
         corners, labels = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
 
         visualize_point_cloud_3d(
-            ctx.get_output_path('LIDAR3DwBBOX', distance),
+            ctx.get_output_path('LIDAR3DwBBOX', view),
             point_cloud_3d,
             canvas,
             corners=corners,
@@ -309,8 +313,8 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
         )
     
     # Process both near and far views in parallel.
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        executor.map(process_lidar3d_with_bbox, DISTANCES.keys())
+    with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
+        executor.map(process_lidar3d_with_bbox, VIEWS.keys())
 
 def visualize_semantic_lidar(ctx: VisualizationContext):
     '''Visualize semantic LiDAR (top-down view).'''

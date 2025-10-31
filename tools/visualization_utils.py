@@ -402,10 +402,10 @@ def visualize_point_cloud_3d(
     
     cv2.imwrite(fpath, canvas)
 
-def get_3d_view_transforms(metadata, view2lidar_translation):
+def get_3d_view_transforms(metadata, view2lidar_translation, view2lidar_rotation):
     '''Get 3D view camera transformations.'''
     view2lidar = np.eye(4, dtype=np.float32)
-    view2lidar[:3, :3] = Q([0.415627, -0.572061, 0.572061, -0.415627]).rotation_matrix
+    view2lidar[:3, :3] = Q(view2lidar_rotation).rotation_matrix
     view2lidar[:3, 3] = view2lidar_translation
 
     lidar2view = np.linalg.inv(view2lidar)
