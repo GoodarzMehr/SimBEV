@@ -176,7 +176,7 @@ class GTManager:
         if self._config['dynamic_settings_adjustments']:
             self._mapping_area_radius = 35.0 * (scene_duration + self._config['warmup_duration'])
 
-            logger.debug(f'Changed mapping area radius to {self._mapping_area_radius:.2f} m.')
+            logger.debug(f'Changed mapping area radius to {self._mapping_area_radius:.1f} m.')
         
         area_waypoints = [
             wp for wp in waypoints if vehicle_location.distance(

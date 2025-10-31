@@ -202,7 +202,9 @@ def main():
                     radar2ego[radar][:3, :3] = Q(metadata[radar]['sensor2ego_rotation']).rotation_matrix
                     radar2ego[radar][:3, 3] = metadata[radar]['sensor2ego_translation']
 
-                for scene in infos['data']:
+                scene_pbar = tqdm(infos['data'], desc=f'Post-processing', ncols=120, colour='cyan')
+                
+                for scene in scene_pbar:
                     scene_number = int(scene[-4:])
 
                     if infos['data'][scene]['scene_info']['map'] in ['Town12', 'Town13', 'Town15']:
@@ -212,9 +214,10 @@ def main():
 
                     pbar = tqdm(
                         infos['data'][scene]['scene_data'],
-                        desc=f'Scene {scene_number:04d}',
+                        desc=f'{" " * 5}Scene {scene_number:04d}',
                         ncols=120,
-                        colour='blue'
+                        colour='#00CC00',
+                        leave=False
                     )
                     
                     for i, info in enumerate(pbar):
@@ -306,7 +309,7 @@ def main():
                                 return np.array([], dtype=np.uint32)
                             
                             # Process all 6 cameras in parallel
-                            with ThreadPoolExecutor(max_workers=6) as executor:
+                            with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
                                 results = executor.map(process_camera, CAM_NAME)
                             
                             # Combine all unique hashes

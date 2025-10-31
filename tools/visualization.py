@@ -128,8 +128,6 @@ def setup_output_directories(path: str, mode):
 
 def main(mode, path: str):
     try:
-        print(f'Visualizing {mode}...')
-
         start = time.perf_counter()
         
         if mode not in VISUALIZATION_MODES:
@@ -158,7 +156,14 @@ def main(mode, path: str):
             else:
                 scene_list = parse_range_argument(args.scene)
 
-            for scene_number in scene_list:
+            scene_pbar = tqdm(
+                scene_list,
+                desc=f'Visualizing {mode}',
+                ncols=120,
+                colour=VISUALIZATION_MODES[mode]['color']
+            )
+            
+            for scene_number in scene_pbar:
                 scene_key = f'scene_{scene_number:04d}'
                 
                 if scene_key not in infos['data']:
@@ -184,9 +189,10 @@ def main(mode, path: str):
                 
                 pbar = tqdm(
                     frame_list,
-                    desc=f'Scene {scene_number:04d}',
+                    desc=f'{" " * (len(mode) + 2)}Scene {scene_number:04d}',
                     ncols=120,
-                    colour=VISUALIZATION_MODES[mode]['color']
+                    colour='#0099FF',
+                    leave=False
                 )
 
                 for frame_number in pbar:

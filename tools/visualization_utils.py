@@ -154,10 +154,12 @@ def project_to_3d_view(
         point_cloud: point cloud to project.
         lidar2image: transformation from lidar to image coordinates.
         camera_intrinsics: camera intrinsics matrix.
+        label_color: array of point colors.
 
     Returns:
         point_cloud_3d: projected 3D points.
         distance: distance of the points from the origin.
+        label_color: array of point colors.
         canvas: canvas with the projected points.
     '''
     distance = np.linalg.norm(point_cloud, axis=1)

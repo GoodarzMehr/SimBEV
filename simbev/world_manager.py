@@ -352,8 +352,8 @@ class WorldManager:
                     
                     self._world.apply_settings(settings)
                     
-                    logger.debug(f'Changed tile stream distance to {settings.tile_stream_distance}.')
-                    logger.debug(f'Changed actor active distance to {settings.actor_active_distance}.')
+                    logger.debug(f'Changed tile stream distance to {settings.tile_stream_distance:.1f} m.')
+                    logger.debug(f'Changed actor active distance to {settings.actor_active_distance:.1f} m.')
             
             # Add information about the scene to the scene info.
             self._scenario_manager.scene_info['map'] = self._map_name

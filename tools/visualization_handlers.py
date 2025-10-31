@@ -477,7 +477,7 @@ def visualize_radar3d(ctx: VisualizationContext):
 
 def visualize_radar3d_with_bbox(ctx: VisualizationContext):
     '''
-    Visualize a 3D view of radar point clouds.
+    Visualize a 3D view of radar point clouds with bounding boxes.
     
     Args:
         ctx: visualization context.
