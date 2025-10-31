@@ -348,7 +348,7 @@ class GTManager:
         
         return id_pairs
     
-    def _get_sections_from_id_pairs(self, id_pairs: dict, roads: bool = True) -> List[dict]:
+    def _get_sections_from_id_pairs(self, id_pairs: dict, roads: bool = True) -> list[dict]:
         '''
         Get comprehensive information about every lane section from a
         dictionary of road/lane ID pairs each mapped to the list of their
@@ -819,7 +819,7 @@ class GTManager:
 
         return bev_gt
     
-    def get_bounding_boxes(self) -> List[dict]:
+    def get_bounding_boxes(self) -> list[dict]:
         '''
         Get the bounding box of actors (including traffic elements) and
         static objects in the scene that are within a certain radius of the
