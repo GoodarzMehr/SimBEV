@@ -402,15 +402,32 @@ def visualize_point_cloud_3d(
     
     cv2.imwrite(fpath, canvas)
 
-def get_3d_view_transforms(metadata, view2lidar_translation, view2lidar_rotation):
-    '''Get 3D view camera transformations.'''
+def get_3d_view_transforms(
+        metadata: dict,
+        view2lidar_translation: list,
+        view2lidar_rotation: list
+    ) -> tuple[np.ndarray, np.ndarray]:
+    '''
+    Get 3D view camera transformations.
+
+    Args:
+        metadata: dataset metadata.
+        view2lidar_translation: translation from view to lidar.
+        view2lidar_rotation: rotation from view to lidar.
+    
+    Returns:
+        lidar2image: transformation from lidar to image coordinates.
+        camera_intrinsics: camera intrinsics matrix.
+    '''
     view2lidar = np.eye(4, dtype=np.float32)
+    
     view2lidar[:3, :3] = Q(view2lidar_rotation).rotation_matrix
     view2lidar[:3, 3] = view2lidar_translation
 
     lidar2view = np.linalg.inv(view2lidar)
 
     camera_intrinsics = np.eye(4, dtype=np.float32)
+    
     camera_intrinsics[:3, :3] = metadata['camera_intrinsics']
 
     lidar2image = camera_intrinsics @ lidar2view
@@ -418,13 +435,18 @@ def get_3d_view_transforms(metadata, view2lidar_translation, view2lidar_rotation
     return lidar2image, camera_intrinsics
 
 def compute_rainbow_colors(values):
-    '''Compute rainbow colors for given values.'''
+    '''
+    Compute rainbow colors for the given values.
+    
+    Args:
+        values: array of values.
+    
+    Returns:
+        color: array of RGB colors.
+    '''
     log_values = np.log(values)
-    log_values_normalized = (
-        log_values - log_values.min()
-    ) / (
-        log_values.max() - log_values.min() + 1e-6
-    )
+    
+    log_values_normalized = (log_values - log_values.min()) / (log_values.max() - log_values.min() + 1e-6)
 
     color = np.c_[
         np.interp(log_values_normalized, RANGE, RAINBOW[:, 0]),
