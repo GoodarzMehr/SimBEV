@@ -24,9 +24,9 @@ val_scene_config:
   Town06: 1
   Town07: 1
   Town10HD: 1
-  Town12: 2
-  Town13: 2
-  Town15: 2
+  Town12: 1
+  Town13: 1
+  Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -220,8 +220,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-# n_vehicles: 10
-# n_walkers: 0
+# n_vehicles: 0
+# n_walkers: 400
 
 # walker_cross_factor: 0.6
 

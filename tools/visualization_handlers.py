@@ -102,7 +102,7 @@ class VisualizationContext:
         self.metadata = metadata
         self.ignore_valid_flag = ignore_valid_flag
         
-        self.gt_det = np.load(self.frame_data['GT_DET'], allow_pickle=True)
+        self.gt_det = np.load(self.frame_data['GT_DET'], allow_pickle=True) if self.frame_data is not None else None
     
     def get_output_path(self, mode: str, variant: str = None):
         '''

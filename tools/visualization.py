@@ -78,20 +78,10 @@ VISUALIZATION_MODES = {
         'output_dirs': [f'RADAR3DwBBOX-{distance}' for distance in VIEWS.keys()],
         'color': '#FF0055'
     },
-    'lidar-live': {
-        'handler': visualize_lidar_live,
-        'output_dirs': [],  # No output files
-        'color': '#00FFAA'
-    },
-    'semantic-lidar-live': {
-        'handler': visualize_semantic_lidar_live,
+    'interactive': {
+        'handler': visualize_interactive,
         'output_dirs': [],
         'color': '#00AAFF'
-    },
-    'radar-live': {
-        'handler': visualize_radar_live,
-        'output_dirs': [],
-        'color': '#AA00FF'
     }
 }
 
@@ -144,8 +134,6 @@ def setup_output_directories(path: str, mode):
 
 def main(mode, path: str):
     try:
-        start = time.perf_counter()
-        
         if mode not in VISUALIZATION_MODES:
             print(f'Warning: unknown mode "{mode}", skipping.')
             
@@ -154,6 +142,20 @@ def main(mode, path: str):
         setup_output_directories(path, mode)
         
         handler = VISUALIZATION_MODES[mode]['handler']
+        
+        if mode == 'interactive':
+            ctx = VisualizationContext(
+                path,
+                scene_number=None,
+                frame_number=None,
+                frame_data=None,
+                metadata=None,
+                ignore_valid_flag=args.ignore_valid_flag
+            )
+            
+            handler(ctx)
+            
+            return
         
         for split in ['train', 'val', 'test']:
             info_path = f'{path}/simbev/infos/simbev_infos_{split}.json'
@@ -226,10 +228,6 @@ def main(mode, path: str):
 
                     # Call the handler.
                     handler(ctx)
-        
-        end = time.perf_counter()
-
-        print(f'Visualizing {mode} completed in {end - start:.3f} seconds.')
     
     except Exception:
         print(traceback.format_exc())
@@ -247,12 +245,7 @@ def entry():
 
         # Determine modes to process
         if 'all' in args.mode:
-            mode_list = [
-                mode for mode in VISUALIZATION_MODES.keys() if mode not in [
-                    'lidar-live',
-                    'semantic-lidar-live',
-                    'radar-live']
-                ]
+            mode_list = [mode for mode in VISUALIZATION_MODES.keys() if mode not in ['interactive']]
         else:
             mode_list = args.mode
 
