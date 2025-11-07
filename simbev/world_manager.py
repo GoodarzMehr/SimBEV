@@ -91,7 +91,6 @@ class WorldManager:
         settings = self._world.get_settings()
 
         settings.synchronous_mode = True
-        settings.deterministic_ragdolls = False
         settings.fixed_delta_seconds = self._config['timestep']
 
         # If the selected map is Town12 or Town13 (large maps), limit tile

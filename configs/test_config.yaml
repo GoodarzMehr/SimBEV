@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  Town01: 1
-  Town02: 1
-  Town03: 1
-  Town04: 1
-  Town05: 1
-  Town06: 1
-  Town07: 1
+  # Town01: 1
+  # Town02: 1
+  # Town03: 1
+  # Town04: 1
+  # Town05: 1
+  # Town06: 1
+  # Town07: 1
   Town10HD: 1
-  Town12: 1
-  Town13: 1
-  Town15: 1
+  # Town12: 1
+  # Town13: 1
+  # Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -72,7 +72,7 @@ render_gpu: 0
 max_io_workers: 48
 
 use_scene_number_for_random_seed: False
-random_seed_offset: 27
+random_seed_offset: 29
 
 dynamic_settings_adjustments: True
 
@@ -108,7 +108,7 @@ door_open_percentage: 10.0
 
 emergency_lights_percentage: 50.0
 
-reckless_ego_percentage: 1.0
+reckless_ego_percentage: 100.0
 reckless_npc_percentage: 1.0
 
 distracted_ego_percentage: 4.0
@@ -139,32 +139,32 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: True
+use_rgb_camera: False
 
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: True
+use_semantic_camera: False
 
 semantic_camera_properties:
   {}
 
-use_instance_camera: True
+use_instance_camera: False
 
 instance_camera_properties:
  {}
 
-use_depth_camera: True
+use_depth_camera: False
 
 depth_camera_properties:
  {}
 
-use_flow_camera: True
+use_flow_camera: False
 
 flow_camera_properties:
  {}
 
-use_lidar: True
+use_lidar: False
 
 lidar_channels: 128
 lidar_range: 120.0
@@ -174,9 +174,9 @@ lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
   dropoff_general_rate: '0.14'
-  noise_stddev: '0.01'
+  noise_stddev: '0.02'
 
-use_semantic_lidar: True
+use_semantic_lidar: False
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -186,7 +186,7 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: True
+use_radar: False
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
@@ -194,7 +194,7 @@ radar_vertical_fov: 12.0
 radar_properties:
   points_per_second: '40000'
 
-use_gnss: True
+use_gnss: False
 
 gnss_properties:
   noise_seed: '27'
@@ -202,7 +202,7 @@ gnss_properties:
   noise_lat_stddev: '0.0000004'
   noise_lon_stddev: '0.0000004'
 
-use_imu: True
+use_imu: False
 
 imu_properties:
   noise_seed: '27'
@@ -221,7 +221,7 @@ imu_properties:
 # street_light_intensity_change: -2000000.0
 
 # n_vehicles: 0
-# n_walkers: 400
+# n_walkers: 200
 
 # walker_cross_factor: 0.6
 

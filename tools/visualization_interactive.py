@@ -153,11 +153,20 @@ class LazyDataLoader:
         ]
         
         if sensor_type == 'lidar':
-            data = self._load_lidar(frame_data, bboxes)
+            if 'LIDAR' in frame_data:
+                data = self._load_lidar(frame_data, bboxes)
+            else:
+                data = {'points': np.empty((0, 3)), 'colors': None, 'bboxes': bboxes}
         elif sensor_type == 'semantic-lidar':
-            data = self._load_semantic_lidar(frame_data, bboxes)
+            if 'SEG-LIDAR' in frame_data:
+                data = self._load_semantic_lidar(frame_data, bboxes)
+            else:
+                data = {'points': np.empty((0, 3)), 'colors': None, 'bboxes': bboxes}
         elif sensor_type == 'radar':
-            data = self._load_radar(frame_data, bboxes)
+            if all(radar in frame_data for radar in RAD_NAME):
+                data = self._load_radar(frame_data, bboxes)
+            else:
+                data = {'points': np.empty((0, 3)), 'colors': None, 'bboxes': bboxes}
         else:
             raise ValueError(f"Unknown sensor type: {sensor_type}")
         
@@ -622,7 +631,7 @@ def visualize_interactive(ctx):
     
     # Create lazy data loader with cache
     print("Initializing data loader...")
-    data_loader = LazyDataLoader(ctx.path, metadata, cache_size=50)
+    data_loader = LazyDataLoader(ctx.path, metadata, cache_size=160)
     
     scene_count = data_loader.get_scene_count()
     if scene_count == 0:
