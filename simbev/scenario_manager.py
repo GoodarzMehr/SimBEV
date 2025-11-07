@@ -232,7 +232,7 @@ class ScenarioManager:
         if 'n_walkers' in self._config:
             n_walkers = self._config['n_walkers']
         else:
-            n_walkers = random.randint(0, 640)
+            n_walkers = random.randint(0, self._config['max_n_walkers'])
         
         self._spawn_npcs(n_vehicles, n_walkers, vehicle_location, npc_spawn_points, tm_port)
 

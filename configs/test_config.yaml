@@ -52,7 +52,7 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 8
+min_scene_duration: 40
 max_scene_duration: 40
 
 early_scene_termination: True
@@ -71,8 +71,8 @@ render_gpu: 0
 
 max_io_workers: 48
 
-use_scene_number_for_random_seed: False
-random_seed_offset: 29
+use_scene_number_for_random_seed: True
+random_seed_offset: 27
 
 dynamic_settings_adjustments: True
 
@@ -113,6 +113,8 @@ reckless_npc_percentage: 1.0
 
 distracted_ego_percentage: 4.0
 distracted_npc_percentage: 4.0
+
+max_n_walkers: 640
 
 walker_spawn_attempts: 100
 
@@ -221,7 +223,7 @@ imu_properties:
 # street_light_intensity_change: -2000000.0
 
 # n_vehicles: 0
-# n_walkers: 200
+# n_walkers: 400
 
 # walker_cross_factor: 0.6
 
