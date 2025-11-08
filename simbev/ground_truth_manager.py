@@ -845,23 +845,8 @@ class GTManager:
                 
                 actor_properties['semantic_tags'] = actor.semantic_tags
 
-                bounding_box = actor.bounding_box
-                
-                # The default bounding boxes for wheelchair users and certain
-                # pedestrians are incorrect, so they are adjusted here.
-                if 'use_wheelchair' in actor_properties['attributes'] and \
-                    actor_properties['attributes']['use_wheelchair'] == 'true':
-                    bounding_box.extent = carla.Vector3D(0.64, 0.48, 0.8)
-
-                    bounding_box.location.x += (0.6 - actor.bounding_box.extent.x)
-                    bounding_box.location.z += (0.8 - actor.bounding_box.extent.z)
-                elif actor_properties['type'] in ['walker.pedestrian.0050', 'walker.pedestrian.0051']:
-                    bounding_box.extent *= 0.65
-
-                    bounding_box.location.z += (bounding_box.extent.z - actor.bounding_box.extent.z)
-
                 actor_properties['bounding_box'] = carla_vector_to_numpy(
-                    bounding_box.get_world_vertices(actor.get_transform())
+                    actor.bounding_box.get_world_vertices(actor.get_transform())
                 )
 
                 actor_properties['bounding_box'][:, 1] *= -1.0

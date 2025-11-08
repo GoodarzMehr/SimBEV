@@ -63,7 +63,7 @@ RUN set -xue && apt-key del 7fa2af80 \
 && apt-get install -y build-essential cmake debhelper git wget xdg-user-dirs xserver-xorg libvulkan1 libsdl2-2.0-0 \
 libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc gdb \
 libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libvulkan-dev vulkan-tools python-is-python3 \
-mesa-utils
+mesa-utils gdb python3-dbg
 
 RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image pyquaternion networkx psutil \
 tqdm pynput

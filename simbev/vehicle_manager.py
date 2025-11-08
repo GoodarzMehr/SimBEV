@@ -70,7 +70,11 @@ class VehicleManager:
             self.vehicle = None
 
             while self.vehicle is None:
-                self.vehicle = self._world.try_spawn_actor(bp, random.choice(spawn_points))
+                spawn_point = random.choice(spawn_points)
+                
+                self._set_spectator_view(spawn_point)
+
+                self.vehicle = self._world.try_spawn_actor(bp, spawn_point)
 
             self.vehicle.set_autopilot(True, tm_port)
             self.vehicle.set_simulate_physics(self._config['simulate_physics'])
@@ -368,7 +372,11 @@ class VehicleManager:
 
             time.sleep(1.0)
 
-            self.vehicle.set_transform(random.choice(spawn_points))
+            move_point = random.choice(spawn_points)
+
+            self._set_spectator_view(move_point)
+
+            self.vehicle.set_transform(move_point)
             self.vehicle.disable_constant_velocity()
             self.vehicle.set_autopilot(True, tm_port)
 
@@ -448,6 +456,34 @@ class VehicleManager:
             time.sleep(3.0)
 
             raise Exception('Cannot move the vehicle. Good bye!')
+    
+    def _set_spectator_view(self, spawn_point: carla.Transform):
+        '''
+        Set the spectator view to an overhead view of the vehicle spawn point.
+        
+        Args:
+            spawn_point: vehicle spawn point.
+        '''
+        # Get the spectator.
+        spectator = self._world.get_spectator()
+
+        # Calculate the spectator's desired position.
+        view_x = spawn_point.location.x
+        view_y = spawn_point.location.y
+        view_z = spawn_point.location.z + 40.0
+
+        # Calculate the spectator's desired orientation.
+        view_roll = spawn_point.rotation.roll
+        view_pitch = spawn_point.rotation.pitch - 90.0
+        view_yaw = spawn_point.rotation.yaw
+
+        # Place the spectator in the calculated position.
+        spectator.set_transform(
+            carla.Transform(
+                carla.Location(x=view_x, y=view_y, z=view_z),
+                carla.Rotation(roll=view_roll, pitch=view_pitch, yaw=view_yaw)
+            )
+        )
     
     def destroy_vehicle(self):
         '''Destroy the Sensor Manager and the vehicle.'''

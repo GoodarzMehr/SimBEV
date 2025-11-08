@@ -23,9 +23,9 @@ val_scene_config:
   # Town05: 1
   # Town06: 1
   # Town07: 1
-  Town10HD: 1
-  # Town12: 1
-  # Town13: 1
+  # Town10HD: 1
+  Town12: 1
+  # Town13: 8
   # Town15: 1
 
 test_scene_config:
@@ -52,7 +52,7 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 40
+min_scene_duration: 8
 max_scene_duration: 40
 
 early_scene_termination: True
@@ -71,7 +71,7 @@ render_gpu: 0
 
 max_io_workers: 48
 
-use_scene_number_for_random_seed: True
+use_scene_number_for_random_seed: False
 random_seed_offset: 27
 
 dynamic_settings_adjustments: True
@@ -108,7 +108,7 @@ door_open_percentage: 10.0
 
 emergency_lights_percentage: 50.0
 
-reckless_ego_percentage: 100.0
+reckless_ego_percentage: 1.0
 reckless_npc_percentage: 1.0
 
 distracted_ego_percentage: 4.0
@@ -120,7 +120,7 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
-wheelchair_use_percentage: 4.0
+wheelchair_use_percentage: 20.0
 
 dynamic_weather: True
 
@@ -141,7 +141,7 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: False
+use_rgb_camera: True
 
 rgb_camera_properties:
   fstop: '1.8'
@@ -151,7 +151,7 @@ use_semantic_camera: False
 semantic_camera_properties:
   {}
 
-use_instance_camera: False
+use_instance_camera: True
 
 instance_camera_properties:
  {}
@@ -223,7 +223,7 @@ imu_properties:
 # street_light_intensity_change: -2000000.0
 
 # n_vehicles: 0
-# n_walkers: 400
+# n_walkers: 0
 
 # walker_cross_factor: 0.6
 
@@ -249,7 +249,7 @@ imu_properties:
 #   precipitation_deposits: 0.0
 #   wind_intensity: 10.0
 #   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: -21.0
+#   sun_altitude_angle: 21.0
 #   wetness: 10.0
 #   fog_density: 2.0
 #   fog_distance: 100.0
