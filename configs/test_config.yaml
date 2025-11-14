@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  # Town01: 1
-  # Town02: 1
-  # Town03: 1
-  # Town04: 1
-  # Town05: 1
-  # Town06: 1
-  # Town07: 1
-  # Town10HD: 1
-  Town12: 1
-  # Town13: 8
-  # Town15: 1
+  Town01: 2
+  Town02: 2
+  Town03: 2
+  Town04: 2
+  Town05: 2
+  Town06: 2
+  Town07: 2
+  Town10HD: 2
+  Town12: 4
+  Town13: 4
+  Town15: 4
 
 test_scene_config:
   # Town01: 1
@@ -85,7 +85,7 @@ nearby_mapping_area_radius: 140.0
 
 spawn_point_separation_distance: 24.0
 
-bbox_collection_radius: 140.0
+bbox_collection_radius: 200.0
 
 npc_spawn_radius: 600.0
 
@@ -120,7 +120,7 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
-wheelchair_use_percentage: 20.0
+wheelchair_use_percentage: 4.0
 
 dynamic_weather: True
 

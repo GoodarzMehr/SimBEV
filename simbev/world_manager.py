@@ -323,6 +323,18 @@ class WorldManager:
         '''Move the ego vehicle to a new spawn point.'''
         self._scenario_manager.scene_info = self._vehicle_manager.move_vehicle(self._spawn_points, self._tm_port)
     
+    def _dynamic_settings_adjustment(self, scene_duration: float):
+        '''Adjust world settings dynamically for large maps.'''
+        settings = self._world.get_settings()
+
+        settings.tile_stream_distance = 35.0 * (scene_duration + self._config['warmup_duration'])
+        settings.actor_active_distance = 35.0 * (scene_duration + self._config['warmup_duration'])
+
+        self._world.apply_settings(settings)
+        
+        logger.debug(f'Changed tile stream distance to {settings.tile_stream_distance:.1f} m.')
+        logger.debug(f'Changed actor active distance to {settings.actor_active_distance:.1f} m.')
+    
     def start_scene(self, seed: int = None):
         '''
         Start the scene.
@@ -340,20 +352,18 @@ class WorldManager:
                 self._world.set_pedestrians_seed(seed)
                 self._traffic_manager.set_random_device_seed(seed)
 
-            # Adjust settings based on the current map.
             if self._config['dynamic_settings_adjustments']:
                 if self._map_name in ['Town12', 'Town13']:
-                    settings = self._world.get_settings()
+                    # Due to an object registration issue in large maps, these
+                    # parameters have to first be set to high values to ensure
+                    # the bounding boxes of all traffic signs are registered.
+                    self._dynamic_settings_adjustment(80.0)
 
-                    settings.tile_stream_distance = 35.0 * \
-                        (self._scenario_manager.scene_duration + self._config['warmup_duration'])
-                    settings.actor_active_distance = 35.0 * \
-                        (self._scenario_manager.scene_duration + self._config['warmup_duration'])
-                    
-                    self._world.apply_settings(settings)
-                    
-                    logger.debug(f'Changed tile stream distance to {settings.tile_stream_distance:.1f} m.')
-                    logger.debug(f'Changed actor active distance to {settings.actor_active_distance:.1f} m.')
+                    self._world.tick()
+
+                    self._dynamic_settings_adjustment(self._scenario_manager.scene_duration)
+
+                    self._world.tick()
             
             # Add information about the scene to the scene info.
             self._scenario_manager.scene_info['map'] = self._map_name
@@ -373,6 +383,7 @@ class WorldManager:
                 self._scenario_manager.scene_duration
             )
             self._vehicle_manager.get_ground_truth_manager().get_area_crosswalks(self._crosswalks)
+            self._vehicle_manager.get_ground_truth_manager().get_environment_objects()
             self._vehicle_manager.get_ground_truth_manager().get_bounding_boxes()
 
             self._scenario_manager.setup_scenario(

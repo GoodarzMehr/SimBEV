@@ -69,8 +69,20 @@ class VehicleManager:
             logger.debug('Spawning the ego vehicle...')
             self.vehicle = None
 
+            spawn_point = random.choice(spawn_points)
+
+            self._world.get_spectator().set_transform(
+                carla.Transform(
+                    spawn_point.location + carla.Location(z=40.0),
+                    carla.Rotation(pitch=-90.0, yaw=spawn_point.rotation.yaw)
+                )
+            )
+
+            for _ in range(100):
+                self._world.tick()
+            
             while self.vehicle is None:
-                self.vehicle = self._world.try_spawn_actor(bp, random.choice(spawn_points))
+                self.vehicle = self._world.try_spawn_actor(bp, spawn_point)
 
             self.vehicle.set_autopilot(True, tm_port)
             self.vehicle.set_simulate_physics(self._config['simulate_physics'])

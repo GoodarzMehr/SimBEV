@@ -638,6 +638,28 @@ class GTManager:
 
         return level_sections
 
+    def get_environment_objects(self) -> list[carla.EnvironmentObject]:
+        '''Get the list of static environment objects in the world.'''
+        car_list = self._world.get_environment_objects(carla.CityObjectLabel.Car)
+        truck_list = self._world.get_environment_objects(carla.CityObjectLabel.Truck)
+        bus_list = self._world.get_environment_objects(carla.CityObjectLabel.Bus)
+        motorcycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Motorcycle)
+        bicycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Bicycle)
+
+        if self._config['collect_traffic_sign_bbox']:
+            traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
+
+            if self._map_name == 'Town15':
+                static_list = self._world.get_environment_objects(carla.CityObjectLabel.Static)
+
+                for obj in static_list:
+                    if 'SM_Signal' in obj.name:
+                        traffic_sign_list.append(obj)
+
+            self._object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
+        else:
+            self._object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
+    
     def get_bev_gt(self, elevation_difference: bool = False) -> np.ndarray:
         '''
         Get the BEV ground truth using the top and bottom semantic cameras,
@@ -839,8 +861,7 @@ class GTManager:
 
             if vehicle_location.distance(actor_location) < self._config['bbox_collection_radius'] \
                 and all(x not in actor.type_id for x in ['spectator', 'sensor', 'controller']) \
-                    and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]) \
-                        and 5 not in actor.semantic_tags:
+                    and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]):
                 actor_properties = self._get_basic_actor_properties(actor)
                 
                 actor_properties['semantic_tags'] = actor.semantic_tags
@@ -860,10 +881,8 @@ class GTManager:
 
                 for bounding_box in bounding_boxes:
                     if bounding_box.extent.z > 0.3:
-                        if bounding_box.extent.x < 0.18:
-                            bounding_box.extent.x = max(bounding_box.extent.y, 0.18)
-                        if bounding_box.extent.y < 0.18:
-                            bounding_box.extent.y = max(bounding_box.extent.x, 0.18)
+                        bounding_box.extent.x = max(bounding_box.extent.x, 0.12)
+                        bounding_box.extent.y = max(bounding_box.extent.y, 0.12)
 
                         actor_properties = self._get_basic_actor_properties(actor)
 
@@ -900,35 +919,13 @@ class GTManager:
 
                         actors.append(actor_properties)
         
-        # Get the list of objects (props) in the scene, i.e. parked cars,
-        # trucks, etc. that are within a certain radius of the ego vehicle.
-        car_list = self._world.get_environment_objects(carla.CityObjectLabel.Car)
-        truck_list = self._world.get_environment_objects(carla.CityObjectLabel.Truck)
-        bus_list = self._world.get_environment_objects(carla.CityObjectLabel.Bus)
-        motorcycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Motorcycle)
-        bicycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Bicycle)
-
-        if self._config['collect_traffic_sign_bbox']:
-            traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
-
-            if self._map_name == 'Town15':
-                static_list = self._world.get_environment_objects(carla.CityObjectLabel.Static)
-
-                for obj in static_list:
-                    if 'SM_Signal' in obj.name:
-                        traffic_sign_list.append(obj)
-
-            object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
-        else:
-            object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
-
-        for obj in object_list:
+        for obj in self._object_list:
             object_properties = {}
             
-            object_location = obj.transform.location if self._map_name not in ['Town12', 'Town13'] \
-                else obj.bounding_box.location
+            object_location = obj.transform.location
 
-            if vehicle_location.distance(object_location) < self._config['bbox_collection_radius']:
+            if vehicle_location.distance(object_location) < self._config['bbox_collection_radius'] \
+                and 'BP_Mustang2016' not in obj.name and obj.bounding_box.extent.z < 3.2:
                 object_properties['id'] = obj.id
                 object_properties['type'] = str(obj.type)
                 object_properties['is_alive'] = False
@@ -939,13 +936,26 @@ class GTManager:
                 object_properties['linear_velocity'] = np.zeros(3)
                 object_properties['angular_velocity'] = np.zeros(3)
 
-                bbox = obj.bounding_box
+                bounding_box = obj.bounding_box
 
-                bbox.extent.x = max(bbox.extent.x, 0.03)
-                bbox.extent.y = max(bbox.extent.y, 0.03)
-                bbox.extent.z = max(bbox.extent.z, 0.03)
+                bounding_box.extent.x = max(bounding_box.extent.x, 0.03)
+                bounding_box.extent.y = max(bounding_box.extent.y, 0.03)
+                bounding_box.extent.z = max(bounding_box.extent.z, 0.03)
 
-                object_properties['bounding_box'] = carla_vector_to_numpy(bbox.get_local_vertices())
+                # In Town12 and Town13, bounding box coordinates are relative
+                # to the map tile, so we use the location of the object to
+                # find their coordinates in the global coordinate frame.
+                if self._map_name in ['Town12', 'Town13']:
+                    tile_bounding_box = carla_vector_to_numpy(bounding_box.get_local_vertices())
+
+                    x_difference = np.round((object_location.x - bounding_box.location.x) / 1000.0) * 1000.0
+                    y_difference = np.round((object_location.y - bounding_box.location.y) / 1000.0) * 1000.0
+
+                    object_properties['bounding_box'] = tile_bounding_box + np.array([
+                        x_difference, y_difference, 0.0
+                    ])
+                else:
+                    object_properties['bounding_box'] = carla_vector_to_numpy(bounding_box.get_local_vertices())
 
                 object_properties['bounding_box'][:, 1] *= -1.0
 
@@ -960,9 +970,6 @@ class GTManager:
                     if self._map_name not in ['Town12', 'Town13', 'Town15'] and \
                         'speed_limit' in object_properties['sign_type']:
                         object_properties['sign_type'] = 'speed_limit'
-
-                    if self._map_name in ['Town12', 'Town13'] and any(x in obj.name for x in ['_Stop_', '_Yield_']):
-                        object_properties['bounding_box'][:, 2] -= 2.24
                     
                     if self._map_name == 'Town15' and obj.type == carla.CityObjectLabel.Static:
                         max_extent = max(obj.bounding_box.extent.x, obj.bounding_box.extent.y)
