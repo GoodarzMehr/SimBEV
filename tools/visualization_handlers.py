@@ -11,8 +11,6 @@ from concurrent.futures import ThreadPoolExecutor
 from pyquaternion import Quaternion as Q
 
 
-
-
 VIEWS = {
     'NEAR': {
         'xlim': (-20, 20),

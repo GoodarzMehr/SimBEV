@@ -8,8 +8,8 @@ import traceback
 
 from tqdm import tqdm
 
-from tools.visualization_handlers import *
-from tools.visualization_interactive import *
+from .visualization_handlers import *
+from .visualization_interactive import *
 
 
 VISUALIZATION_MODES = {
