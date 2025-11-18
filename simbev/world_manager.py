@@ -411,9 +411,9 @@ class WorldManager:
         transform = self._vehicle_manager.vehicle.get_transform()
 
         # Calculate the spectator's desired position.
-        view_x = transform.location.x - 8.0 * transform.get_forward_vector().x
-        view_y = transform.location.y - 8.0 * transform.get_forward_vector().y
-        view_z = transform.location.z + 4.0
+        view_x = transform.location.x - 2 * self._config['spectator_height'] * transform.get_forward_vector().x
+        view_y = transform.location.y - 2 * self._config['spectator_height'] * transform.get_forward_vector().y
+        view_z = transform.location.z + self._config['spectator_height']
 
         # Calculate the spectator's desired orientation.
         view_roll = transform.rotation.roll

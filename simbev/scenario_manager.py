@@ -243,7 +243,7 @@ class ScenarioManager:
         for actor in actors:
             if 'walker.pedestrian' in actor.type_id:
                 actor.set_collisions(True)
-                actor.set_simulate_physics(True)
+                actor.set_simulate_physics(self._config['simulate_physics'])
 
         self._npc_door_open_list = []
         self._tried_to_open_door_list = []
@@ -446,6 +446,8 @@ class ScenarioManager:
         self.scene_info['n_distracted_vehicles'] = 0
 
         for vehicle in self._npc_vehicles_list:
+            vehicle.set_simulate_physics(self._config['simulate_physics'])
+            
             self._traffic_manager.update_vehicle_lights(vehicle, True)
 
             if any(x in vehicle.type_id for x in ['firetruck', 'ambulance', 'police']):

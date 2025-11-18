@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  Town01: 2
-  Town02: 2
-  Town03: 2
-  Town04: 2
-  Town05: 2
-  Town06: 2
-  Town07: 2
-  Town10HD: 2
-  Town12: 4
-  Town13: 4
-  Town15: 4
+  Town01: 1
+  Town02: 1
+  Town03: 1
+  Town04: 1
+  Town05: 1
+  Town06: 1
+  Town07: 1
+  Town10HD: 1
+  Town12: 1
+  Town13: 1
+  Town15: 1
 
 test_scene_config:
   # Town01: 1
@@ -93,6 +93,8 @@ bev_camera_height: 1000.0
 
 bev_dim: 400
 bev_res: 0.4
+
+spectator_height: 4.0
 
 collect_traffic_light_bbox: True
 collect_traffic_sign_bbox: True
@@ -166,7 +168,7 @@ use_flow_camera: False
 flow_camera_properties:
  {}
 
-use_lidar: False
+use_lidar: True
 
 lidar_channels: 128
 lidar_range: 120.0
@@ -178,7 +180,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.02'
 
-use_semantic_lidar: False
+use_semantic_lidar: True
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -188,7 +190,7 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: False
+use_radar: True
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
@@ -266,7 +268,7 @@ imu_properties:
 #   ]
 #   Town06: [
 #     [[61.7792, 48.8402, 0.3], [0.0, 0.0, 0.0]],
-#     [[244.2593, 48.7343, 0.3], [0.0, 0.0, 90.0]],
+#     [[324.2593, 48.7343, 0.3], [0.0, 0.0, 90.0]],
 #     [[-5.5314, -0.3351, 0.3], [0.0, 0.0, 90.0]],
 #     [[-9.0433, 12.9953, 0.3], [0.0, 0.0, 90.0]]
 #   ]
