@@ -454,14 +454,16 @@ class WorldManager:
         if self._config['dynamic_weather'] and scene is not None:
             self._scenario_manager.adjust_weather()
         
+        # Sometimes the data may not get updated in time for the first frame,
+        # so wait a bit before and after ticking the world.
         if frame is not None and frame == 0:
-            time.sleep(0.5)
+            time.sleep(1.0)
         
         # Proceed for one time step.
         self._world.tick()
 
         if frame is not None and frame == 0:
-            time.sleep(0.5)
+            time.sleep(1.0)
 
         self._set_spectator_view()
         
