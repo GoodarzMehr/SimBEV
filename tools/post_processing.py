@@ -209,7 +209,7 @@ def main():
             scene_pbar = tqdm(infos['data'], desc=f'Post-processing', ncols=120, colour='cyan')
             
             for scene in scene_pbar:
-                scene_number = int(scene[-4:])
+                scene_number = int(scene.split('_')[1])
 
                 if infos['data'][scene]['scene_info']['map'] in ['Town12', 'Town13', 'Town15']:
                     dType = torch.double

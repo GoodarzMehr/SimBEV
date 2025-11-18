@@ -170,7 +170,7 @@ def main(mode, path: str):
 
             # Get the list of scenes to visualize.
             if args.scene == ['-1']:
-                scene_list = [int(scene[-4:]) for scene in infos['data']]
+                scene_list = [int(scene.split('_')[1]) for scene in infos['data']]
             else:
                 scene_list = parse_range_argument(args.scene)
 

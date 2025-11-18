@@ -1,156 +1,202 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 import os
+import time
 import json
-import open3d as o3d
-import numpy as np
-from pyquaternion import Quaternion as Q
-import open3d.visualization.gui as gui
 import threading
 
-# Color palette for bounding boxes
+import numpy as np
+import open3d as o3d
+
+import open3d.visualization.gui as gui
+
+from pyquaternion import Quaternion as Q
+
+from .visualization_utils import RANGE, RAINBOW
+from .visualization_handlers import RAD_NAME, LABEL_COLORS
+
+from .visualization_utils import get_global2sensor, transform_bbox
+
+
 BBOX_COLORS = {
-    'car': [0.0, 0.5, 0.94],
-    'truck': [0.5, 0.94, 0.25],
-    'bus': [0.0, 0.56, 0.0],
-    'motorcycle': [0.94, 0.94, 0.0],
-    'bicycle': [0.0, 0.94, 0.94],
-    'rider': [0.94, 0.56, 0.0],
-    'pedestrian': [0.94, 0.0, 0.0],
-    'traffic_light': [0.94, 0.63, 0.0],
-    'traffic_sign': [0.94, 0.0, 0.5]
+    'car': [0.0, 0.5, 0.9375],
+    'truck': [0.5, 0.9375, 0.25],
+    'bus': [0.0, 0.5625, 0.0],
+    'motorcycle': [0.9375, 0.9375, 0.0],
+    'bicycle': [0.0, 0.9375, 0.9375],
+    'rider': [0.9375, 0.5625, 0.0],
+    'pedestrian': [0.9375, 0.0, 0.0],
+    'traffic_light': [0.9375, 0.625, 0.0],
+    'traffic_sign': [0.9375, 0.0, 0.5]
 }
 
 RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
 
-class LazyDataLoader:
+class VizDataLoader:
     '''
-    Lazy data loader that loads frame data on-demand.
-    Implements caching to avoid reloading recently accessed frames.
+    Data loader that loads point cloud and bounding box data for
+    interactive visualization and implements caching to avoid reloading
+    recently accessed frames.
+
+    Args:
+        path: root directory of the dataset.
+        metadata: dataset metadata.
+        cache_size: number of frames to cache.
+        ignore_valid_flag: whether to ignore the valid_flag of object bounding
+            boxes.
     '''
-    def __init__(self, path, metadata, cache_size=10):
-        self.path = path
-        self.metadata = metadata
+    def __init__(self, path: str, metadata: dict, cache_size: int = 10, ignore_valid_flag: bool = False):
+        self._path = path
+        self._metadata = metadata
         self.cache_size = cache_size
-        self.cache = {}  # {(scene_idx, frame_idx, sensor_type): data}
-        self.cache_order = []  # LRU cache
+        self._ignore_valid_flag = ignore_valid_flag
+
+        self.cache = {}  # {(scene, frame, sensor_type): data}
         
-        # Pre-compute colormaps
-        from matplotlib import colormaps as cm
-        RANGE = np.linspace(0.0, 1.0, 256)
-        self.RAINBOW = np.array(cm.get_cmap('rainbow')(RANGE))[:, :3]
-        self.RANGE = RANGE
+        self._cache_order = []
         
-        # Label colors for semantic LiDAR
-        self.LABEL_COLORS = np.array([
-            (255, 255, 255), (128, 64, 128), (244, 35, 232), (70, 70, 70),
-            (102, 102, 156), (190, 153, 153), (153, 153, 153), (250, 170, 30),
-            (220, 220, 0), (107, 142, 35), (152, 251, 152), (70, 130, 180),
-            (220, 20, 60), (255, 0, 0), (0, 0, 142), (0, 0, 70),
-            (0, 60, 100), (0, 80, 100), (0, 0, 230), (119, 11, 32),
-            (110, 190, 160), (170, 120, 50), (55, 90, 80), (45, 60, 150),
-            (227, 227, 227), (81, 0, 81), (150, 100, 100), (230, 150, 140),
-            (180, 165, 180), (180, 130, 70)
-        ]) / 255.0
-        
-        # Load scene structure (just paths, not data)
-        self.scenes_info = self._load_scene_structure()
+        # Load scene structure (just paths, not data).
+        self._scene_info = self._load_scene_structure()
+
+        # Track prefetch threads
+        self._prefetch_thread = None
+        self._prefetch_stop = False
     
     def _load_scene_structure(self):
-        '''Load scene metadata and frame paths without loading actual data.'''
-        scenes_info = []
+        '''
+        Load scene metadata and frame paths without loading the actual data.
         
-        # Load from all splits
+        Returns:
+            List of scene information dictionaries.
+        '''
+        scene_info = []
+        
         for split in ['train', 'val', 'test']:
-            info_path = f'{self.path}/simbev/infos/simbev_infos_{split}.json'
+            info_path = f'{self._path}/simbev/infos/simbev_infos_{split}.json'
             
             if not os.path.exists(info_path):
                 continue
             
             with open(info_path, 'r') as f:
                 infos = json.load(f)
-            
-            # Store scene structure
-            for scene_key, scene_value in infos['data'].items():
-                scene_number = int(scene_key.split('_')[1])
-                scene_data = scene_value['scene_data']
-                
-                scenes_info.append({
+
+            for key, value in infos['data'].items():
+                scene_number = int(key.split('_')[1])
+                scene_data = value['scene_data']
+
+                scene_info.append({
                     'scene_number': scene_number,
                     'frame_count': len(scene_data),
-                    'frame_paths': scene_data,  # List of dicts with file paths
+                    'frame_paths': scene_data,
                     'split': split
                 })
         
-        # Sort by scene number
-        scenes_info.sort(key=lambda x: x['scene_number'])
+        scene_info.sort(key=lambda x: x['scene_number'])
         
-        return scenes_info
+        return scene_info
     
     def get_scene_count(self):
-        '''Get total number of scenes.'''
-        return len(self.scenes_info)
+        '''Get the total number of scenes.'''
+        return len(self._scene_info)
     
-    def get_frame_count(self, scene_idx):
-        '''Get number of frames in a scene.'''
-        return self.scenes_info[scene_idx]['frame_count']
-    
-    def get_scene_number(self, scene_idx):
-        '''Get scene number for display.'''
-        return self.scenes_info[scene_idx]['scene_number']
-    
-    def _add_to_cache(self, key, data):
-        '''Add data to LRU cache.'''
-        # Remove oldest if cache is full
-        if len(self.cache) >= self.cache_size:
-            oldest_key = self.cache_order.pop(0)
-            del self.cache[oldest_key]
+    def get_frame_count(self, idx: int):
+        '''
+        Get the number of frames in a scene.
         
-        self.cache[key] = data
-        self.cache_order.append(key)
+        Args:
+            idx: scene index (0-based).
+        
+        Returns:
+            Number of frames in the scene.
+        '''
+        return self._scene_info[idx]['frame_count']
     
-    def _get_from_cache(self, key):
-        '''Get data from cache and update LRU order.'''
+    def get_scene_number(self, idx: int):
+        '''
+        Get the scene number.
+        
+        Args:
+            idx: scene index (0-based).
+        
+        Returns:
+            Scene number.
+        '''
+        return self._scene_info[idx]['scene_number']
+    
+    def _add_to_cache(self, key: tuple, data: dict):
+        '''
+        Add data to cache.
+
+        Args:
+            key: cache key.
+            data: data to cache.
+        '''
+        # Remove the oldest if cache is full.
+        if len(self.cache) >= self.cache_size:
+            try:
+                oldest_key = self._cache_order.pop(0)
+                
+                del self.cache[oldest_key]
+            except KeyError:
+                print('Warning: Tried to delete a non-existing cache key.')
+
+        self.cache[key] = data
+        
+        self._cache_order.append(key)
+    
+    def _get_from_cache(self, key: tuple):
+        '''
+        Get data from cache and update the cache order.
+        
+        Args:
+            key: cache key.
+
+        Returns:
+            Cached data.
+        '''
         if key in self.cache:
             # Move to end (most recently used)
-            self.cache_order.remove(key)
-            self.cache_order.append(key)
+            self._cache_order.remove(key)
+            self._cache_order.append(key)
+            
             return self.cache[key]
+        
         return None
-    
-    def load_frame(self, scene_idx, frame_idx, sensor_type):
+
+    def load_frame(self, scene: int, frame: int, sensor_type: str):
         '''
         Load data for a specific frame and sensor type.
         
         Args:
-            scene_idx: scene index (0-based)
-            frame_idx: frame index within scene (0-based)
-            sensor_type: 'lidar', 'semantic-lidar', or 'radar'
-        
+            scene: scene index (0-based).
+            frame: frame index within scene (0-based).
+            sensor_type: 'lidar', 'semantic-lidar', or 'radar'.
+
         Returns:
-            dict with 'points', 'colors', 'bboxes'
+            Dictionary with 'points', 'colors', and 'bboxes'.
         '''
-        # Check cache first
-        cache_key = (scene_idx, frame_idx, sensor_type)
+        # Check cache first.
+        cache_key = (scene, frame, sensor_type)
+        
         cached_data = self._get_from_cache(cache_key)
+        
         if cached_data is not None:
             return cached_data
         
-        # Load from disk
-        scene_info = self.scenes_info[scene_idx]
-        frame_data = scene_info['frame_paths'][frame_idx]
+        # Load from disk.
+        scene_info = self._scene_info[scene]
         
-        from tools.visualization_utils import get_global2sensor, transform_bbox
+        frame_data = scene_info['frame_paths'][frame]
         
-        # Load bounding boxes (shared across all sensors)
+        # Load bounding boxes (shared across all sensors).
         gt_det = np.load(frame_data['GT_DET'], allow_pickle=True)
-        global2lidar = get_global2sensor(frame_data, self.metadata, 'LIDAR')
-        corners, labels = transform_bbox(gt_det, global2lidar, False)
         
-        bboxes = [
-            {'corners': c, 'label': l} for c, l in zip(corners, labels)
-        ]
+        global2lidar = get_global2sensor(frame_data, self._metadata, 'LIDAR')
+
+        corners, labels = transform_bbox(gt_det, global2lidar, self._ignore_valid_flag)
+
+        bboxes = [{'corners': c, 'label': l} for c, l in zip(corners, labels)]
         
         if sensor_type == 'lidar':
             if 'LIDAR' in frame_data:
@@ -170,7 +216,7 @@ class LazyDataLoader:
         else:
             raise ValueError(f"Unknown sensor type: {sensor_type}")
         
-        # Add to cache
+        # Add to cache.
         self._add_to_cache(cache_key, data)
         
         return data
@@ -186,9 +232,9 @@ class LazyDataLoader:
             (log_distances.max() - log_distances.min() + 1e-6)
         
         colors = np.c_[
-            np.interp(log_normalized, self.RANGE, self.RAINBOW[:, 0]),
-            np.interp(log_normalized, self.RANGE, self.RAINBOW[:, 1]),
-            np.interp(log_normalized, self.RANGE, self.RAINBOW[:, 2])
+            np.interp(log_normalized, RANGE, RAINBOW[:, 0]),
+            np.interp(log_normalized, RANGE, RAINBOW[:, 1]),
+            np.interp(log_normalized, RANGE, RAINBOW[:, 2])
         ]
         
         return {
@@ -202,7 +248,7 @@ class LazyDataLoader:
         data = np.load(frame_data['SEG-LIDAR'])['data']
         point_cloud = np.array([data['x'], data['y'], data['z']]).T
         seg_labels = np.array(data['ObjTag'])
-        colors = self.LABEL_COLORS[seg_labels]
+        colors = LABEL_COLORS[seg_labels]
         
         return {
             'points': point_cloud,
@@ -217,8 +263,8 @@ class LazyDataLoader:
         
         for radar in RAD_NAME:
             radar2lidar = np.eye(4, dtype=np.float32)
-            radar2lidar[:3, :3] = Q(self.metadata[radar]['sensor2lidar_rotation']).rotation_matrix
-            radar2lidar[:3, 3] = self.metadata[radar]['sensor2lidar_translation']
+            radar2lidar[:3, :3] = Q(self._metadata[radar]['sensor2lidar_rotation']).rotation_matrix
+            radar2lidar[:3, 3] = self._metadata[radar]['sensor2lidar_translation']
             
             radar_points = np.load(frame_data[radar])['data']
             velocity_list.append(radar_points[:, -1])
@@ -243,9 +289,9 @@ class LazyDataLoader:
             (log_velocity.max() - log_velocity.min() + 1e-6)
         
         colors = np.c_[
-            np.interp(log_velocity_normalized, self.RANGE, self.RAINBOW[:, 0]),
-            np.interp(log_velocity_normalized, self.RANGE, self.RAINBOW[:, 1]),
-            np.interp(log_velocity_normalized, self.RANGE, self.RAINBOW[:, 2])
+            np.interp(log_velocity_normalized, RANGE, RAINBOW[:, 0]),
+            np.interp(log_velocity_normalized, RANGE, RAINBOW[:, 1]),
+            np.interp(log_velocity_normalized, RANGE, RAINBOW[:, 2])
         ]
         
         return {
@@ -253,6 +299,69 @@ class LazyDataLoader:
             'colors': colors,
             'bboxes': bboxes
         }
+    
+    def prefetch_scene(self, scene_idx: int, sensor_type: str, progress_callback=None):
+        '''
+        Prefetch all frames for a specific scene and sensor type.
+        
+        Args:
+            scene_idx: scene index (0-based).
+            sensor_type: 'lidar', 'semantic-lidar', or 'radar'.
+            progress_callback: optional callback function(current, total) for progress updates.
+        '''
+        scene_info = self._scene_info[scene_idx]
+        frame_count = scene_info['frame_count']
+        
+        print(f"Prefetching scene {self.get_scene_number(scene_idx):04d}, sensor: {sensor_type} ({frame_count} frames)...")
+        
+        for frame_idx in range(frame_count):
+            # Check if we should stop prefetching
+            if self._prefetch_stop:
+                print("Prefetch cancelled.")
+                self._prefetch_stop = False
+                return
+            
+            # Load frame (will use cache if already loaded)
+            cache_key = (scene_idx, frame_idx, sensor_type)
+            if cache_key not in self.cache:
+                self.load_frame(scene_idx, frame_idx, sensor_type)
+            
+            # Report progress
+            if progress_callback:
+                progress_callback(frame_idx + 1, frame_count)
+        
+        print(f"Prefetch complete for scene {self.get_scene_number(scene_idx):04d}, sensor: {sensor_type}")
+    
+    def prefetch_scene_async(self, scene_idx: int, sensor_type: str, progress_callback=None, completion_callback=None):
+        '''
+        Prefetch all frames for a scene and sensor type in background thread.
+        
+        Args:
+            scene_idx: scene index (0-based).
+            sensor_type: 'lidar', 'semantic-lidar', or 'radar'.
+            progress_callback: optional callback function(current, total) for progress updates.
+            completion_callback: optional callback function() called when prefetch completes.
+        '''
+        # Stop any existing prefetch
+        self.stop_prefetch()
+        
+        def prefetch_worker():
+            try:
+                self.prefetch_scene(scene_idx, sensor_type, progress_callback)
+                if completion_callback:
+                    completion_callback()
+            except Exception as e:
+                print(f"Prefetch error: {e}")
+        
+        self._prefetch_thread = threading.Thread(target=prefetch_worker, daemon=True)
+        self._prefetch_thread.start()
+    
+    def stop_prefetch(self):
+        '''Stop any ongoing prefetch operation.'''
+        if self._prefetch_thread and self._prefetch_thread.is_alive():
+            self._prefetch_stop = True
+            self._prefetch_thread.join(timeout=1.0)
+            self._prefetch_thread = None
 
 
 class AdvancedVisualizer:
@@ -280,6 +389,13 @@ class AdvancedVisualizer:
         self.show_bbox = True
         self.sensor_type = 'lidar'
         self.point_size = point_size
+        self.is_playing = False  # Playback state
+        self.play_speed = 30  # FPS for playback
+
+        # Prefetch state
+        self.is_prefetching = False
+        self.prefetch_progress = 0
+        self.prefetch_total = 0
         
         # Create 3D scene widget
         self.scene_widget = gui.SceneWidget()
@@ -289,6 +405,9 @@ class AdvancedVisualizer:
         
         # Set up scene rendering
         self.scene_widget.scene.set_background([0.1, 0.1, 0.1, 1.0])
+        
+        # Register keyboard callbacks for Open3D controls
+        self.scene_widget.set_on_key(self._on_key_event)
         
         # Create control panel
         self._create_control_panel()
@@ -307,6 +426,95 @@ class AdvancedVisualizer:
         # Setup camera
         bounds = self.scene_widget.scene.bounding_box
         self.scene_widget.setup_camera(60, bounds, bounds.get_center())
+
+        # Start prefetching initial scene
+        self._start_prefetch()
+        
+        print("\n=== Keyboard Controls ===")
+        print("+ / =    : Increase point size")
+        print("- / _    : Decrease point size")
+        print("Space    : Toggle bounding boxes")
+        print("Left     : Previous frame")
+        print("Right    : Next frame")
+        print("Up       : Previous scene")
+        print("Down     : Next scene")
+        print("T        : Top-down view")
+        print("V        : Perspective view (3D)")
+        print("P        : Play/Pause animation")
+        print("========================\n")
+    
+    def _on_key_event(self, event):
+        '''Handle keyboard events.'''
+        # Return True if event is handled, False otherwise
+        if event.type == gui.KeyEvent.DOWN:
+            # Increase point size
+            if event.key == ord('+') or event.key == ord('='):
+                self.point_size = min(self.point_size + 1.0, 20.0)
+                self._update_point_size()
+                print(f"Point size: {self.point_size}")
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Decrease point size
+            elif event.key == ord('-') or event.key == ord('_'):
+                self.point_size = max(self.point_size - 1.0, 1.0)
+                self._update_point_size()
+                print(f"Point size: {self.point_size}")
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Toggle bounding boxes
+            elif event.key == gui.KeyName.SPACE:
+                self.show_bbox = not self.show_bbox
+                self.bbox_checkbox.checked = self.show_bbox
+                print(f"Bounding boxes: {'ON' if self.show_bbox else 'OFF'}")
+                self._update_frame()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Previous frame
+            elif event.key == gui.KeyName.LEFT:
+                self._on_prev_frame_clicked()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Next frame
+            elif event.key == gui.KeyName.RIGHT:
+                self._on_next_frame_clicked()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Previous scene
+            elif event.key == gui.KeyName.UP:
+                self._on_prev_scene_clicked()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Next scene
+            elif event.key == gui.KeyName.DOWN:
+                self._on_next_scene_clicked()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Top-down view
+            elif event.key == ord('T') or event.key == ord('t'):
+                self._on_topdown_view()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Perspective view
+            elif event.key == ord('V') or event.key == ord('v'):
+                self._on_perspective_view()
+                return gui.Widget.EventCallbackResult.HANDLED
+            
+            # Play/Pause
+            elif event.key == ord('P') or event.key == ord('p'):
+                self._toggle_playback()
+                return gui.Widget.EventCallbackResult.HANDLED
+        
+        return gui.Widget.EventCallbackResult.IGNORED
+    
+    def _update_point_size(self):
+        '''Update point cloud rendering size by reloading current frame.'''
+        # Update UI labels
+        self.point_size_slider.double_value = self.point_size
+        self.point_size_label.text = f"{self.point_size:.1f}"
+        
+        # Reload current frame with new point size
+        # This will use cached data, so it's fast
+        self._update_frame()
     
     def _add_coordinate_frame(self):
         '''Add coordinate frame to scene.'''
@@ -380,11 +588,50 @@ class AdvancedVisualizer:
         
         self.panel.add_fixed(em)
         
+        # Playback controls
+        playback_layout = gui.Horiz()
+        
+        self.play_button = gui.Button("▶ Play")
+        self.play_button.set_on_clicked(self._on_play_clicked)
+        playback_layout.add_child(self.play_button)
+        
+        self.panel.add_child(playback_layout)
+        
+        self.panel.add_fixed(em / 2)
+        
+        # Playback speed slider
+        self.panel.add_child(gui.Label("Playback Speed (FPS):"))
+        
+        self.speed_slider = gui.Slider(gui.Slider.INT)
+        self.speed_slider.set_limits(1, 60)
+        self.speed_slider.int_value = self.play_speed
+        self.speed_slider.set_on_value_changed(self._on_speed_changed)
+        self.panel.add_child(self.speed_slider)
+        
+        self.speed_label = gui.Label(f"{self.play_speed} FPS")
+        self.panel.add_child(self.speed_label)
+        
+        self.panel.add_fixed(em)
+        
         # Bounding box toggle
         self.bbox_checkbox = gui.Checkbox("Show Bounding Boxes")
         self.bbox_checkbox.checked = True
         self.bbox_checkbox.set_on_checked(self._on_bbox_toggle)
         self.panel.add_child(self.bbox_checkbox)
+        
+        self.panel.add_fixed(em)
+        
+        # Point size control
+        self.panel.add_child(gui.Label("Point Size:"))
+        
+        self.point_size_slider = gui.Slider(gui.Slider.DOUBLE)
+        self.point_size_slider.set_limits(1.0, 20.0)
+        self.point_size_slider.double_value = self.point_size
+        self.point_size_slider.set_on_value_changed(self._on_point_size_slider_changed)
+        self.panel.add_child(self.point_size_slider)
+        
+        self.point_size_label = gui.Label(f"{self.point_size:.1f}")
+        self.panel.add_child(self.point_size_label)
         
         self.panel.add_fixed(em)
         
@@ -400,10 +647,26 @@ class AdvancedVisualizer:
         
         self.panel.add_fixed(em)
         
-        # Reset view button
-        self.reset_button = gui.Button("Reset Camera")
-        self.reset_button.set_on_clicked(self._on_reset_view)
-        self.panel.add_child(self.reset_button)
+        # Prefetch progress label
+        self.prefetch_label = gui.Label("")
+        self.panel.add_child(self.prefetch_label)
+        
+        self.panel.add_fixed(em)
+        
+        # Camera view buttons
+        self.panel.add_child(gui.Label("Camera View:"))
+        
+        view_button_layout = gui.Horiz()
+        
+        self.topdown_button = gui.Button("Top-Down")
+        self.topdown_button.set_on_clicked(self._on_topdown_view)
+        view_button_layout.add_child(self.topdown_button)
+        
+        self.perspective_button = gui.Button("Perspective")
+        self.perspective_button.set_on_clicked(self._on_perspective_view)
+        view_button_layout.add_child(self.perspective_button)
+        
+        self.panel.add_child(view_button_layout)
     
     def _on_layout(self, layout_context):
         '''Handle window layout.'''
@@ -427,15 +690,94 @@ class AdvancedVisualizer:
         sensor_map = {0: 'lidar', 1: 'semantic-lidar', 2: 'radar'}
         self.sensor_type = sensor_map[index]
         
-        # Update point size based on sensor
+        # Update default point size based on sensor
         if self.sensor_type == 'lidar':
-            self.point_size = 2.0
+            default_size = 2.0
         elif self.sensor_type == 'semantic-lidar':
-            self.point_size = 3.0
+            default_size = 3.0
         elif self.sensor_type == 'radar':
-            self.point_size = 5.0
+            default_size = 5.0
+        
+        self.point_size = default_size
+        self.point_size_slider.double_value = default_size
+        self.point_size_label.text = f"{default_size:.1f}"
         
         self._update_frame()
+        
+        # Start prefetching new sensor type
+        self._start_prefetch()
+    
+    def _on_point_size_slider_changed(self, value):
+        '''Handle point size slider change.'''
+        self.point_size = value
+        self.point_size_label.text = f"{value:.1f}"
+        self._update_point_size()
+    
+    def _on_speed_changed(self, value):
+        '''Handle playback speed slider change.'''
+        self.play_speed = int(value)
+        self.speed_label.text = f"{self.play_speed} FPS"
+    
+    def _on_play_clicked(self):
+        '''Handle play button click.'''
+        self._toggle_playback()
+    
+    def _toggle_playback(self):
+        '''Toggle playback on/off.'''
+        self.is_playing = not self.is_playing
+        
+        if self.is_playing:
+            self.play_button.text = "⏸ Pause"
+            print("Playback started")
+            self._start_playback()
+        else:
+            self.play_button.text = "▶ Play"
+            print("Playback stopped")
+    
+    def _start_playback(self):
+        '''Start automatic frame advancement.'''
+        def play_loop():
+            while self.is_playing:
+                # Calculate delay based on FPS
+                delay = 1.0 / self.play_speed
+                time.sleep(delay)
+                
+                # Advance to next frame
+                if self.current_frame < self.max_frame:
+                    # Use post_to_main_thread to safely update GUI from background thread
+                    gui.Application.instance.post_to_main_thread(
+                        self.window,
+                        lambda: self._advance_frame()
+                    )
+                else:
+                    # End of scene - stop playback or loop
+                    gui.Application.instance.post_to_main_thread(
+                        self.window,
+                        lambda: self._stop_playback()
+                    )
+                    break
+        
+        # Start playback in background thread
+        threading.Thread(target=play_loop, daemon=True).start()
+    
+    def _advance_frame(self):
+        '''Advance to next frame (called from playback thread).'''
+        if self.current_frame < self.max_frame:
+            self.current_frame += 1
+            self.frame_slider.int_value = self.current_frame
+            self._update_frame()
+    
+    def _loop_playback(self):
+        '''Loop back to first frame.'''
+        self.current_frame = 0
+        self.frame_slider.int_value = 0
+        self._update_frame()
+    
+    def _stop_playback(self):
+        '''Stop playback.'''
+        self.is_playing = False
+        self.play_button.text = "▶ Play"
+        print("Playback finished")
     
     def _on_scene_slider_changed(self, value):
         '''Handle scene slider value change.'''
@@ -448,6 +790,9 @@ class AdvancedVisualizer:
         self.frame_slider.int_value = 0
         
         self._update_frame()
+        
+        # Start prefetching new scene
+        self._start_prefetch()
     
     def _on_frame_slider_changed(self, value):
         '''Handle frame slider value change.'''
@@ -487,10 +832,88 @@ class AdvancedVisualizer:
             self.frame_slider.int_value = self.current_frame
             self._update_frame()
     
-    def _on_reset_view(self):
-        '''Reset camera view.'''
+    def _on_topdown_view(self):
+        '''Set camera to top-down view (bird's eye).'''
+        # Get bounding box center
         bounds = self.scene_widget.scene.bounding_box
-        self.scene_widget.setup_camera(60, bounds, bounds.get_center())
+        center = bounds.get_center()
+        
+        # Calculate extent for appropriate zoom
+        extent = bounds.get_extent()
+        max_extent = max(extent[0], extent[1])
+        
+        # Set camera looking down from above
+        # Position: directly above center at appropriate height
+        eye = [center[0], center[1], max_extent * 1.5]
+        look_at = center
+        up = [0, 1, 0]  # Y-axis is up in top-down view
+        
+        self.scene_widget.look_at(look_at, eye, up)
+        print("Camera view: Top-Down")
+
+    def _on_perspective_view(self):
+        '''Set camera to 3D perspective view from behind the car.'''
+        # Get bounding box center
+        bounds = self.scene_widget.scene.bounding_box
+        center = bounds.get_center()
+        
+        # Calculate extent for appropriate distance
+        extent = bounds.get_extent()
+        max_extent = max(extent[0], extent[1], extent[2])
+        
+        # Set camera behind and above the car
+        # Position: behind (negative Y), elevated (positive Z), centered (X)
+        # Assuming car faces forward (positive Y direction)
+        distance = max_extent * 2.0
+        eye = [center[0], center[1] - distance, center[2] + distance * 0.5]
+        look_at = center
+        up = [0, 0, 1]  # Z-axis is up in 3D perspective
+        
+        self.scene_widget.look_at(look_at, eye, up)
+        print("Camera view: Perspective (Behind Car)")
+    
+    def _start_prefetch(self):
+        '''Prefetch all sensor types for current scene.'''
+        self.is_prefetching = True
+        
+        sensor_types = ['lidar', 'semantic-lidar', 'radar']
+        total_frames = len(sensor_types) * (self.max_frame + 1)
+        completed_frames = [0]
+        
+        def progress_callback(current, total):
+            completed_frames[0] += 1
+            self.prefetch_progress = completed_frames[0]
+            self.prefetch_total = total_frames
+            
+            gui.Application.instance.post_to_main_thread(
+                self.window,
+                lambda: self._update_prefetch_label()
+            )
+        
+        def sensor_complete():
+            if completed_frames[0] >= total_frames:
+                self.is_prefetching = False
+                gui.Application.instance.post_to_main_thread(
+                    self.window,
+                    lambda: self._update_prefetch_label()
+                )
+        
+        # Prefetch each sensor type
+        for sensor in sensor_types:
+            self.data_loader.prefetch_scene_async(
+                self.current_scene,
+                sensor,
+                progress_callback,
+                sensor_complete
+            )
+    
+    def _update_prefetch_label(self):
+        '''Update prefetch progress label.'''
+        if self.is_prefetching:
+            percent = (self.prefetch_progress / self.prefetch_total * 100) if self.prefetch_total > 0 else 0
+            self.prefetch_label.text = f"Prefetching: {self.prefetch_progress}/{self.prefetch_total} ({percent:.0f}%)"
+        else:
+            self.prefetch_label.text = "Prefetch: Complete ✓"
     
     def _update_frame(self):
         '''Update visualization to current scene and frame (loads data on-demand).'''
@@ -538,9 +961,6 @@ class AdvancedVisualizer:
         # Update cache info
         cache_size = len(self.data_loader.cache)
         self.cache_label.text = f"Cache: {cache_size}/{self.data_loader.cache_size} frames"
-
-        # Prefetch adjacent frames
-        # self._prefetch_adjacent_frames()
     
     def _update_bboxes(self, bboxes):
         '''Update bounding box visualization.'''
@@ -568,8 +988,8 @@ class AdvancedVisualizer:
     def _create_bbox_lineset(self, corners, label):
         '''Create Open3D LineSet for bounding box.'''
         lines = [
-            [0, 1], [1, 2], [2, 3], [3, 0],  # Front face
-            [4, 5], [5, 6], [6, 7], [7, 4],  # Back face
+            [0, 1], [1, 3], [3, 2], [2, 0],  # Front face
+            [4, 5], [5, 7], [7, 6], [6, 4],  # Back face
             [0, 4], [1, 5], [2, 6], [3, 7],  # Connecting edges
         ]
         
@@ -586,29 +1006,6 @@ class AdvancedVisualizer:
     def run(self):
         '''Start interactive visualization.'''
         gui.Application.instance.run()
-    
-    def _prefetch_adjacent_frames(self):
-        '''Prefetch next and previous frames in background.'''
-        
-        def prefetch():
-            # Prefetch next frame
-            if self.current_frame < self.max_frame:
-                self.data_loader.load_frame(
-                    self.current_scene,
-                    self.current_frame + 1,
-                    self.sensor_type
-                )
-            
-            # Prefetch previous frame
-            if self.current_frame > 0:
-                self.data_loader.load_frame(
-                    self.current_scene,
-                    self.current_frame - 1,
-                    self.sensor_type
-                )
-        
-        # Run in background thread
-        threading.Thread(target=prefetch, daemon=True).start()
 
 
 def visualize_interactive(ctx):
@@ -631,7 +1028,7 @@ def visualize_interactive(ctx):
     
     # Create lazy data loader with cache
     print("Initializing data loader...")
-    data_loader = LazyDataLoader(ctx.path, metadata, cache_size=160)
+    data_loader = VizDataLoader(ctx.path, metadata, cache_size=1600, ignore_valid_flag=ctx.ignore_valid_flag)
     
     scene_count = data_loader.get_scene_count()
     if scene_count == 0:
