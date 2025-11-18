@@ -8,6 +8,17 @@ from matplotlib import colormaps as cm
 from pyquaternion import Quaternion as Q
 
 
+CAM_NAME = [
+    'CAM_FRONT_LEFT',
+    'CAM_FRONT',
+    'CAM_FRONT_RIGHT',
+    'CAM_BACK_LEFT',
+    'CAM_BACK',
+    'CAM_BACK_RIGHT'
+]
+
+RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
+
 OBJECT_CLASSES = {
     7:  'traffic_light',
     8:  'traffic_sign',
@@ -36,6 +47,39 @@ SIMBEV_PALETTE = {
 RANGE = np.linspace(0.0, 1.0, 256)
 
 RAINBOW = np.array(cm.get_cmap('rainbow')(RANGE))[:, :3]
+
+LABEL_COLORS = np.array([
+    (255, 255, 255), # None
+    (128, 64, 128),  # Road
+    (244, 35, 232),  # Sidewalk
+    (70, 70, 70),    # Building
+    (102, 102, 156), # Wall
+    (190, 153, 153), # Fence
+    (153, 153, 153), # Pole
+    (250, 170, 30),  # TrafficLight
+    (220, 220, 0),   # TrafficSign
+    (107, 142, 35),  # Vegetation
+    (152, 251, 152), # Terrain
+    (70, 130, 180),  # Sky
+    (220, 20, 60),   # Pedestrian
+    (255, 0, 0),     # Rider
+    (0, 0, 142),     # Car
+    (0, 0, 70),      # Truck
+    (0, 60, 100),    # Bus
+    (0, 80, 100),    # Train
+    (0, 0, 230),     # Motorcycle
+    (119, 11, 32),   # Bicycle
+    (110, 190, 160), # Static
+    (170, 120, 50),  # Dynamic
+    (55, 90, 80),    # Other
+    (45, 60, 150),   # Water
+    (227, 227, 227), # RoadLine
+    (81, 0, 81),     # Ground
+    (150, 100, 100), # Bridge
+    (230, 150, 140), # RailTrack
+    (180, 165, 180), # GuardRail
+    (180, 130, 70)   # Rock
+]) / 255.0
 
 
 def parse_range_argument(arg_list: list) -> list:
