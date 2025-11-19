@@ -72,7 +72,7 @@ class VizDataLoader:
         # Executor for parallel loading.
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
     
-    def _load_scene_structure(self):
+    def _load_scene_structure(self) -> list:
         '''
         Load scene metadata and frame paths without loading the actual data.
         
@@ -105,11 +105,11 @@ class VizDataLoader:
         
         return scene_info
     
-    def get_scene_count(self):
+    def get_scene_count(self) -> int:
         '''Get the total number of scenes.'''
         return len(self._scene_info)
     
-    def get_frame_count(self, scene: int):
+    def get_frame_count(self, scene: int) -> int:
         '''
         Get the number of frames in a scene.
         
@@ -121,7 +121,7 @@ class VizDataLoader:
         '''
         return self._scene_info[scene]['frame_count']
     
-    def get_scene_number(self, scene: int):
+    def get_scene_number(self, scene: int) -> int:
         '''
         Get the scene number.
         
@@ -133,7 +133,7 @@ class VizDataLoader:
         '''
         return self._scene_info[scene]['scene_number']
     
-    def is_scene_loaded(self, scene: int):
+    def is_scene_loaded(self, scene: int) -> bool:
         '''
         Check if the scene is loaded in cache.
         
@@ -148,14 +148,14 @@ class VizDataLoader:
     def _evict_oldest_scene(self):
         '''Evict the least recently used scene from cache.'''
         if self._scene_access_order:
-            # Get the oldest scene (first in list).
+            # Get the oldest scene (first in the list).
             oldest_scene = self._scene_access_order[0]
             
             self.unload_scene(oldest_scene)
     
     def _mark_scene_accessed(self, scene: int):
         '''
-        Mark a scene as recently accessed (move to the end of LRU list).
+        Mark a scene as recently accessed (move to the end of the LRU list).
         
         Args:
             scene: scene index (0-based).
@@ -165,14 +165,14 @@ class VizDataLoader:
 
         self._scene_access_order.append(scene)
 
-    def load_scene(self, scene: int, progress_callback=None):
+    def load_scene(self, scene: int, progress_callback=None) -> bool:
         '''
         Load the entire scene (all frames, all sensors) into cache.
-        Automatically manages cache size by evicting the least recently used
-        scenes.
+        Automatically manage cache size by evicting the least recently used
+        (LRU) scenes.
         
         Args:
-            idx: scene index (0-based).
+            scene: scene index (0-based).
             progress_callback: optional callback(current, total, message) for progress updates.
         
         Returns:
@@ -200,7 +200,7 @@ class VizDataLoader:
         
         sensor_types = ['lidar', 'semantic-lidar', 'radar']
         
-        # Initialize cache structure for this scene
+        # Initialize the cache for this scene.
         scene_data = {sensor_type: [None] * frame_count for sensor_type in sensor_types}
         
         # Create tasks for parallel loading
@@ -208,8 +208,8 @@ class VizDataLoader:
         
         total_tasks = frame_count * len(sensor_types)
         
-        for frame in range(frame_count):
-            for sensor_type in sensor_types:
+        for sensor_type in sensor_types:
+            for frame in range(frame_count):
                 task = self._executor.submit(self._load_single_frame, scene, frame, sensor_type)
                 
                 tasks.append((task, frame, sensor_type))
@@ -231,11 +231,7 @@ class VizDataLoader:
             except Exception as e:
                 print(f'Error while loading scene {scene}, frame {frame}, sensor {sensor_type}: {e}')
                 
-                scene_data[sensor_type][frame] = {
-                    'points': np.empty((0, 3)),
-                    'colors': None,
-                    'bboxes': []
-                }
+                scene_data[sensor_type][frame] = {'points': np.empty((0, 3)), 'colors': None, 'bboxes': []}
         
         # Store in cache.
         self._scene_cache[scene] = scene_data
@@ -244,15 +240,14 @@ class VizDataLoader:
         
         elapsed = time.perf_counter() - start
         
-        print(f"Scene {self.get_scene_number(scene):04d} loaded in {elapsed:.2f}s")
-        print(f"Cache status: {len(self._scene_cache)}/{self._max_cached_scenes} scenes")
+        print(f'Scene {self.get_scene_number(scene):04d} loaded in {elapsed:.2f} s.')
         
         if progress_callback:
             progress_callback(total_tasks, total_tasks, "Scene loaded.")
         
         return True
     
-    def _load_single_frame(self, scene: int, frame: int, sensor_type: str):
+    def _load_single_frame(self, scene: int, frame: int, sensor_type: str) -> dict:
         '''
         Worker for loading a single frame for a specific sensor type.
 
@@ -295,7 +290,7 @@ class VizDataLoader:
         else:
             raise ValueError(f'Unknown sensor type: {sensor_type}')
     
-    def _load_lidar(self, frame_data: dict, bboxes: list):
+    def _load_lidar(self, frame_data: dict, bboxes: list) -> dict:
         '''
         Load lidar point clouds.
         
@@ -327,7 +322,7 @@ class VizDataLoader:
             'bboxes': bboxes
         }
     
-    def _load_semantic_lidar(self, frame_data: dict, bboxes: list):
+    def _load_semantic_lidar(self, frame_data: dict, bboxes: list) -> dict:
         '''
         Load semantic lidar point clouds.
         
@@ -352,7 +347,7 @@ class VizDataLoader:
             'bboxes': bboxes
         }
     
-    def _load_radar(self, frame_data: dict, bboxes: list):
+    def _load_radar(self, frame_data: dict, bboxes: list) -> dict:
         '''
         Load radar point clouds.
         
@@ -378,6 +373,7 @@ class VizDataLoader:
             
             radar_points = radar_points[:, :-1]
             
+            # Transform depth, altitude, and azimuth data to x, y, and z.
             x = radar_points[:, 0] * np.cos(radar_points[:, 1]) * np.cos(radar_points[:, 2])
             y = radar_points[:, 0] * np.cos(radar_points[:, 1]) * np.sin(radar_points[:, 2])
             z = radar_points[:, 0] * np.sin(radar_points[:, 1])
@@ -394,7 +390,8 @@ class VizDataLoader:
         # Velocity-based colors
         log_velocity = np.log(1.0 + np.abs(velocity))
         
-        log_velocity_normalized = (log_velocity - log_velocity.min()) / (log_velocity.max() - log_velocity.min() + 1e-6)
+        log_velocity_normalized = (log_velocity - log_velocity.min()) / \
+            (log_velocity.max() - log_velocity.min() + 1e-6)
         
         colors = np.c_[
             np.interp(log_velocity_normalized, RANGE, RAINBOW[:, 0]),
@@ -408,7 +405,7 @@ class VizDataLoader:
             'bboxes': bboxes
         }
     
-    def get_frame(self, scene: int, frame: int, sensor_type: str):
+    def get_frame(self, scene: int, frame: int, sensor_type: str) -> dict:
         '''
         Get frame data from cache. Scene must be loaded first.
         
@@ -461,7 +458,8 @@ class VizDataLoader:
 class AdvancedVisualizer:
     '''
     Advanced interactive visualizer with GUI slider and controls.
-    Loads entire scenes on demand.
+    Loads entire scenes on demand with automatic cache management.
+    Uses Open3D's tick event for smooth animation on the main thread.
     
     Args:
         data_loader: VizDataLoader instance.
@@ -485,12 +483,16 @@ class AdvancedVisualizer:
         self.sensor_type = 'lidar'
         self.point_size = point_size
         self.is_playing = False
-        self.play_speed = 30
+        self.play_speed = 10  # Start with 10 FPS
         
         # Loading state
         self.is_loading = False
         self.load_progress = 0
         self.load_total = 0
+        
+        # Playback timing (no threads needed!)
+        self._last_frame_time = time.perf_counter()
+        self._bbox_count = 0
         
         # Create 3D scene widget
         self.scene_widget = gui.SceneWidget()
@@ -515,6 +517,9 @@ class AdvancedVisualizer:
         # Add coordinate frame
         self._add_coordinate_frame()
         
+        # Set up animation callback - runs every frame on main thread!
+        self.window.set_on_tick_event(self._on_tick)
+        
         # Load initial scene and display first frame
         self._load_and_display_scene(0)
         
@@ -530,6 +535,34 @@ class AdvancedVisualizer:
         print("V        : Perspective view (3D)")
         print("P        : Play/Pause animation")
         print("========================\n")
+    
+    def _on_tick(self):
+        '''
+        Called every frame by the GUI event loop.
+        Perfect for animation - runs on main thread!
+        No threading issues possible!
+        '''
+        if not self.is_playing:
+            return True  # Continue event loop
+        
+        # Calculate if we should advance frame based on play speed
+        current_time = time.perf_counter()
+        elapsed = current_time - self._last_frame_time
+        frame_time = 1.0 / self.play_speed
+        
+        if elapsed >= frame_time:
+            self._last_frame_time = current_time
+            
+            # Advance frame
+            if self.current_frame < self.max_frame:
+                self.current_frame += 1
+                self.frame_slider.int_value = self.current_frame
+                self._update_frame()
+            else:
+                # Reached end of sequence
+                self._stop_playback()
+        
+        return True  # Continue event loop
     
     def _load_and_display_scene(self, scene: int):
         '''Load a scene and display the first frame.'''
@@ -549,8 +582,7 @@ class AdvancedVisualizer:
                     lambda: self._update_loading_label(message)
                 )
             
-            # Load in background thread
-            import threading
+            # Load in background thread (only for file I/O)
             def load_worker():
                 success = self.data_loader.load_scene(scene, progress_callback)
                 
@@ -568,7 +600,7 @@ class AdvancedVisualizer:
         
         if success:
             self._update_loading_label("Scene loaded ✓")
-            self._update_cache_status()  # Update cache status
+            self._update_cache_status()
             self._update_frame()
             
             # Setup camera for new scene
@@ -730,7 +762,7 @@ class AdvancedVisualizer:
         self.panel.add_child(gui.Label("Playback Speed (FPS):"))
         
         self.speed_slider = gui.Slider(gui.Slider.INT)
-        self.speed_slider.set_limits(1, 20)
+        self.speed_slider.set_limits(1, 30)
         self.speed_slider.int_value = self.play_speed
         self.speed_slider.set_on_value_changed(self._on_speed_changed)
         self.panel.add_child(self.speed_slider)
@@ -862,48 +894,19 @@ class AdvancedVisualizer:
         self._toggle_playback()
     
     def _toggle_playback(self):
-        '''Toggle playback on/off.'''
+        '''Toggle playback on/off - simple, no threads!'''
         self.is_playing = not self.is_playing
         
         if self.is_playing:
             self.play_button.text = "⏸ Pause"
+            self._last_frame_time = time.perf_counter()
             print("Playback started")
-            self._start_playback()
         else:
             self.play_button.text = "▶ Play"
             print("Playback stopped")
     
-    def _start_playback(self):
-        '''Start automatic frame advancement.'''
-        
-        def play_loop():
-            while self.is_playing:
-                delay = 1.0 / self.play_speed
-                time.sleep(delay)
-                
-                if self.current_frame < self.max_frame:
-                    gui.Application.instance.post_to_main_thread(
-                        self.window,
-                        lambda: self._advance_frame()
-                    )
-                else:
-                    gui.Application.instance.post_to_main_thread(
-                        self.window,
-                        lambda: self._stop_playback()
-                    )
-                    break
-        
-        threading.Thread(target=play_loop, daemon=True).start()
-    
-    def _advance_frame(self):
-        '''Advance to next frame.'''
-        if self.current_frame < self.max_frame:
-            self.current_frame += 1
-            self.frame_slider.int_value = self.current_frame
-            self._update_frame()
-    
     def _stop_playback(self):
-        '''Stop playback.'''
+        '''Stop playback - called when reaching end of sequence.'''
         self.is_playing = False
         self.play_button.text = "▶ Play"
         print("Playback finished")
@@ -912,6 +915,11 @@ class AdvancedVisualizer:
         '''Handle scene slider value change.'''
         new_scene = int(value)
         if new_scene != self.current_scene:
+            # Stop playback before changing scenes
+            if self.is_playing:
+                self.is_playing = False
+                self.play_button.text = "▶ Play"
+            
             self.current_scene = new_scene
             self.current_frame = 0
             
@@ -925,6 +933,11 @@ class AdvancedVisualizer:
     
     def _on_frame_slider_changed(self, value):
         '''Handle frame slider value change.'''
+        # Stop playback when manually scrubbing
+        if self.is_playing:
+            self.is_playing = False
+            self.play_button.text = "▶ Play"
+        
         self.current_frame = int(value)
         self._update_frame()
     
@@ -991,9 +1004,12 @@ class AdvancedVisualizer:
         print("Camera view: Perspective (Behind Car)")
     
     def _update_frame(self):
-        '''Update visualization to current scene and frame.'''
+        '''
+        Update visualization to current scene and frame.
+        Runs on main thread - no locks needed!
+        '''
         if self.is_loading:
-            return  # Don't update while loading
+            return
         
         try:
             # Get data from cache (scene must be loaded)
@@ -1005,30 +1021,42 @@ class AdvancedVisualizer:
         except RuntimeError as e:
             print(f"Error: {e}")
             return
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return
         
-        # Update point cloud
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
+        # Validate data
+        if sensor_data is None or 'points' not in sensor_data:
+            return
         
-        if 'colors' in sensor_data and sensor_data['colors'] is not None:
-            pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'])
-        else:
-            colors = np.tile([0.5, 0.5, 0.5], (len(sensor_data['points']), 1))
-            pcd.colors = o3d.utility.Vector3dVector(colors)
-        
-        # Set point cloud material
-        mat = o3d.visualization.rendering.MaterialRecord()
-        mat.shader = "defaultUnlit"
-        mat.point_size = self.point_size
-        
-        # Remove old point cloud
-        if self.scene_widget.scene.has_geometry("point_cloud"):
-            self.scene_widget.scene.remove_geometry("point_cloud")
-        
-        self.scene_widget.scene.add_geometry("point_cloud", pcd, mat)
-        
-        # Update bounding boxes
-        self._update_bboxes(sensor_data.get('bboxes', []))
+        try:
+            # Update point cloud
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
+            
+            if 'colors' in sensor_data and sensor_data['colors'] is not None:
+                pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'])
+            else:
+                colors = np.tile([0.5, 0.5, 0.5], (len(sensor_data['points']), 1))
+                pcd.colors = o3d.utility.Vector3dVector(colors)
+            
+            # Set point cloud material
+            mat = o3d.visualization.rendering.MaterialRecord()
+            mat.shader = "defaultUnlit"
+            mat.point_size = self.point_size
+            
+            # Remove old point cloud
+            if self.scene_widget.scene.has_geometry("point_cloud"):
+                self.scene_widget.scene.remove_geometry("point_cloud")
+            
+            self.scene_widget.scene.add_geometry("point_cloud", pcd, mat)
+            
+            # Update bounding boxes
+            self._update_bboxes(sensor_data.get('bboxes', []))
+            
+        except Exception as e:
+            print(f"Error updating geometry: {e}")
+            return
         
         # Update labels
         scene_number = self.data_loader.get_scene_number(self.current_scene)
@@ -1045,26 +1073,41 @@ class AdvancedVisualizer:
     
     def _update_bboxes(self, bboxes):
         '''Update bounding box visualization.'''
-        # Remove old bounding boxes
-        for i in range(100):
-            if self.scene_widget.scene.has_geometry(f"bbox_{i}"):
-                self.scene_widget.scene.remove_geometry(f"bbox_{i}")
+        if not hasattr(self, '_bbox_count'):
+            self._bbox_count = 0
+        
+        # Remove old bboxes
+        for i in range(self._bbox_count):
+            bbox_name = f"bbox_{i}"
+            try:
+                if self.scene_widget.scene.has_geometry(bbox_name):
+                    self.scene_widget.scene.remove_geometry(bbox_name)
+            except:
+                pass  # Silently ignore removal errors
+        
+        self._bbox_count = 0
         
         if not self.show_bbox or not bboxes:
             return
         
         # Add new bounding boxes
         for idx, bbox in enumerate(bboxes):
-            line_set = self._create_bbox_lineset(
-                bbox['corners'],
-                bbox.get('label', 'car')
-            )
-            
-            mat = o3d.visualization.rendering.MaterialRecord()
-            mat.shader = "unlitLine"
-            mat.line_width = 2.0
-            
-            self.scene_widget.scene.add_geometry(f"bbox_{idx}", line_set, mat)
+            try:
+                line_set = self._create_bbox_lineset(
+                    bbox['corners'],
+                    bbox.get('label', 'car')
+                )
+                
+                mat = o3d.visualization.rendering.MaterialRecord()
+                mat.shader = "unlitLine"
+                mat.line_width = 2.0
+                
+                self.scene_widget.scene.add_geometry(f"bbox_{idx}", line_set, mat)
+                self._bbox_count += 1
+                
+            except Exception as e:
+                print(f"Error adding bbox {idx}: {e}")
+                continue
     
     def _create_bbox_lineset(self, corners, label):
         '''Create Open3D LineSet for bounding box.'''
@@ -1114,7 +1157,7 @@ def visualize_interactive(ctx):
         ctx.path, 
         metadata, 
         ignore_valid_flag=ctx.ignore_valid_flag,
-        max_workers=8,  # Adjust based on your system
+        max_workers=16,  # Adjust based on your system
         max_cached_scenes=5  # Keep at most 5 scenes in memory
     )
     
