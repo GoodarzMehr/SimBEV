@@ -468,23 +468,26 @@ class InteractiveVisualizer:
     def __init__(self, data_loader: VizDataLoader, title: str = 'SimBEV Interactive Viewer', point_size: float = 2.0):
         self._data_loader = data_loader
         self._point_size = point_size
+        self._lidar_point_size = point_size
+        self._semantic_lidar_point_size = point_size
+        self._radar_point_size = point_size
 
-        print("\n===== Keyboard Controls =====")
-        print("+/=   : Increase point size")
-        print("-/_   : Decrease point size")
-        print("Space : Toggle bounding boxes")
-        print("Left  : Previous frame")
-        print("Right : Next frame")
-        print("Up    : Previous sensor type")
-        print("Down  : Next sensor type")
-        print("E     : Bird's-eye view")
-        print("T     : Tracker view")
-        print("L     : Left view ")
-        print("R     : Right view")
-        print("F     : Front view")
-        print("B     : Back view")
-        print("P     : Play/Pause animation")
-        print("=============================\n")
+        print('\n===== Keyboard Controls =====')
+        print('+/=   : Increase point size')
+        print('-/_   : Decrease point size')
+        print('Space : Play/Pause animation')
+        print('Left  : Previous frame')
+        print('Right : Next frame')
+        print('Up    : Previous sensor type')
+        print('Down  : Next sensor type')
+        print('E     : Bird\'s-eye view')
+        print('T     : Tracker view')
+        print('L     : Left view ')
+        print('R     : Right view')
+        print('F     : Front view')
+        print('B     : Back view')
+        print('X     : Toggle bounding boxes')
+        print('=============================\n')
         
         self._app = gui.Application.instance
         self._app.initialize()
@@ -579,7 +582,7 @@ class InteractiveVisualizer:
     
     def _load_and_display_scene(self, scene: int):
         '''
-        Load a scene and display the first frame.
+        Load the scene and display the first frame.
         
         Args:
             scene: scene index (0-based).
@@ -589,7 +592,7 @@ class InteractiveVisualizer:
         else:
             self._is_loading = True
             
-            self._update_loading_label("Loading scene...")
+            self._update_loading_label('Loading scene...')
             
             def progress_callback(current, total, message):
                 self._load_progress = current
@@ -604,7 +607,7 @@ class InteractiveVisualizer:
             def load_worker():
                 success = self._data_loader.load_scene(scene, progress_callback)
                 
-                # Update UI on main thread
+                # Update UI on the main thread.
                 gui.Application.instance.post_to_main_thread(self._window, lambda: self._on_scene_loaded(success))
             
             threading.Thread(target=load_worker, daemon=True).start()
@@ -619,16 +622,16 @@ class InteractiveVisualizer:
         self._is_loading = False
         
         if success:
-            self._update_loading_label("Scene loaded.")
+            self._update_loading_label('Scene loaded.')
             self._update_cache_status()
             self._update_frame()
             
-            # Setup camera for new scene.
+            # Setup the camera for the new scene.
             bounds = self._scene_widget.scene.bounding_box
             
             self._scene_widget.setup_camera(60, bounds, bounds.get_center())
         else:
-            self._update_loading_label("Failed to load scene.")
+            self._update_loading_label('Failed to load scene.')
     
     def _update_loading_label(self, message: str):
         '''
@@ -645,274 +648,344 @@ class InteractiveVisualizer:
             self._loading_label.text = message
     
     def _on_key_event(self, event):
-        '''Handle keyboard events.'''
+        '''
+        Handle keyboard events.
+        
+        Args:
+            event: key event.
+        
+        Returns:
+            Callback result indicating if the event was handled.
+        '''
         if event.type == gui.KeyEvent.DOWN:
             if event.key == ord('+') or event.key == ord('='):
                 self._point_size = min(self._point_size + 1.0, 20.0)
+
+                if self._sensor_type == 'lidar':
+                    self._lidar_point_size = self._point_size
+                elif self._sensor_type == 'semantic-lidar':
+                    self._semantic_lidar_point_size = self._point_size
+                elif self._sensor_type == 'radar':
+                    self._radar_point_size = self._point_size
+                
                 self._update_point_size()
-                print(f"Point size: {self._point_size}")
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('-') or event.key == ord('_'):
                 self._point_size = max(self._point_size - 1.0, 1.0)
+
+                if self._sensor_type == 'lidar':
+                    self._lidar_point_size = self._point_size
+                elif self._sensor_type == 'semantic-lidar':
+                    self._semantic_lidar_point_size = self._point_size
+                elif self._sensor_type == 'radar':
+                    self._radar_point_size = self._point_size
+                
                 self._update_point_size()
-                print(f"Point size: {self._point_size}")
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
-            elif event.key == gui.KeyName.SPACE:
+            elif event.key == ord('X') or event.key == ord('x'):
                 self._show_bbox = not self._show_bbox
                 self._bbox_checkbox.checked = self._show_bbox
-                print(f"Bounding boxes: {'ON' if self._show_bbox else 'OFF'}")
+                
                 self._update_frame()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.LEFT:
                 self._on_prev_frame_clicked()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.RIGHT:
                 self._on_next_frame_clicked()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.UP:
                 self._sensor_radio.selected_index = (self._sensor_radio.selected_index - 1) % 3
+                
                 self._on_sensor_changed(self._sensor_radio.selected_index)
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.DOWN:
                 self._sensor_radio.selected_index = (self._sensor_radio.selected_index + 1) % 3
+                
                 self._on_sensor_changed(self._sensor_radio.selected_index)
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('E') or event.key == ord('e'):
                 self._on_bev_view()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('T') or event.key == ord('t'):
                 self._on_tracker_view()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('L') or event.key == ord('l'):
                 self._on_left_view()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('R') or event.key == ord('r'):
                 self._on_right_view()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('F') or event.key == ord('f'):
                 self._on_front_view()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == ord('B') or event.key == ord('b'):
                 self._on_back_view()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
             
-            elif event.key == ord('P') or event.key == ord('p'):
+            elif event.key == gui.KeyName.SPACE:
                 self._toggle_playback()
+                
                 return gui.Widget.EventCallbackResult.HANDLED
         
         return gui.Widget.EventCallbackResult.IGNORED
     
     def _update_point_size(self):
-        '''Update point cloud rendering size by reloading current frame.'''
+        '''Update point cloud rendering size.'''
         self._point_size_slider.double_value = self._point_size
-        self._point_size_label.text = f"{self._point_size:.1f}"
+        
         self._update_frame()
     
     def _add_coordinate_frame(self):
-        '''Add coordinate frame to scene.'''
-        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-            size=0.1, origin=[0, 0, 0]
-        )
+        '''Add coordinate frame to the scene.'''
+        coord_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
+        
         mat = o3d.visualization.rendering.MaterialRecord()
-        mat.shader = "defaultUnlit"
-        self._scene_widget.scene.add_geometry("coordinate_frame", coord_frame, mat)
+        mat.shader = 'defaultUnlit'
+        
+        self._scene_widget.scene.add_geometry('coordinate_frame', coord_frame, mat)
     
     def _create_control_panel(self):
-        '''Create UI control panel with sliders, checkboxes, and radio buttons.'''
+        '''Create UI control panel.'''
         em = self._window.theme.font_size
         
         self._panel = gui.Vert(0, gui.Margins(em, em, em, em))
         
-        # Sensor type selection
-        self._panel.add_child(gui.Label("Sensor Type:"))
+        # Sensor type selection.
+        self._panel.add_child(gui.Label('Sensor Type:'))
         
         self._sensor_radio = gui.RadioButton(gui.RadioButton.VERT)
-        self._sensor_radio.set_items(["Lidar", "Semantic Lidar", "Radar"])
+        self._sensor_radio.set_items(['Lidar', 'Semantic Lidar', 'Radar'])
         self._sensor_radio.selected_index = 0
         self._sensor_radio.set_on_selection_changed(self._on_sensor_changed)
+        
         self._panel.add_child(self._sensor_radio)
         
         self._panel.add_fixed(2 * em)
         
-        # Scene slider
-        self._scene_label = gui.Label(f"Scene: {self._data_loader.get_scene_number(0):04d} (1/{self._max_scene + 1})")
+        # Scene slider.
+        self._scene_label = gui.Label(f'Scene: {self._data_loader.get_scene_number(0):04d} (1/{self._max_scene + 1})')
+        
         self._panel.add_child(self._scene_label)
         
         self._scene_slider = gui.Slider(gui.Slider.INT)
         self._scene_slider.set_limits(0, self._max_scene)
         self._scene_slider.set_on_value_changed(self._on_scene_slider_changed)
+        
         self._panel.add_child(self._scene_slider)
 
         self._panel.add_fixed(0.2 * em)
         
-        # Scene navigation buttons
+        # Scene navigation buttons.
         scene_button_layout = gui.Horiz()
+        
         scene_button_layout.add_stretch()
-        self._prev_scene_button = gui.Button("<")
+        
+        self._prev_scene_button = gui.Button('<')
         self._prev_scene_button.set_on_clicked(self._on_prev_scene_clicked)
+        
         scene_button_layout.add_child(self._prev_scene_button)
         
-        self._next_scene_button = gui.Button(">")
+        self._next_scene_button = gui.Button('>')
         self._next_scene_button.set_on_clicked(self._on_next_scene_clicked)
+        
         scene_button_layout.add_child(self._next_scene_button)
+        
         scene_button_layout.add_stretch()
         
         self._panel.add_child(scene_button_layout)
         
         self._panel.add_fixed(em)
         
-        # Frame slider
-        self._frame_label = gui.Label(f"Frame: 1/{self._max_frame + 1}")
+        # Frame slider.
+        self._frame_label = gui.Label(f'Frame: 1/{self._max_frame + 1}')
+        
         self._panel.add_child(self._frame_label)
         
         self._frame_slider = gui.Slider(gui.Slider.INT)
         self._frame_slider.set_limits(0, self._max_frame)
         self._frame_slider.set_on_value_changed(self._on_frame_slider_changed)
+        
         self._panel.add_child(self._frame_slider)
 
         self._panel.add_fixed(0.2 * em)
         
-        # Frame navigation buttons
+        # Frame navigation buttons.
         frame_button_layout = gui.Horiz()
+        
         frame_button_layout.add_stretch()
-        self._prev_frame_button = gui.Button("<")
+        
+        self._prev_frame_button = gui.Button('<')
         self._prev_frame_button.set_on_clicked(self._on_prev_frame_clicked)
+        
         frame_button_layout.add_child(self._prev_frame_button)
         
-        self._next_frame_button = gui.Button(">")
+        self._next_frame_button = gui.Button('>')
         self._next_frame_button.set_on_clicked(self._on_next_frame_clicked)
+        
         frame_button_layout.add_child(self._next_frame_button)
+        
         frame_button_layout.add_stretch()
         
         self._panel.add_child(frame_button_layout)
         
         self._panel.add_fixed(2 * em)
         
-        # Playback controls
+        # Playback controls.
         playback_layout = gui.Horiz()
         
-        self._play_button = gui.Button("Play")
+        self._play_button = gui.Button('Play')
         self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
         self._play_button.set_on_clicked(self._on_play_clicked)
+        
         playback_layout.add_child(self._play_button)
+        
         playback_layout.add_fixed(em)
 
-        # Playback loop checkbox
-        self._loop_checkbox = gui.Checkbox("Loop Playback")
+        # Playback loop checkbox.
+        self._loop_checkbox = gui.Checkbox('Loop Playback')
         self._loop_checkbox.checked = False
         self._loop_checkbox.set_on_checked(self._on_loop_toggle)
+        
         playback_layout.add_child(self._loop_checkbox)
         
         self._panel.add_child(playback_layout)
         
         self._panel.add_fixed(em)
         
-        # Playback speed slider
-        self._panel.add_child(gui.Label("Playback Speed (FPS):"))
+        # Playback speed slider.
+        self._panel.add_child(gui.Label('Playback Speed (FPS):'))
         
         self._speed_slider = gui.Slider(gui.Slider.INT)
         self._speed_slider.set_limits(1, 30)
         self._speed_slider.int_value = self._play_speed
         self._speed_slider.set_on_value_changed(self._on_speed_changed)
+        
         self._panel.add_child(self._speed_slider)
         
         self._panel.add_fixed(2 * em)
         
-        # Bounding box toggle
-        self._bbox_checkbox = gui.Checkbox("Show Bounding Boxes")
+        # Bounding box toggle.
+        self._bbox_checkbox = gui.Checkbox('Show Bounding Boxes')
         self._bbox_checkbox.checked = True
         self._bbox_checkbox.set_on_checked(self._on_bbox_toggle)
+        
         self._panel.add_child(self._bbox_checkbox)
         
         self._panel.add_fixed(2 * em)
         
-        # Point size control
-        self._panel.add_child(gui.Label("Point Size:"))
+        # Point size control.
+        self._panel.add_child(gui.Label('Point Size:'))
         
         self._point_size_slider = gui.Slider(gui.Slider.DOUBLE)
         self._point_size_slider.set_limits(1.0, 20.0)
         self._point_size_slider.double_value = self._point_size
         self._point_size_slider.set_on_value_changed(self._on_point_size_slider_changed)
-        self._panel.add_child(self._point_size_slider)
         
-        self._point_size_label = gui.Label(f"{self._point_size:.1f}")
-        self._panel.add_child(self._point_size_label)
+        self._panel.add_child(self._point_size_slider)
         
         self._panel.add_fixed(em)
         
-        # Info label
-        self._info_label = gui.Label("")
+        # Info label.
+        self._info_label = gui.Label('')
+        
         self._panel.add_child(self._info_label)
         
         self._panel.add_fixed(2 * em)
         
         # Loading status label
-        self._loading_label = gui.Label("")
+        self._loading_label = gui.Label('')
+        
         self._panel.add_child(self._loading_label)
         
         self._panel.add_fixed(em)
         
         # Cache status label
-        self._cache_status_label = gui.Label("")
+        self._cache_status_label = gui.Label('')
+        
         self._panel.add_child(self._cache_status_label)
+        
         self._update_cache_status()
         
         self._panel.add_fixed(2 * em)
         
         # Camera view buttons
-        self._panel.add_child(gui.Label("Camera View:"))
+        self._panel.add_child(gui.Label('Camera View:'))
         
         camera_button_layout = gui.Horiz()
+        
         camera_button_layout.add_stretch()
+        
         view_button_layout = gui.Vert()
         
-        self._bev_button = gui.Button("BEV")
+        self._bev_button = gui.Button('BEV')
         self._bev_button.set_on_clicked(self._on_bev_view)
         self._bev_button.horizontal_padding_em = 6.0
+        
         view_button_layout.add_child(self._bev_button)
 
         view_button_layout.add_fixed(0.2 * em)
         
-        self._tracker_button = gui.Button("Tracker")
+        self._tracker_button = gui.Button('Tracker')
         self._tracker_button.set_on_clicked(self._on_tracker_view)
+        
         view_button_layout.add_child(self._tracker_button)
 
         view_button_layout.add_fixed(0.2 * em)
 
-        self._left_button = gui.Button("Left")
+        self._left_button = gui.Button('Left')
         self._left_button.set_on_clicked(self._on_left_view)
+        
         view_button_layout.add_child(self._left_button)
 
         view_button_layout.add_fixed(0.2 * em)
 
-        self._right_button = gui.Button("Right")
+        self._right_button = gui.Button('Right')
         self._right_button.set_on_clicked(self._on_right_view)
+        
         view_button_layout.add_child(self._right_button)
 
         view_button_layout.add_fixed(0.2 * em)
 
-        self._front_button = gui.Button("Front")
+        self._front_button = gui.Button('Front')
         self._front_button.set_on_clicked(self._on_front_view)
+        
         view_button_layout.add_child(self._front_button)
 
         view_button_layout.add_fixed(0.2 * em)
 
-        self._back_button = gui.Button("Back")
+        self._back_button = gui.Button('Back')
         self._back_button.set_on_clicked(self._on_back_view)
+        
         view_button_layout.add_child(self._back_button)
+        
         camera_button_layout.add_child(view_button_layout)
+        
         camera_button_layout.add_stretch()
         
         self._panel.add_child(camera_button_layout)
@@ -920,57 +993,69 @@ class InteractiveVisualizer:
     def _update_cache_status(self):
         '''Update cache status label.'''
         cache_info = self._data_loader.get_cache_info()
+        
         cached = cache_info['cached_scenes']
         max_cached = cache_info['max_cached_scenes']
         
-        # Show which scenes are cached
+        # Show which scenes are cached.
         if cache_info['cached_scene_indices']:
-            scene_numbers = [self._data_loader.get_scene_number(idx) 
-                           for idx in cache_info['cached_scene_indices']]
+            scene_numbers = [self._data_loader.get_scene_number(idx) for idx in cache_info['cached_scene_indices']]
+            
             scene_str = ', '.join([f"{num:04d}" for num in scene_numbers])
-            self._cache_status_label.text = (
-                f"Cache: {cached}/{max_cached} scenes\n"
-                f"Loaded: {scene_str}"
-            )
+            
+            self._cache_status_label.text = (f'Cache: {cached}/{max_cached} scenes\nLoaded: {scene_str}')
         else:
-            self._cache_status_label.text = f"Cache: {cached}/{max_cached} scenes"
+            self._cache_status_label.text = f'Cache: {cached}/{max_cached} scenes'
     
     def _on_layout(self, layout_context):
         '''Handle window layout.'''
         r = self._window.content_rect
+        
         panel_width = 640
         
-        self._scene_widget.frame = gui.Rect(
-            r.x, r.y, r.width - panel_width, r.height
-        )
+        self._scene_widget.frame = gui.Rect(r.x, r.y, r.width - panel_width, r.height)
         
-        self._panel.frame = gui.Rect(
-            r.get_right() - panel_width, r.y, panel_width, r.height
-        )
+        self._panel.frame = gui.Rect(r.get_right() - panel_width, r.y, panel_width, r.height)
     
     def _on_sensor_changed(self, index):
-        '''Handle sensor type radio button change.'''
+        '''
+        Handle sensor type radio button change.
+        
+        Args:
+            index: selected index.
+        '''
         sensor_map = {0: 'lidar', 1: 'semantic-lidar', 2: 'radar'}
+        
         self._sensor_type = sensor_map[index]
         
-        # Update default point size based on sensor
+        # Update point size based on sensor.
         if self._sensor_type == 'lidar':
-            default_size = 2.0
+            self._point_size = self._lidar_point_size
         elif self._sensor_type == 'semantic-lidar':
-            default_size = 2.0
+            self._point_size = self._semantic_lidar_point_size
         elif self._sensor_type == 'radar':
-            default_size = 3.0
+            self._point_size = self._radar_point_size
         
-        self._point_size = default_size
-        self._point_size_slider.double_value = default_size
-        self._point_size_label.text = f"{default_size:.1f}"
+        self._point_size_slider.double_value = self._point_size
         
         self._update_frame()
     
     def _on_point_size_slider_changed(self, value):
-        '''Handle point size slider change.'''
+        '''
+        Handle point size slider change.
+        
+        Args:
+            value: point size value.
+        '''
         self._point_size = value
-        self._point_size_label.text = f"{value:.1f}"
+        
+        if self._sensor_type == 'lidar':
+            self._lidar_point_size = value
+        elif self._sensor_type == 'semantic-lidar':
+            self._semantic_lidar_point_size = value
+        elif self._sensor_type == 'radar':
+            self._radar_point_size = value
+        
         self._update_point_size()
     
     def _on_speed_changed(self, value):
