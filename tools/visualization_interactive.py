@@ -58,7 +58,7 @@ class VizDataLoader:
         self._metadata = metadata
         self._ignore_valid_flag = ignore_valid_flag
         self._max_workers = max_workers
-        self._max_cached_scenes = max_cached_scenes
+        self.max_cached_scenes = max_cached_scenes
         
         # Scene cache: {scene: {sensor_type: [frame_data, ...]}}
         self._scene_cache = {}
@@ -182,15 +182,15 @@ class VizDataLoader:
             self._mark_scene_accessed(scene)
             
             if progress_callback:
-                progress_callback(1, 1, "Scene already loaded.")
+                progress_callback(1, 1, 'Scene already loaded.')
             
             return True
         
         # Evict the oldest scene if the cache is full.
-        if len(self._scene_cache) >= self._max_cached_scenes:
+        if len(self._scene_cache) >= self.max_cached_scenes:
             self._evict_oldest_scene()
 
-        print(f"\nLoading scene {self.get_scene_number(scene):04d}...")
+        print(f'\nLoading scene {self.get_scene_number(scene):04d}...')
 
         start = time.perf_counter()
 
@@ -243,7 +243,7 @@ class VizDataLoader:
         print(f'Scene {self.get_scene_number(scene):04d} loaded in {elapsed:.2f} s.')
         
         if progress_callback:
-            progress_callback(total_tasks, total_tasks, "Scene loaded.")
+            progress_callback(total_tasks, total_tasks, 'Scene loaded.')
         
         return True
     
@@ -443,7 +443,7 @@ class VizDataLoader:
         '''Get information about the current state of the cache.'''
         return {
             'cached_scenes': len(self._scene_cache),
-            'max_cached_scenes': self._max_cached_scenes,
+            'max_cached_scenes': self.max_cached_scenes,
             'cached_scene_indices': list(self._scene_cache.keys()),
             'access_order': self._scene_access_order.copy()
         }
@@ -643,7 +643,7 @@ class InteractiveVisualizer:
         if self._is_loading:
             percent = (self._load_progress / self._load_total * 100) if self._load_total > 0 else 0
             
-            self._loading_label.text = f"{message} ({percent:.0f}%)"
+            self._loading_label.text = f'{message} ({percent:.0f}%)'
         else:
             self._loading_label.text = message
     
@@ -1053,19 +1053,19 @@ class InteractiveVisualizer:
         self._is_playing = not self._is_playing
         
         if self._is_playing:
-            self._play_button.text = "Pause"
+            self._play_button.text = 'Pause'
             self._play_button.background_color = gui.Color(0.8, 0.1, 0.1)
             
             self._last_frame_time = time.perf_counter()
         else:
-            self._play_button.text = "Play"
+            self._play_button.text = 'Play'
             self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
     
     def _stop_playback(self):
         '''Stop playback.'''
         self._is_playing = False
         
-        self._play_button.text = "Play"
+        self._play_button.text = 'Play'
         self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
     
     def _loop_playback(self):
@@ -1088,7 +1088,7 @@ class InteractiveVisualizer:
             if self._is_playing:
                 self._is_playing = False
                 
-                self._play_button.text = "Play"
+                self._play_button.text = 'Play'
                 self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
             
             self._current_scene = new_scene
@@ -1100,7 +1100,7 @@ class InteractiveVisualizer:
             self._frame_slider.set_limits(0, self._max_frame)
             self._frame_slider.int_value = 0
             
-            # Load and display new scene.
+            # Load and display the new scene.
             self._load_and_display_scene(self._current_scene)
     
     def _on_frame_slider_changed(self, value):
@@ -1114,7 +1114,7 @@ class InteractiveVisualizer:
         if self._is_playing:
             self._is_playing = False
             
-            self._play_button.text = "Play"
+            self._play_button.text = 'Play'
             self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
         
         self._current_frame = int(value)
@@ -1182,173 +1182,163 @@ class InteractiveVisualizer:
         
         max_extent = max(extent[0], extent[1])
         
-        eye = [center[0], center[1], max_extent]
-        look_at = center
-        up = [0, 1, 0]
-        
-        self._scene_widget.look_at(look_at, eye, up)
+        self._scene_widget.look_at(center, [center[0], center[1], max_extent], [0, 1, 0])
 
     def _on_tracker_view(self):
         '''Set camera to ego tracker view.'''
         distance = 8.0
         
-        eye = [- 2.0 * distance, 0, 0.5 * distance]
-        look_at = [0, 0, 0]
-        up = [0, 0, 1]
-        
-        self._scene_widget.look_at(look_at, eye, up)
+        self._scene_widget.look_at([0, 0, 0], [-2.0 * distance, 0, 0.5 * distance], [0, 0, 1])
     
     def _on_left_view(self):
         '''Set camera to left side view.'''
-        eye = [0, -4.0, 0]
-        look_at = [0, 0, 0]
-        up = [0, 0, 1]
-        
-        self._scene_widget.look_at(look_at, eye, up)
+        self._scene_widget.look_at([0, 0, 0], [0, -2.0, 0], [0, 0, 1])
     
     def _on_right_view(self):
         '''Set camera to right side view.'''
-        eye = [0, 4.0, 0]
-        look_at = [0, 0, 0]
-        up = [0, 0, 1]
-        
-        self._scene_widget.look_at(look_at, eye, up)
+        self._scene_widget.look_at([0, 0, 0], [0, 2.0, 0], [0, 0, 1])
     
     def _on_front_view(self):
         '''Set camera to front view.'''
-        eye = [-4.0, 0, 0]
-        look_at = [0, 0, 0]
-        up = [0, 0, 1]
-        
-        self._scene_widget.look_at(look_at, eye, up)
+        self._scene_widget.look_at([0, 0, 0], [-2.0, 0, 0], [0, 0, 1])
     
     def _on_back_view(self):
         '''Set camera to back view.'''
-        eye = [4.0, 0, 0]
-        look_at = [0, 0, 0]
-        up = [0, 0, 1]
-        
-        self._scene_widget.look_at(look_at, eye, up)
+        self._scene_widget.look_at([0, 0, 0], [2.0, 0, 0], [0, 0, 1])
     
     def _update_frame(self):
-        '''
-        Update visualization to current scene and frame.
-        Runs on main thread - no locks needed!
-        '''
+        '''Update visualization to the current scene and frame.'''
         if self._is_loading:
             return
         
         try:
-            # Get data from cache (scene must be loaded)
-            sensor_data = self._data_loader.get_frame(
-                self._current_scene,
-                self._current_frame,
-                self._sensor_type
-            )
-        except RuntimeError as e:
-            print(f"Error: {e}")
-            return
+            sensor_data = self._data_loader.get_frame(self._current_scene, self._current_frame, self._sensor_type)
+        
         except Exception as e:
-            print(f"Unexpected error: {e}")
+            print(f'Unexpected error: {e}')
+            
             return
         
-        # Validate data
+        # Validate the data.
         if sensor_data is None or 'points' not in sensor_data:
             return
         
         try:
-            # Update point cloud
+            # Update the point cloud.
             pcd = o3d.geometry.PointCloud()
+            
             pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
             
             if 'colors' in sensor_data and sensor_data['colors'] is not None:
                 pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'])
             else:
-                colors = np.tile([0.5, 0.5, 0.5], (len(sensor_data['points']), 1))
+                colors = np.tile([0.8, 0.8, 0.8], (len(sensor_data['points']), 1))
+                
                 pcd.colors = o3d.utility.Vector3dVector(colors)
             
-            # Set point cloud material
+            # Set point cloud material.
             mat = o3d.visualization.rendering.MaterialRecord()
-            mat.shader = "defaultUnlit"
+            
+            mat.shader = 'defaultUnlit'
             mat.point_size = self._point_size
             
-            # Remove old point cloud
-            if self._scene_widget.scene.has_geometry("point_cloud"):
-                self._scene_widget.scene.remove_geometry("point_cloud")
+            # Remove old point cloud.
+            if self._scene_widget.scene.has_geometry('point_cloud'):
+                self._scene_widget.scene.remove_geometry('point_cloud')
             
-            self._scene_widget.scene.add_geometry("point_cloud", pcd, mat)
+            self._scene_widget.scene.add_geometry('point_cloud', pcd, mat)
             
-            # Update bounding boxes
+            # Update bounding boxes.
             self._update_bboxes(sensor_data.get('bboxes', []))
             
         except Exception as e:
-            print(f"Error updating geometry: {e}")
+            print(f'Error updating geometry: {e}')
+            
             return
         
-        # Update labels
+        # Update labels.
         scene_number = self._data_loader.get_scene_number(self._current_scene)
-        self._scene_label.text = f"Scene: {scene_number:04d} ({self._current_scene + 1}/{self._max_scene + 1})"
-        self._frame_label.text = f"Frame: {self._current_frame + 1}/{self._max_frame + 1}"
+        
+        self._scene_label.text = f'Scene: {scene_number:04d} ({self._current_scene + 1}/{self._max_scene + 1})'
+        self._frame_label.text = f'Frame: {self._current_frame + 1}/{self._max_frame + 1}'
         self._info_label.text = (
-            f"Points: {len(sensor_data['points'])}\n"
-            f"BBoxes: {len(sensor_data.get('bboxes', []))}"
+            f'Points: {len(sensor_data["points"])}\n'
+            f'Bounding Boxes: {len(sensor_data.get("bboxes", []))}'
         )
         
-        # Update cache status
+        # Update cache status.
         self._update_cache_status()
     
     def _update_bboxes(self, bboxes):
-        '''Update bounding box visualization.'''
+        '''
+        Update bounding box visualization.
+        
+        Args:
+            bboxes: list of bounding boxes.
+        '''
         if not hasattr(self, '_bbox_count'):
             self._bbox_count = 0
         
-        # Remove old bboxes
+        # Remove old bounding boxes.
         for i in range(self._bbox_count):
-            bbox_name = f"bbox_{i}"
+            bbox_name = f'bbox_{i}'
+            
             try:
                 if self._scene_widget.scene.has_geometry(bbox_name):
                     self._scene_widget.scene.remove_geometry(bbox_name)
+            
             except:
-                pass  # Silently ignore removal errors
+                pass
         
         self._bbox_count = 0
         
         if not self._show_bbox or not bboxes:
             return
         
-        # Add new bounding boxes
+        # Add new bounding boxes.
         for idx, bbox in enumerate(bboxes):
             try:
-                line_set = self._create_bbox_lineset(
-                    bbox['corners'],
-                    bbox.get('label', 'car')
-                )
+                line_set = self._create_bbox_lineset(bbox['corners'], bbox.get('label', 'car'))
                 
                 mat = o3d.visualization.rendering.MaterialRecord()
-                mat.shader = "unlitLine"
+                
+                mat.shader = 'unlitLine'
                 mat.line_width = 2.0
                 
-                self._scene_widget.scene.add_geometry(f"bbox_{idx}", line_set, mat)
+                self._scene_widget.scene.add_geometry(f'bbox_{idx}', line_set, mat)
+                
                 self._bbox_count += 1
                 
             except Exception as e:
-                print(f"Error adding bbox {idx}: {e}")
+                print(f'Error adding bounding box {idx}: {e}')
+                
                 continue
     
     def _create_bbox_lineset(self, corners, label):
-        '''Create Open3D LineSet for bounding box.'''
+        '''Create Open3D LineSet for bounding box.
+        
+        Args:
+            corners: corners of the bounding box.
+            label: label of the bounding box.
+        
+        Returns:
+            Open3D LineSet representing the bounding box.
+        '''
         lines = [
-            [0, 1], [1, 3], [3, 2], [2, 0],
-            [4, 5], [5, 7], [7, 6], [6, 4],
-            [0, 4], [1, 5], [2, 6], [3, 7],
+            [0, 1], [1, 3], [3, 2], [2, 0], # front face
+            [4, 5], [5, 7], [7, 6], [6, 4], # back face
+            [0, 4], [1, 5], [2, 6], [3, 7], # sides
         ]
         
         line_set = o3d.geometry.LineSet()
+
         line_set.points = o3d.utility.Vector3dVector(corners)
         line_set.lines = o3d.utility.Vector2iVector(lines)
         
         color = BBOX_COLORS.get(label, [1.0, 1.0, 1.0])
+        
         colors = [color for _ in range(len(lines))]
+        
         line_set.colors = o3d.utility.Vector3dVector(colors)
         
         return line_set
@@ -1357,48 +1347,56 @@ class InteractiveVisualizer:
         '''Start interactive visualization.'''
         gui.Application.instance.run()
         
-        # Cleanup on exit
+        # Clean up on exit.
         self._data_loader.cleanup()
 
 
 def visualize_interactive(ctx):
-    '''Unified interactive visualization for all sensor types.'''
-    # Load metadata
+    '''
+    Unified interactive visualizer for all sensors with point cloud data.
+    
+    Args:
+        ctx: visualization context.
+    '''
     metadata = None
+    
     for split in ['train', 'val', 'test']:
         info_path = f'{ctx.path}/simbev/infos/simbev_infos_{split}.json'
+        
         if os.path.exists(info_path):
             with open(info_path, 'r') as f:
                 infos = json.load(f)
+            
             metadata = infos['metadata']
+            
             break
     
     if metadata is None:
-        print("Error: Could not load metadata.")
+        print('Error: Could not load metadata.')
+        
         return
     
-    # Create data loader with 3-scene cache
-    print("Initializing data loader...")
+    # Create data loader with cache.
+    print('Initializing data loader...')
+    
     data_loader = VizDataLoader(
         ctx.path, 
         metadata, 
         ignore_valid_flag=ctx.ignore_valid_flag,
-        max_workers=16,  # Adjust based on your system
-        max_cached_scenes=5  # Keep at most 5 scenes in memory
+        max_workers=16,
+        max_cached_scenes=5
     )
     
     scene_count = data_loader.get_scene_count()
+    
     if scene_count == 0:
-        print("No scenes found to visualize.")
+        print('No scenes found to visualize.')
+        
         return
     
-    print(f"Found {scene_count} scene(s).")
-    print(f"Cache limit: 3 scenes")
+    print(f'Found {scene_count} scene(s).')
     
-    # Create and run visualizer
-    visualizer = InteractiveVisualizer(
-        data_loader=data_loader,
-        title='SimBEV Interactive Viewer',
-        point_size=2.0
-    )
+    # Create and run the visualizer.
+    visualizer = InteractiveVisualizer(data_loader=data_loader, title='SimBEV Interactive Viewer', point_size=2.0)
+    
     visualizer.run()
