@@ -785,7 +785,6 @@ class InteractiveVisualizer:
         self._sensor_radio.set_on_selection_changed(self._on_sensor_changed)
         
         self._panel.add_child(self._sensor_radio)
-        
         self._panel.add_fixed(2 * em)
         
         # Scene slider.
@@ -798,12 +797,10 @@ class InteractiveVisualizer:
         self._scene_slider.set_on_value_changed(self._on_scene_slider_changed)
         
         self._panel.add_child(self._scene_slider)
-
         self._panel.add_fixed(0.2 * em)
         
         # Scene navigation buttons.
         scene_button_layout = gui.Horiz()
-        
         scene_button_layout.add_stretch()
         
         self._prev_scene_button = gui.Button('<')
@@ -815,11 +812,9 @@ class InteractiveVisualizer:
         self._next_scene_button.set_on_clicked(self._on_next_scene_clicked)
         
         scene_button_layout.add_child(self._next_scene_button)
-        
         scene_button_layout.add_stretch()
         
         self._panel.add_child(scene_button_layout)
-        
         self._panel.add_fixed(em)
         
         # Frame slider.
@@ -832,12 +827,10 @@ class InteractiveVisualizer:
         self._frame_slider.set_on_value_changed(self._on_frame_slider_changed)
         
         self._panel.add_child(self._frame_slider)
-
         self._panel.add_fixed(0.2 * em)
         
         # Frame navigation buttons.
         frame_button_layout = gui.Horiz()
-        
         frame_button_layout.add_stretch()
         
         self._prev_frame_button = gui.Button('<')
@@ -849,11 +842,9 @@ class InteractiveVisualizer:
         self._next_frame_button.set_on_clicked(self._on_next_frame_clicked)
         
         frame_button_layout.add_child(self._next_frame_button)
-        
         frame_button_layout.add_stretch()
         
         self._panel.add_child(frame_button_layout)
-        
         self._panel.add_fixed(2 * em)
         
         # Playback controls.
@@ -864,7 +855,6 @@ class InteractiveVisualizer:
         self._play_button.set_on_clicked(self._on_play_clicked)
         
         playback_layout.add_child(self._play_button)
-        
         playback_layout.add_fixed(em)
 
         # Playback loop checkbox.
@@ -875,7 +865,6 @@ class InteractiveVisualizer:
         playback_layout.add_child(self._loop_checkbox)
         
         self._panel.add_child(playback_layout)
-        
         self._panel.add_fixed(em)
         
         # Playback speed slider.
@@ -887,7 +876,6 @@ class InteractiveVisualizer:
         self._speed_slider.set_on_value_changed(self._on_speed_changed)
         
         self._panel.add_child(self._speed_slider)
-        
         self._panel.add_fixed(2 * em)
         
         # Bounding box toggle.
@@ -896,7 +884,6 @@ class InteractiveVisualizer:
         self._bbox_checkbox.set_on_checked(self._on_bbox_toggle)
         
         self._panel.add_child(self._bbox_checkbox)
-        
         self._panel.add_fixed(2 * em)
         
         # Point size control.
@@ -908,21 +895,18 @@ class InteractiveVisualizer:
         self._point_size_slider.set_on_value_changed(self._on_point_size_slider_changed)
         
         self._panel.add_child(self._point_size_slider)
-        
         self._panel.add_fixed(em)
         
         # Info label.
         self._info_label = gui.Label('')
         
         self._panel.add_child(self._info_label)
-        
         self._panel.add_fixed(2 * em)
         
         # Loading status label
         self._loading_label = gui.Label('')
         
         self._panel.add_child(self._loading_label)
-        
         self._panel.add_fixed(em)
         
         # Cache status label
@@ -938,45 +922,39 @@ class InteractiveVisualizer:
         self._panel.add_child(gui.Label('Camera View:'))
         
         camera_button_layout = gui.Horiz()
-        
         camera_button_layout.add_stretch()
         
         view_button_layout = gui.Vert()
         
         self._bev_button = gui.Button('BEV')
         self._bev_button.set_on_clicked(self._on_bev_view)
-        self._bev_button.horizontal_padding_em = 6.0
+        self._bev_button.horizontal_padding_em = 4.0
         
         view_button_layout.add_child(self._bev_button)
-
         view_button_layout.add_fixed(0.2 * em)
         
         self._tracker_button = gui.Button('Tracker')
         self._tracker_button.set_on_clicked(self._on_tracker_view)
         
         view_button_layout.add_child(self._tracker_button)
-
         view_button_layout.add_fixed(0.2 * em)
 
         self._left_button = gui.Button('Left')
         self._left_button.set_on_clicked(self._on_left_view)
         
         view_button_layout.add_child(self._left_button)
-
         view_button_layout.add_fixed(0.2 * em)
 
         self._right_button = gui.Button('Right')
         self._right_button.set_on_clicked(self._on_right_view)
         
         view_button_layout.add_child(self._right_button)
-
         view_button_layout.add_fixed(0.2 * em)
 
         self._front_button = gui.Button('Front')
         self._front_button.set_on_clicked(self._on_front_view)
         
         view_button_layout.add_child(self._front_button)
-
         view_button_layout.add_fixed(0.2 * em)
 
         self._back_button = gui.Button('Back')
@@ -985,7 +963,6 @@ class InteractiveVisualizer:
         view_button_layout.add_child(self._back_button)
         
         camera_button_layout.add_child(view_button_layout)
-        
         camera_button_layout.add_stretch()
         
         self._panel.add_child(camera_button_layout)
@@ -1059,7 +1036,12 @@ class InteractiveVisualizer:
         self._update_point_size()
     
     def _on_speed_changed(self, value):
-        '''Handle playback speed slider change.'''
+        '''
+        Handle playback speed slider change.
+        
+        Args:
+            value: playback speed value.
+        '''
         self._play_speed = int(value)
     
     def _on_play_clicked(self):
@@ -1067,98 +1049,137 @@ class InteractiveVisualizer:
         self._toggle_playback()
     
     def _toggle_playback(self):
-        '''Toggle playback on/off - simple, no threads!'''
+        '''Toggle playback state.'''
         self._is_playing = not self._is_playing
         
         if self._is_playing:
             self._play_button.text = "Pause"
             self._play_button.background_color = gui.Color(0.8, 0.1, 0.1)
+            
             self._last_frame_time = time.perf_counter()
         else:
             self._play_button.text = "Play"
             self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
     
     def _stop_playback(self):
-        '''Stop playback - called when reaching end of sequence.'''
+        '''Stop playback.'''
         self._is_playing = False
+        
         self._play_button.text = "Play"
         self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
     
     def _loop_playback(self):
         '''Loop playback from start to end.'''
         self._current_frame = 0
+        
         self._frame_slider.int_value = 0
     
     def _on_scene_slider_changed(self, value):
-        '''Handle scene slider value change.'''
+        '''
+        Handle scene slider value change.
+        
+        Args:
+            value: scene index value.
+        '''
         new_scene = int(value)
+        
         if new_scene != self._current_scene:
-            # Stop playback before changing scenes
+            # Stop playback before changing scenes.
             if self._is_playing:
                 self._is_playing = False
+                
                 self._play_button.text = "Play"
+                self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
             
             self._current_scene = new_scene
             self._current_frame = 0
             
-            # Update frame slider limits
+            # Update frame slider limits.
             self._max_frame = self._data_loader.get_frame_count(self._current_scene) - 1
+            
             self._frame_slider.set_limits(0, self._max_frame)
             self._frame_slider.int_value = 0
             
-            # Load and display new scene
+            # Load and display new scene.
             self._load_and_display_scene(self._current_scene)
     
     def _on_frame_slider_changed(self, value):
-        '''Handle frame slider value change.'''
-        # Stop playback when manually scrubbing
+        '''
+        Handle frame slider value change.
+        
+        Args:
+            value: frame index value.
+        '''
+        # Stop playback when manually scrubbing.
         if self._is_playing:
             self._is_playing = False
+            
             self._play_button.text = "Play"
+            self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
         
         self._current_frame = int(value)
+        
         self._update_frame()
     
     def _on_bbox_toggle(self, checked):
-        '''Handle bbox checkbox toggle.'''
+        '''
+        Handle bounding box checkbox toggle.
+        
+        Args:
+            checked: whether bounding box display is enabled.
+        '''
         self._show_bbox = checked
+
         self._update_frame()
     
     def _on_loop_toggle(self, checked):
-        '''Handle loop playback checkbox toggle.'''
+        '''
+        Handle loop playback checkbox toggle.
+        
+        Args:
+            checked: whether loop playback is enabled.
+        '''
         self._playback_loop = checked
     
     def _on_prev_scene_clicked(self):
-        '''Navigate to previous scene.'''
+        '''Navigate to the previous scene.'''
         if self._current_scene > 0:
             self._on_scene_slider_changed(self._current_scene - 1)
+            
             self._scene_slider.int_value = self._current_scene
             
     def _on_next_scene_clicked(self):
-        '''Navigate to next scene.'''
+        '''Navigate to the next scene.'''
         if self._current_scene < self._max_scene:
             self._on_scene_slider_changed(self._current_scene + 1)
+            
             self._scene_slider.int_value = self._current_scene
             
     def _on_prev_frame_clicked(self):
-        '''Navigate to previous frame.'''
+        '''Navigate to the previous frame.'''
         if self._current_frame > 0:
             self._current_frame -= 1
+            
             self._frame_slider.int_value = self._current_frame
+            
             self._update_frame()
     
     def _on_next_frame_clicked(self):
-        '''Navigate to next frame.'''
+        '''Navigate to the next frame.'''
         if self._current_frame < self._max_frame:
             self._current_frame += 1
+            
             self._frame_slider.int_value = self._current_frame
+            
             self._update_frame()
     
     def _on_bev_view(self):
-        '''Set camera to top-down view.'''
+        '''Set camera to bird's-eye view.'''
         bounds = self._scene_widget.scene.bounding_box
+        
         center = bounds.get_center()
         extent = bounds.get_extent()
+        
         max_extent = max(extent[0], extent[1])
         
         eye = [center[0], center[1], max_extent]
@@ -1168,8 +1189,9 @@ class InteractiveVisualizer:
         self._scene_widget.look_at(look_at, eye, up)
 
     def _on_tracker_view(self):
-        '''Set camera to 3D perspective view.'''
+        '''Set camera to ego tracker view.'''
         distance = 8.0
+        
         eye = [- 2.0 * distance, 0, 0.5 * distance]
         look_at = [0, 0, 0]
         up = [0, 0, 1]
