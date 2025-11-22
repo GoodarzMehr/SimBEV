@@ -212,6 +212,28 @@ def get_multi_line_mask(
 
     return line_mask.astype(bool)
 
+def flow_to_color(flow: np.ndarray) -> np.ndarray:
+    '''
+    Optical flow visualization.
+    
+    Args:
+        flow: array of flow vectors.
+    
+    Returns:
+        BGR image.
+    '''
+    # Compute the magnitude and angle of flow vectors.
+    mag, ang = cv2.cartToPolar(flow[:, :, 0], flow[:, :, 1])
+    
+    # Create HSV image
+    hsv = np.zeros((flow.shape[0], flow.shape[1], 3), dtype=np.uint8)
+
+    hsv[:, :, 0] = ang * 180 / (np.pi * 2)
+    hsv[:, :, 1] = 255
+    hsv[:, :, 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    
+    return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
 
 class CustomTimer:
     '''

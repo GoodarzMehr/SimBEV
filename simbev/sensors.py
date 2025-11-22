@@ -7,7 +7,6 @@ SimBEV perception and navigation sensors.
 import cv2
 import time
 import carla
-import flow_vis
 
 import numpy as np
 import open3d as o3d
@@ -15,6 +14,12 @@ import open3d as o3d
 from queue import Queue
 
 from matplotlib import colormaps as cm
+
+try:
+    from .utils import flow_to_color
+
+except ImportError:
+    from utils import flow_to_color
 
 
 RANGE = np.linspace(0.0, 1.0, 256)
@@ -410,7 +415,7 @@ class FlowCamera(BaseCamera):
         Args:
             window_name: window name for the rendered image.
         '''
-        image = flow_vis.flow_to_color(self._render_queue.get(True, 10.0), convert_to_bgr=True)
+        image = flow_to_color(self._render_queue.get(True, 10.0))
         
         cv2.imshow(window_name, cv2.resize(image, (self._width // 4, self._height // 4)))
         cv2.waitKey(1)

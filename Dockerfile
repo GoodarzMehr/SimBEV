@@ -38,7 +38,7 @@
 # Use "nvidia-smi" to ensure your graphics card is visible inside the
 # container.
 
-FROM nvidia/cuda:13.0.1-devel-ubuntu22.04
+FROM nvidia/cuda:13.0.2-devel-ubuntu22.04
 
 # Define build arguments and environment variables.
 
@@ -62,11 +62,11 @@ RUN set -xue && apt-key del 7fa2af80 \
 && apt-get update \
 && apt-get install -y build-essential cmake debhelper git wget xdg-user-dirs xserver-xorg libvulkan1 libsdl2-2.0-0 \
 libsm6 libgl1-mesa-glx libomp5 pip unzip libjpeg8 libtiff5 software-properties-common nano fontconfig g++ gcc gdb \
-libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libvulkan-dev vulkan-tools python-is-python3 \
-mesa-utils gdb python3-dbg
+libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libnvidia-compute-580 libvulkan-dev vulkan-tools \
+python-is-python3 mesa-utils python3-dbg
 
 RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image pyquaternion networkx psutil \
-tqdm pynput
+tqdm pynput evdev==1.6.1
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu130
 

@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  Town01: 1
-  Town02: 1
-  Town03: 1
-  Town04: 1
-  Town05: 1
-  Town06: 1
-  Town07: 1
-  Town10HD: 1
-  Town12: 1
-  Town13: 1
-  Town15: 1
+  # Town01: 2
+  # Town02: 2
+  # Town03: 2
+  # Town04: 2
+  # Town05: 2
+  # Town06: 2
+  # Town07: 2
+  # Town10HD: 2
+  Town12: 4
+  # Town13: 4
+  # Town15: 4
 
 test_scene_config:
   # Town01: 1
@@ -143,7 +143,7 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: True
+use_rgb_camera: False
 
 rgb_camera_properties:
   fstop: '1.8'
@@ -153,7 +153,7 @@ use_semantic_camera: False
 semantic_camera_properties:
   {}
 
-use_instance_camera: True
+use_instance_camera: False
 
 instance_camera_properties:
  {}
@@ -168,7 +168,7 @@ use_flow_camera: False
 flow_camera_properties:
  {}
 
-use_lidar: True
+use_lidar: False
 
 lidar_channels: 128
 lidar_range: 120.0
@@ -190,7 +190,7 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: True
+use_radar: False
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
@@ -224,8 +224,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-# n_vehicles: 0
-# n_walkers: 0
+n_vehicles: 0
+n_walkers: 0
 
 # walker_cross_factor: 0.6
 
