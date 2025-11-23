@@ -103,11 +103,17 @@ def visualize_rgb(ctx: VisualizationContext):
         # Global to image transformation.
         global2image = camera_intrinsics @ global2camera
 
-        corners, labels = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
+        corners, labels, difficulty = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
         
         image = cv2.imread(ctx.frame_data['RGB-' + camera])
 
-        visualize_image(ctx.get_output_path('RGB', camera), image, corners=corners, labels=labels)
+        visualize_image(
+            ctx.get_output_path('RGB', camera),
+            image,
+            corners=corners,
+            labels=labels,
+            difficulty=difficulty
+        )
     
     # Process all 6 cameras in parallel.
     with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
@@ -166,9 +172,9 @@ def visualize_lidar(ctx: VisualizationContext):
         visualize_point_cloud(
             ctx.get_output_path('LIDAR', view),
             point_cloud,
-            xlim = VIEWS[view]['xlim'],
-            ylim = VIEWS[view]['ylim'],
-            pixels_per_meter = VIEWS[view]['pixels_per_meter']
+            xlim=VIEWS[view]['xlim'],
+            ylim=VIEWS[view]['ylim'],
+            pixels_per_meter=VIEWS[view]['pixels_per_meter']
         )
     
     # Process both near and far views in parallel.
@@ -188,7 +194,7 @@ def visualize_lidar_with_bbox(ctx: VisualizationContext):
         
     global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
     
-    corners, labels = transform_bbox(gt_det, global2lidar, ctx.ignore_valid_flag)
+    corners, labels, difficulty = transform_bbox(gt_det, global2lidar, ctx.ignore_valid_flag)
     
     def process_lidar_with_bbox(view):
         visualize_point_cloud(
@@ -196,9 +202,10 @@ def visualize_lidar_with_bbox(ctx: VisualizationContext):
             point_cloud,
             corners=corners,
             labels=labels,
-            xlim = VIEWS[view]['xlim'],
-            ylim = VIEWS[view]['ylim'],
-            pixels_per_meter = VIEWS[view]['pixels_per_meter']
+            difficulty=difficulty,
+            xlim=VIEWS[view]['xlim'],
+            ylim=VIEWS[view]['ylim'],
+            pixels_per_meter=VIEWS[view]['pixels_per_meter']
         )
     
     # Process both near and far views in parallel.
@@ -257,7 +264,7 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
 
         global2image = lidar2image @ global2lidar
         
-        corners, labels = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
+        corners, labels, difficulty = transform_bbox(gt_det, global2image, ctx.ignore_valid_flag)
 
         visualize_point_cloud_3d(
             ctx.get_output_path('LIDAR3DwBBOX', view),
@@ -265,6 +272,7 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
             canvas,
             corners=corners,
             labels=labels,
+            difficulty=difficulty,
             color=color
         )
     
@@ -378,7 +386,7 @@ def visualize_radar_with_bbox(ctx: VisualizationContext):
     
     global2lidar = get_global2sensor(ctx.frame_data, ctx.metadata, 'LIDAR')
     
-    corners, labels = transform_bbox(gt_det, global2lidar)
+    corners, labels, difficulty = transform_bbox(gt_det, global2lidar)
 
     def process_radar_with_bbox(view):
         visualize_point_cloud(
@@ -386,6 +394,7 @@ def visualize_radar_with_bbox(ctx: VisualizationContext):
             point_cloud,
             corners=corners,
             labels=labels,
+            difficulty=difficulty,
             color=color,
             xlim = VIEWS[view]['xlim'],
             ylim = VIEWS[view]['ylim'],
@@ -460,7 +469,7 @@ def visualize_radar3d_with_bbox(ctx: VisualizationContext):
 
         global2image = lidar2image @ global2lidar
         
-        corners, labels = transform_bbox(gt_det, global2image)
+        corners, labels, difficulty = transform_bbox(gt_det, global2image)
 
         visualize_point_cloud_3d(
             ctx.get_output_path('RADAR3DwBBOX', view),
@@ -468,6 +477,7 @@ def visualize_radar3d_with_bbox(ctx: VisualizationContext):
             canvas,
             corners=corners,
             labels=labels,
+            difficulty=difficulty,
             color=(color * 255.0).astype(np.uint8)
         )
     

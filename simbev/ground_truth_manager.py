@@ -871,6 +871,14 @@ class GTManager:
                 )
 
                 actor_properties['bounding_box'][:, 1] *= -1.0
+
+                actor_properties['distance_to_ego'] = vehicle_location.distance(actor_location)
+                actor_properties['angle_to_ego'] = np.rad2deg(
+                    self._vehicle.get_transform().get_forward_vector().get_vector_angle(actor_location - vehicle_location)
+                ).item()
+
+                if self._vehicle.get_transform().get_forward_vector().cross(actor_location - vehicle_location).z > 0:
+                    actor_properties['angle_to_ego'] *= -1.0
                 
                 actors.append(actor_properties)
 
@@ -908,6 +916,24 @@ class GTManager:
 
                         actor_properties['bounding_box'][:, 1] *= -1.0
 
+                        actor_properties['location'] = 0.5 * (
+                            actor_properties['bounding_box'][0] + actor_properties['bounding_box'][6]
+                        )
+
+                        bbox_location = carla.Vector3D(
+                            x=actor_properties['location'][0],
+                            y=-actor_properties['location'][1],
+                            z=actor_properties['location'][2]
+                        )
+
+                        actor_properties['distance_to_ego'] = vehicle_location.distance(bbox_location)
+                        actor_properties['angle_to_ego'] = np.rad2deg(
+                            self._vehicle.get_transform().get_forward_vector().get_vector_angle(bbox_location - vehicle_location)
+                        ).item()
+
+                        if self._vehicle.get_transform().get_forward_vector().cross(bbox_location - vehicle_location).z > 0:
+                            actor_properties['angle_to_ego'] *= -1.0
+
                         actor_properties['green_time'] = actor.get_green_time()
                         actor_properties['yellow_time'] = actor.get_yellow_time()
                         actor_properties['red_time'] = actor.get_red_time()
@@ -935,6 +961,20 @@ class GTManager:
                 object_properties['attributes'] = {}
                 object_properties['linear_velocity'] = np.zeros(3)
                 object_properties['angular_velocity'] = np.zeros(3)
+
+                object_properties['location'] = carla_single_vector_to_numpy(obj.transform.location)
+                object_properties['rotation'] = carla_single_rotation_to_numpy(obj.transform.rotation)
+
+                object_properties['location'][1] *= -1.0
+                object_properties['rotation'][1:] *= -1.0
+
+                object_properties['distance_to_ego'] = vehicle_location.distance(object_location)
+                object_properties['angle_to_ego'] = np.rad2deg(
+                    self._vehicle.get_transform().get_forward_vector().get_vector_angle(object_location - vehicle_location)
+                ).item()
+
+                if self._vehicle.get_transform().get_forward_vector().cross(object_location - vehicle_location).z > 0:
+                    object_properties['angle_to_ego'] *= -1.0
 
                 bounding_box = obj.bounding_box
 
@@ -1018,6 +1058,12 @@ class GTManager:
         actor_properties['is_dormant'] = actor.is_dormant
         actor_properties['parent'] = actor.parent.id if actor.parent is not None else None
         actor_properties['attributes'] = actor.attributes
+
+        actor_properties['location'] = carla_single_vector_to_numpy(actor.get_transform().location)
+        actor_properties['rotation'] = carla_single_rotation_to_numpy(actor.get_transform().rotation)
+
+        actor_properties['location'][1] *= -1.0
+        actor_properties['rotation'][1:] *= -1.0
 
         actor_properties['linear_velocity'] = carla_single_vector_to_numpy(actor.get_velocity())
         actor_properties['angular_velocity'] = carla_single_vector_to_numpy(actor.get_angular_velocity())

@@ -266,9 +266,11 @@ def transform_bbox(
     Returns:
         corners: array of transformed bounding box corners.
         labels: array of object class labels.
+        difficulty: array of object detection difficulty.
     '''
     corners = []
     labels = []
+    difficulty = []
 
     for det_object in gt_det:
         if ignore_valid_flag or det_object['valid_flag']:
@@ -279,16 +281,19 @@ def transform_bbox(
 
                     corners.append(bbox_corners)
                     labels.append(OBJECT_CLASSES[tag])
+                    difficulty.append(det_object['difficulty'])
 
     corners = np.array(corners)
     labels = np.array(labels)
+    difficulty = np.array(difficulty)
 
-    return corners, labels
+    return corners, labels, difficulty
 
 def draw_bbox(
         canvas: np.ndarray,
         corners: np.ndarray,
         labels: np.ndarray,
+        difficulty: np.ndarray = None,
         bbox_color: tuple = None,
         thickness: int = 1
     ) -> np.ndarray:
@@ -299,6 +304,7 @@ def draw_bbox(
         canvas: canvas to draw on.
         corners: array of bounding box corners.
         labels: array of bounding box labels.
+        difficulty: array of bounding box difficulty.
         bbox_color: bounding box color.
         thickness: bounding box line thickness.
     '''
@@ -307,12 +313,18 @@ def draw_bbox(
     
     corners = corners[indices]
     labels = labels[indices]
+    
+    if difficulty is not None:
+        difficulty = difficulty[indices]
 
     # Sort bounding boxes by their distance to the camera.
     indices = np.argsort(-np.min(corners[..., 2], axis=1))
     
     corners = corners[indices]
     labels = labels[indices]
+
+    if difficulty is not None:
+        difficulty = difficulty[indices]
 
     # Find the pixels corresponding to bounding box corners.
     corners = corners.reshape(-1, 3)
@@ -327,6 +339,19 @@ def draw_bbox(
     if corners is not None:
         for index in range(corners.shape[0]):
             name = labels[index]
+
+            line_color = bbox_color if bbox_color is not None else SIMBEV_PALETTE[name]
+            line_thickness = thickness
+
+            if difficulty is not None:
+                if difficulty[index] == 'easy':
+                    line_thickness *= 3
+                elif difficulty[index] == 'medium':
+                    line_thickness *= 2
+
+                    line_color = [int(c * 0.8) % 256 for c in line_color]
+                else:
+                    line_color = [int(c * 0.6) % 256 for c in line_color]
             
             for start, end in [
                 (0, 1), (0, 2), (0, 4), (1, 3), (1, 5), (2, 3), (2, 6), (3, 7), (4, 5), (4, 6), (5, 7), (6, 7)
@@ -335,8 +360,8 @@ def draw_bbox(
                     canvas,
                     corners[index, start].astype(np.int32),
                     corners[index, end].astype(np.int32),
-                    bbox_color or SIMBEV_PALETTE[name],
-                    thickness,
+                    line_color,
+                    line_thickness,
                     cv2.LINE_AA,
                 )
 
@@ -393,6 +418,7 @@ def visualize_image(
         image: np.ndarray,
         corners: np.ndarray = None,
         labels: np.ndarray = None,
+        difficulty: np.ndarray = None,
         color: tuple = None,
         thickness: int = 1
     ):
@@ -404,6 +430,7 @@ def visualize_image(
         image: image to visualize.
         corners: array of bounding box corners.
         labels: array of bounding box labels.
+        difficulty: array of bounding box difficulty.
         color: bounding box color.
         thickness: bounding box line thickness.
     '''
@@ -412,7 +439,7 @@ def visualize_image(
     if corners is not None and corners.shape[0] > 0:
         canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
         
-        canvas = draw_bbox(canvas, corners, labels, bbox_color=color, thickness=thickness)
+        canvas = draw_bbox(canvas, corners, labels, difficulty, bbox_color=color, thickness=thickness)
         
         canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
 
@@ -423,6 +450,7 @@ def visualize_point_cloud(
         point_cloud: np.ndarray,
         corners: np.ndarray = None,
         labels: np.ndarray = None,
+        difficulty: np.ndarray = None,
         color: np.ndarray = None,
         xlim: tuple = (-80, 80),
         ylim: tuple = (-80, 80),
@@ -438,6 +466,7 @@ def visualize_point_cloud(
         point_cloud: point cloud to visualize.
         corners: array of bounding box corners.
         labels: array of bounding box labels.
+        difficulty: array of bounding box difficulty.
         color: array of point cloud color(s).
         xlim: x-axis limits.
         ylim: y-axis limits.
@@ -512,6 +541,17 @@ def visualize_point_cloud(
             name = labels[index]
             
             bbox_color = tuple([int(c) for c in SIMBEV_PALETTE[name]][::-1])
+            bbox_thickness = max(1, thickness)
+
+            if difficulty is not None:
+                if difficulty[index] == 'easy':
+                    bbox_thickness *= 3
+                elif difficulty[index] == 'medium':
+                    bbox_thickness *= 2
+
+                    bbox_color = tuple([int(c * 0.8) % 256 for c in bbox_color])
+                else:
+                    bbox_color = tuple([int(c * 0.6) % 256 for c in bbox_color])
             
             # Convert to pixels.
             bbox_px = ((coords[index, :, 0] - xlim[0]) * pixels_per_meter).astype(np.int32)
@@ -525,7 +565,7 @@ def visualize_point_cloud(
                 [points],
                 isClosed=True,
                 color=bbox_color,
-                thickness=max(1, thickness),
+                thickness=bbox_thickness,
                 lineType=cv2.LINE_AA
             )
     
@@ -537,6 +577,7 @@ def visualize_point_cloud_3d(
         canvas: np.ndarray,
         corners: np.ndarray = None,
         labels: np.ndarray = None,
+        difficulty: np.ndarray = None,
         color: np.ndarray = None,
         bbox_color: tuple = None,
         thickness: int = 1
@@ -550,6 +591,7 @@ def visualize_point_cloud_3d(
         canvas: canvas to draw on.
         corners: array of bounding box corners.
         labels: array of bounding box labels.
+        difficulty: array of bounding box difficulty.
         color: array of point cloud color(s).
         bbox_color: bounding box color.
         thickness: bounding box line thickness.
@@ -558,7 +600,7 @@ def visualize_point_cloud_3d(
         canvas[point_cloud[:, 1].astype(int), point_cloud[:, 0].astype(int), :] = color
 
     if corners is not None and corners.shape[0] > 0:
-        canvas = draw_bbox(canvas, corners, labels, bbox_color=bbox_color, thickness=thickness)
+        canvas = draw_bbox(canvas, corners, labels, difficulty, bbox_color=bbox_color, thickness=thickness)
     
     canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
     

@@ -268,9 +268,9 @@ class VizDataLoader:
         
         global2lidar = get_global2sensor(frame_data, self._metadata, 'LIDAR')
         
-        corners, labels = transform_bbox(gt_det, global2lidar, self._ignore_valid_flag)
+        corners, labels, difficulty = transform_bbox(gt_det, global2lidar, self._ignore_valid_flag)
         
-        bboxes = [{'corners': c, 'label': l} for c, l in zip(corners, labels)]
+        bboxes = [{'corners': c, 'label': l, 'difficulty': d} for c, l, d in zip(corners, labels, difficulty)]
         
         if sensor_type == 'lidar':
             if 'LIDAR' in frame_data:
@@ -647,7 +647,7 @@ class InteractiveVisualizer:
         else:
             self._loading_label.text = message
     
-    def _on_key_event(self, event):
+    def _on_key_event(self, event: gui.KeyEvent) -> gui.Widget.EventCallbackResult:
         '''
         Handle keyboard events.
         
@@ -994,7 +994,7 @@ class InteractiveVisualizer:
         
         self._panel.frame = gui.Rect(r.get_right() - panel_width, r.y, panel_width, r.height)
     
-    def _on_sensor_changed(self, index):
+    def _on_sensor_changed(self, index: int):
         '''
         Handle sensor type radio button change.
         
@@ -1017,7 +1017,7 @@ class InteractiveVisualizer:
         
         self._update_frame()
     
-    def _on_point_size_slider_changed(self, value):
+    def _on_point_size_slider_changed(self, value: float):
         '''
         Handle point size slider change.
         
@@ -1035,7 +1035,7 @@ class InteractiveVisualizer:
         
         self._update_point_size()
     
-    def _on_speed_changed(self, value):
+    def _on_speed_changed(self, value: int):
         '''
         Handle playback speed slider change.
         
@@ -1074,7 +1074,7 @@ class InteractiveVisualizer:
         
         self._frame_slider.int_value = 0
     
-    def _on_scene_slider_changed(self, value):
+    def _on_scene_slider_changed(self, value: int):
         '''
         Handle scene slider value change.
         
@@ -1103,7 +1103,7 @@ class InteractiveVisualizer:
             # Load and display the new scene.
             self._load_and_display_scene(self._current_scene)
     
-    def _on_frame_slider_changed(self, value):
+    def _on_frame_slider_changed(self, value: int):
         '''
         Handle frame slider value change.
         
@@ -1121,7 +1121,7 @@ class InteractiveVisualizer:
         
         self._update_frame()
     
-    def _on_bbox_toggle(self, checked):
+    def _on_bbox_toggle(self, checked: bool):
         '''
         Handle bounding box checkbox toggle.
         
@@ -1132,7 +1132,7 @@ class InteractiveVisualizer:
 
         self._update_frame()
     
-    def _on_loop_toggle(self, checked):
+    def _on_loop_toggle(self, checked: bool):
         '''
         Handle loop playback checkbox toggle.
         
@@ -1182,7 +1182,7 @@ class InteractiveVisualizer:
         
         max_extent = max(extent[0], extent[1])
         
-        self._scene_widget.look_at(center, [center[0], center[1], max_extent], [0, 1, 0])
+        self._scene_widget.look_at(center, [center[0], center[1], max_extent / np.sqrt(3)], [0, 1, 0])
 
     def _on_tracker_view(self):
         '''Set camera to ego tracker view.'''
@@ -1269,7 +1269,7 @@ class InteractiveVisualizer:
         # Update cache status.
         self._update_cache_status()
     
-    def _update_bboxes(self, bboxes):
+    def _update_bboxes(self, bboxes: list):
         '''
         Update bounding box visualization.
         
@@ -1298,12 +1298,12 @@ class InteractiveVisualizer:
         # Add new bounding boxes.
         for idx, bbox in enumerate(bboxes):
             try:
-                line_set = self._create_bbox_lineset(bbox['corners'], bbox.get('label', 'car'))
+                line_set = self._create_bbox_lineset(bbox['corners'], bbox['label'], bbox['difficulty'])
                 
                 mat = o3d.visualization.rendering.MaterialRecord()
                 
                 mat.shader = 'unlitLine'
-                mat.line_width = 2.0
+                mat.line_width = 6.0 if bbox['difficulty'] == 'easy' else 4.0 if bbox['difficulty'] == 'medium' else 2.0
                 
                 self._scene_widget.scene.add_geometry(f'bbox_{idx}', line_set, mat)
                 
@@ -1314,12 +1314,13 @@ class InteractiveVisualizer:
                 
                 continue
     
-    def _create_bbox_lineset(self, corners, label):
+    def _create_bbox_lineset(self, corners: list, label: str, difficulty: str) -> o3d.geometry.LineSet:
         '''Create Open3D LineSet for bounding box.
         
         Args:
             corners: corners of the bounding box.
             label: label of the bounding box.
+            difficulty: difficulty level of the bounding box.
         
         Returns:
             Open3D LineSet representing the bounding box.
@@ -1335,7 +1336,12 @@ class InteractiveVisualizer:
         line_set.points = o3d.utility.Vector3dVector(corners)
         line_set.lines = o3d.utility.Vector2iVector(lines)
         
-        color = BBOX_COLORS.get(label, [1.0, 1.0, 1.0])
+        color = BBOX_COLORS[label]
+
+        if difficulty == 'hard':
+            color = [c * 0.2 for c in color]
+        elif difficulty == 'medium':
+            color = [c * 0.6 for c in color]
         
         colors = [color for _ in range(len(lines))]
         

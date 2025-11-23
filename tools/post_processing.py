@@ -26,6 +26,41 @@ except ImportError:
     
     CUDA_AVAILABLE = False
 
+OBJECT_CLASSES = {
+    7:  'traffic_light',
+    8:  'traffic_sign',
+    12: 'pedestrian',
+    13: 'rider',
+    14: 'car',
+    15: 'truck',
+    16: 'bus',
+    18: 'motorcycle',
+    19: 'bicycle'
+}
+
+DISTANCE_THRESHOLDS = {
+    'traffic_light': [20.0, 40.0],
+    'traffic_sign':  [20.0, 40.0],
+    'pedestrian':    [20.0, 40.0],
+    'rider':         [20.0, 40.0],
+    'car':           [30.0, 60.0],
+    'truck':         [40.0, 80.0],
+    'bus':           [40.0, 80.0],
+    'motorcycle':    [20.0, 40.0],
+    'bicycle':       [20.0, 40.0]
+}
+
+POINT_THRESHOLDS = {
+    'traffic_light': [20, 10],
+    'traffic_sign':  [20, 10],
+    'pedestrian':    [40, 20],
+    'rider':         [40, 20],
+    'car':           [80, 30],
+    'truck':         [100, 40],
+    'bus':           [100, 40],
+    'motorcycle':    [40, 20],
+    'bicycle':       [40, 20]
+}
 
 CAM_NAME = [
     'CAM_FRONT_LEFT',
@@ -341,6 +376,19 @@ def main():
                         obj['num_lidar_pts'] = num_lidar_points
                         obj['num_radar_pts'] = num_radar_points
                         obj['valid_flag'] = valid_flag
+
+                        for tag in obj['semantic_tags']:
+                            if tag in OBJECT_CLASSES:
+                                obj['class'] = OBJECT_CLASSES[tag]
+
+                                if obj['distance_to_ego'] >= DISTANCE_THRESHOLDS[obj['class']][1] or \
+                                    (obj['num_lidar_pts'] + obj['num_radar_pts']) < POINT_THRESHOLDS[obj['class']][1]:
+                                    obj['difficulty'] = 'hard'
+                                elif obj['distance_to_ego'] >= DISTANCE_THRESHOLDS[obj['class']][0] or \
+                                    (obj['num_lidar_pts'] + obj['num_radar_pts']) < POINT_THRESHOLDS[obj['class']][0]:
+                                    obj['difficulty'] = 'medium'
+                                else:
+                                    obj['difficulty'] = 'easy'
 
                         new_det_objects.append(obj)
                     

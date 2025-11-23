@@ -63,9 +63,21 @@ def carla_single_vector_to_numpy(vector: carla.Vector3D) -> np.ndarray:
         vector: CARLA vector.
     
     Returns:
-        vector_array: NumPy array of the vector.
+        NumPy array of the vector.
     '''
     return np.array([vector.x, vector.y, vector.z])
+
+def carla_single_rotation_to_numpy(rotation: carla.Rotation) -> np.ndarray:
+    '''
+    Convert a single CARLA rotation to a NumPy array.
+
+    Args:
+        rotation: CARLA rotation.
+    
+    Returns:
+        NumPy array of the rotation.
+    '''
+    return np.array([rotation.roll, rotation.pitch, rotation.yaw])
 
 def local_to_global(location: carla.Location, rotation: carla.Rotation) -> np.ndarray:
     '''
