@@ -238,378 +238,628 @@ def generate_metadata(config: dict) -> dict:
         
     return metadata
 
+def _create_directory_structure(args, config: dict):
+    '''
+    Create the required directory structure for saving data.
+    
+    Args:
+        args: command line arguments.
+        config: configuration dictionary.
+    '''
+    # Camera directories.
+    for name in CAM_NAME:
+        if config['use_rgb_camera']:
+            os.makedirs(f'{args.path}/simbev/sweeps/RGB-{name}', exist_ok=True)
+        if config['use_semantic_camera']:
+            os.makedirs(f'{args.path}/simbev/sweeps/SEG-{name}', exist_ok=True)
+        if config['use_instance_camera']:
+            os.makedirs(f'{args.path}/simbev/sweeps/IST-{name}', exist_ok=True)
+        if config['use_depth_camera']:
+            os.makedirs(f'{args.path}/simbev/sweeps/DPT-{name}', exist_ok=True)
+        if config['use_flow_camera']:
+            os.makedirs(f'{args.path}/simbev/sweeps/FLW-{name}', exist_ok=True)
+    
+    # Lidar directories.
+    if config['use_lidar']:
+        os.makedirs(f'{args.path}/simbev/sweeps/LIDAR', exist_ok=True)
+    if config['use_semantic_lidar']:
+        os.makedirs(f'{args.path}/simbev/sweeps/SEG-LIDAR', exist_ok=True)
+    
+    # Radar directories.
+    if config['use_radar']:
+        for name in RAD_NAME:
+            os.makedirs(f'{args.path}/simbev/sweeps/{name}', exist_ok=True)
+    
+    # IMU and GNSS directories.
+    if config['use_gnss']:
+        os.makedirs(f'{args.path}/simbev/sweeps/GNSS', exist_ok=True)
+    if config['use_imu']:
+        os.makedirs(f'{args.path}/simbev/sweeps/IMU', exist_ok=True)
+    
+    # Ground truth directories.
+    os.makedirs(f'{args.path}/simbev/ground-truth/seg', exist_ok=True)
+    os.makedirs(f'{args.path}/simbev/ground-truth/det', exist_ok=True)
+    os.makedirs(f'{args.path}/simbev/ground-truth/seg_viz', exist_ok=True)
+    os.makedirs(f'{args.path}/simbev/ground-truth/hd_map', exist_ok=True)
+    
+    # Dataset info directories.
+    os.makedirs(f'{args.path}/simbev/infos', exist_ok=True)
+    os.makedirs(f'{args.path}/simbev/logs', exist_ok=True)
+    os.makedirs(f'{args.path}/simbev/configs', exist_ok=True)
+
+def _initialize_carla_core(config: dict, logger: logging.Logger) -> CarlaCore:
+    '''
+    Initialize CarlaCore and perform initial setup.
+    
+    Args:
+        config: configuration dictionary.
+        logger: logger instance.
+        
+    Returns:
+        Initialized CarlaCore instance.
+    '''
+    logger.info('Setting things up...')
+    
+    core = CarlaCore(config)
+    
+    # Load Town01 once to get around a bug in CARLA where the pedestrian
+    # navigation information for the wrong map is loaded.
+    core.load_map('Town01')
+    core.spawn_vehicle()
+    core.start_scene()
+    core.tick()
+    core.stop_scene()
+    core.destroy_vehicle()
+    core.shut_down_traffic_manager()
+    
+    return core
+
+def _run_warmup(core: CarlaCore, config: dict):
+    '''
+    Run the simulation warmup phase.
+    
+    Args:
+        core: CarlaCore instance.
+        config: configuration dictionary.
+    '''
+    pbar = tqdm(
+        range(round(config['warmup_duration'] / config['timestep'])),
+        desc='Warming up',
+        ncols=120,
+        colour='#FF0000'
+    )
+    
+    for _ in pbar:
+        core.tick()
+
+def _run_data_collection(
+        args,
+        core: CarlaCore,
+        config: dict,
+        logger: logging.Logger,
+        scene_counter: int,
+        scene_duration: int
+    ):
+    '''
+    Run the data collection phase.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        logger: logger instance.
+        scene_counter: scene number.
+        scene_duration: duration of the scene in seconds.
+    '''
+    pbar = tqdm(
+        range(round(scene_duration / config['timestep'])),
+        desc=f'Scene {scene_counter:04d}',
+        ncols=120,
+        colour='#00FF00'
+    )
+    
+    for j in pbar:
+        should_terminate = (
+            core.get_world_manager().get_terminate_scene() and
+            j % round(1.0 / config['timestep']) == 0
+        )
+        
+        if not should_terminate:
+            core.tick(args.path, scene_counter, j, args.render, args.save)
+        else:
+            logger.warning('Termination conditions met. Ending scene early.')
+
+            core.set_scene_info({'terminated_early': True})
+            
+            return
+
+def _generate_scene(
+        args,
+        core: CarlaCore,
+        config: dict,
+        logger: logging.Logger,
+        scene_counter: int,
+        data: dict,
+        seed: int = None
+    ):
+    '''
+    Generate a single scene.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+        scene_counter: scene number.
+        data: scene data information dictionary.
+        seed: random seed.
+    '''
+    # Randomly select scene duration.
+    scene_duration = max(round(np.random.uniform(config['min_scene_duration'], config['max_scene_duration'])), 1)
+    
+    core.set_scene_duration(scene_duration)
+    
+    logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
+    
+    core.start_scene(seed)
+
+    # Run the simulation for a few seconds so everything gets going.
+    _run_warmup(core, config)
+    
+    # Start logging the scene.
+    if args.save:
+        core.client.start_recorder(f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log', True)
+    
+    # Start data collection.
+    _run_data_collection(args, core, config, logger, scene_counter, scene_duration)
+    
+    if args.save:
+        # Stop logging the scene.
+        core.client.stop_recorder()
+        
+        # Get the scene data information and save it.
+        scene_data = core.package_data()
+        
+        scene_data['scene_info']['log'] = f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log'
+        scene_data['scene_info']['config'] = f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml'
+        
+        data[f'scene_{scene_counter:04d}'] = copy.deepcopy(scene_data)
+    
+    core.stop_scene()
+
+def _create_scenes_for_map(
+        args,
+        core: CarlaCore,
+        config: dict,
+        metadata: dict,
+        logger: logging.Logger,
+        map_name: str,
+        split: str,
+        scene_counter: int,
+        data: dict,
+        num_scenes: int
+    ) -> int:
+    '''
+    Create multiple scenes for a specific map.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+        map_name: map name.
+        split: data split (train/val/test).
+        scene_counter: current scene counter.
+        data: existing scene data information dictionary.
+        num_scenes: number of scenes to create.
+        
+    Returns:
+        scene_counter: updated scene counter.
+    '''
+    # Set the random seed if configured.
+    if config['use_scene_number_for_random_seed']:
+        seed = scene_counter + config['random_seed_offset']
+        
+        random.seed(seed)
+        np.random.seed(seed)
+    else:
+        seed = None
+    
+    core.connect_client()
+    core.load_map(map_name)
+
+    if seed is not None:
+        core.set_carla_seed(seed)
+
+    core.spawn_vehicle()
+    core.set_carla_seed(seed)
+    
+    for i in range(num_scenes):
+        logger.info(f'Creating scene {scene_counter:04d} in {map_name} for the {split} set...')
+        
+        if i > 0:
+            # Update the random seed if configured.
+            if config['use_scene_number_for_random_seed']:
+                seed = scene_counter + config['random_seed_offset']
+                
+                random.seed(seed)
+                np.random.seed(seed)
+
+                core.set_carla_seed(seed)
+                core.spawn_vehicle()
+                core.set_carla_seed(seed)
+            else:
+                seed = None
+        
+                core.move_vehicle()
+        
+        # Generate and save the scene.
+        _generate_scene(args, core, config, logger, scene_counter, data, seed)
+        
+        # Save the updated data information.
+        if args.save:
+            info = {'metadata': metadata, 'data': data}
+            
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
+                json.dump(info, f, indent=4)
+            
+            with open(f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml', 'w') as f:
+                yaml.dump(config, f)
+        
+        scene_counter += 1
+
+        if config['use_scene_number_for_random_seed']:
+            core.destroy_vehicle()
+    
+    if not config['use_scene_number_for_random_seed']:
+        core.destroy_vehicle()
+    
+    core.shut_down_traffic_manager()
+    
+    return scene_counter
+
+def collect_data_create_mode(args, core: CarlaCore, config: dict, metadata: dict, logger: logging.Logger):
+    '''
+    Create new scenes and collect data.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+    '''
+    scene_counter = 0
+    
+    # Check to see how many scenes have been created already. Then, create the
+    # remaining scenes.
+    for split in ['train', 'val', 'test']:
+        if args.save and os.path.exists(f'{args.path}/simbev/infos/simbev_infos_{split}.json'):
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
+                infos = json.load(f)
+            
+            scene_counter += len(infos['data'])
+    
+    if args.save:
+        # Remove any stale files from the previous run.
+        if os.path.exists(f'{args.path}/simbev'):
+            stale_scene_id = f'{scene_counter:04d}'
+            
+            logger.debug(f'Removing stale files for scene {stale_scene_id}...')
+            
+            os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
+            
+            logger.debug(f'Removed stale files for scene {stale_scene_id}.')
+
+    for split in ['train', 'val', 'test']:
+        data = {}
+
+        if args.save and os.path.exists(f'{args.path}/simbev/infos/simbev_infos_{split}.json'):
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
+                infos = json.load(f)
+            
+            data = infos['data']
+            
+            # For each data split and map, check how many scenes have been
+            # created already.
+            for key in data.keys():
+                map_name = data[key]['scene_info']['map']
+                
+                if map_name in config[f'{split}_scene_config']:
+                    config[f'{split}_scene_config'][map_name] -= 1
+        
+        # Create the scenes for each map.
+        if config[f'{split}_scene_config'] is not None:
+            for map_name in config[f'{split}_scene_config']:
+                if config[f'{split}_scene_config'][map_name] > 0:
+                    scene_counter = _create_scenes_for_map(
+                        args,
+                        core,
+                        config,
+                        metadata,
+                        logger,
+                        map_name,
+                        split,
+                        scene_counter,
+                        data,
+                        config[f'{split}_scene_config'][map_name]
+                    )
+
+def collect_data_replace_mode(args, core: CarlaCore, config: dict, metadata: dict, logger: logging.Logger):
+    '''
+    Replace specified scenes with newly generated ones.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+    '''
+    first_setup = True
+
+    for split in ['train', 'val', 'test']:
+        if not os.path.exists(f'{args.path}/simbev/infos/simbev_infos_{split}.json'):
+            continue
+        
+        with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
+            infos = json.load(f)
+        
+        data = infos['data']
+        
+        # Replace the specified scenes.
+        for scene_counter in config['replacement_scene_config']:            
+            scene_key = f'scene_{scene_counter:04d}'
+            
+            if scene_key not in data.keys():
+                logger.warning(f'Scene {scene_counter:04d} not found in the {split} set. Skipping...')
+                
+                continue
+            
+            # Remove the files of the specified scene.
+            if os.path.exists(f'{args.path}/simbev'):
+                stale_scene_id = f'{scene_counter:04d}'
+                
+                logger.debug(f'Removing the files of scene {stale_scene_id}...')
+                
+                os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
+                
+                logger.debug(f'Removed the files of scene {stale_scene_id}.')
+            
+            map_name = data[scene_key]['scene_info']['map']
+
+            if config['use_scene_number_for_random_seed']:
+                seed = scene_counter + config['random_seed_offset']
+
+                random.seed(seed)
+                np.random.seed(seed)
+            else:
+                seed = None
+            
+            if first_setup:
+                core.connect_client()
+                core.load_map(map_name)
+                
+                first_setup = False
+            
+            # Load a new map if necessary.
+            if map_name != core.get_world_manager().get_map_name():
+                core.shut_down_traffic_manager()
+                core.connect_client()
+                core.load_map(map_name)
+            
+            logger.info(f'Replacing scene {scene_counter:04d} in {map_name} for the {split} set...')
+
+            if seed is not None:
+                core.set_carla_seed(seed)
+
+            core.spawn_vehicle()
+
+            if seed is not None:
+                core.set_carla_seed(seed)
+            
+            # Generate and save the replacement scene.
+            _generate_scene(args, core, config, logger, scene_counter, data, seed)
+            
+            # Save the updated data information.
+            info = {'metadata': metadata, 'data': data}
+            
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
+                json.dump(info, f, indent=4)
+            
+            with open(f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml', 'w') as f:
+                yaml.dump(config, f)
+            
+            core.destroy_vehicle()
+
+def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dict, logger: logging.Logger):
+    '''
+    Augment specified scenes with additional sensor data.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+    '''
+    first_setup = True
+
+    for split in ['train', 'val', 'test']:
+        info_path = f'{args.path}/simbev/infos/simbev_infos_{split}.json'
+        
+        if not os.path.exists(info_path):
+            continue
+        
+        with open(info_path, 'r') as f:
+            infos = json.load(f)
+        
+        data = infos['data']
+        
+        # Augment the specified scenes.
+        for scene_counter in config['augmentation_scene_config']:            
+            scene_key = f'scene_{scene_counter:04d}'
+            
+            if scene_key not in data.keys():
+                logger.debug(f'Scene {scene_counter:04d} not found in the {split} set. Skipping...')
+                
+                continue
+            
+            # Load the original scene configuration.
+            with open(data[scene_key]['scene_info']['config']) as f:
+                original_config = yaml.load(f, Loader=yaml.FullLoader)
+            
+            if not original_config['use_scene_number_for_random_seed']:
+                logger.warning(f'Cannot augment scene {scene_counter:04d} because it was created without using the '
+                               f'scene number as random seed.')
+                
+                continue
+
+            original_data = copy.deepcopy(data[scene_key])
+
+            new_config = copy.deepcopy(config)
+            config = copy.deepcopy(original_config)
+
+            # Replace the sensor parameters of the original configuration with
+            # those of the new one.
+            for sensor in [
+                'rgb_camera',
+                'semantic_camera',
+                'instance_camera',
+                'depth_camera',
+                'flow_camera',
+                'lidar',
+                'semantic_lidar',
+                'radar',
+                'gnss',
+                'imu'
+            ]:
+                config[f'use_{sensor}'] = new_config[f'use_{sensor}']
+                config[f'{sensor}_properties'] = new_config[f'{sensor}_properties']
+                
+                if sensor in ['lidar', 'semantic_lidar']:
+                    config[f'{sensor}_channels'] = new_config[f'{sensor}_channels']
+                    config[f'{sensor}_range'] = new_config[f'{sensor}_range']
+                
+            config['camera_width'] = new_config['camera_width']
+            config['camera_height'] = new_config['camera_height']
+            config['camera_fov'] = new_config['camera_fov']
+
+            config['radar_range'] = new_config['radar_range']
+            config['radar_horizontal_fov'] = new_config['radar_horizontal_fov']
+            config['radar_vertical_fov'] = new_config['radar_vertical_fov']
+            
+            map_name = data[scene_key]['scene_info']['map']
+
+            seed = scene_counter + config['random_seed_offset']
+
+            random.seed(seed)
+            np.random.seed(seed)
+            
+            if first_setup:
+                core.connect_client()
+                core.load_map(map_name)
+                
+                first_setup = False
+            
+            # Load a new map if necessary.
+            if map_name != core.get_world_manager().get_map_name():
+                core.shut_down_traffic_manager()
+                core.connect_client()
+                core.load_map(map_name)
+            
+            logger.info(f'Augmenting scene {scene_counter:04d} in {map_name} for the {split} set...')
+
+            core.set_carla_seed(seed)
+            core.spawn_vehicle()
+            core.set_carla_seed(seed)
+            
+            # Generate and save the replacement scene.
+            _generate_scene(args, core, config, logger, scene_counter, data, seed)
+
+            for i, frame in enumerate(data[scene_key]['scene_data']):
+                frame.update(original_data['scene_data'][i])
+            
+            # Save the updated data information.
+            info = {'metadata': metadata, 'data': data}
+            
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
+                json.dump(info, f, indent=4)
+            
+            for i in range(100):
+                config_path = f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}-augment-{i}.yaml'
+                
+                if os.path.exists(config_path):
+                    continue
+                
+                with open(config_path, 'w') as f:
+                    yaml.dump(config, f)
+                    
+                break
+            
+            core.destroy_vehicle()
+
+            config = copy.deepcopy(new_config)
+
+def collect_data(args, mode: str, core: CarlaCore, config: dict, metadata: dict, logger: logging.Logger):
+    '''
+    Data collection dispatcher.
+    
+    Args:
+        args: command line arguments.
+        mode: data collection mode ('create', 'replace', 'augment').
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+    '''
+    mode_handlers = {
+        'create': collect_data_create_mode,
+        'replace': collect_data_replace_mode,
+        'augment': collect_data_augment_mode
+    }
+    
+    if mode not in mode_handlers:
+        logger.error(f'Unknown mode: {mode}')
+        
+        return
+    
+    if mode in ['replace', 'augment'] and not args.save:
+        logger.error(f'The {mode} mode cannot be used with the --no-save flag.')
+        
+        return
+    
+    # Call the appropriate mode handler.
+    mode_handlers[mode](args, core, config, metadata, logger)
+
 def main(logger: logging.Logger):
     config = parse_config(args)
-
+    
     metadata = generate_metadata(config)
-
+    
     try:
         if args.save:
-            for name in CAM_NAME:
-                if config['use_rgb_camera']:
-                    os.makedirs(f'{args.path}/simbev/sweeps/RGB-{name}', exist_ok=True)
-            
-                if config['use_semantic_camera']:
-                    os.makedirs(f'{args.path}/simbev/sweeps/SEG-{name}', exist_ok=True)
-            
-                if config['use_instance_camera']:
-                    os.makedirs(f'{args.path}/simbev/sweeps/IST-{name}', exist_ok=True)
-            
-                if config['use_depth_camera']:
-                    os.makedirs(f'{args.path}/simbev/sweeps/DPT-{name}', exist_ok=True)
-            
-                if config['use_flow_camera']:
-                    os.makedirs(f'{args.path}/simbev/sweeps/FLW-{name}', exist_ok=True)
-            
-            if config['use_lidar']:
-                os.makedirs(f'{args.path}/simbev/sweeps/LIDAR', exist_ok=True)
-            
-            if config['use_semantic_lidar']:
-                os.makedirs(f'{args.path}/simbev/sweeps/SEG-LIDAR', exist_ok=True)
-            
-            if config['use_radar']:
-                for name in RAD_NAME:
-                    os.makedirs(f'{args.path}/simbev/sweeps/{name}', exist_ok=True)
-            
-            if config['use_gnss']:
-                os.makedirs(f'{args.path}/simbev/sweeps/GNSS', exist_ok=True)
-            
-            if config['use_imu']:
-                os.makedirs(f'{args.path}/simbev/sweeps/IMU', exist_ok=True)
-            
-            os.makedirs(f'{args.path}/simbev/ground-truth/seg', exist_ok=True)
-            os.makedirs(f'{args.path}/simbev/ground-truth/det', exist_ok=True)
-            os.makedirs(f'{args.path}/simbev/ground-truth/seg_viz', exist_ok=True)
-            os.makedirs(f'{args.path}/simbev/ground-truth/hd_map', exist_ok=True)
-            
-            os.makedirs(f'{args.path}/simbev/infos', exist_ok=True)
-            
-            os.makedirs(f'{args.path}/simbev/logs', exist_ok=True)
-
-            os.makedirs(f'{args.path}/simbev/configs', exist_ok=True)
-
-        if config['mode'] == 'create':
-            logger.info('Setting things up...')
-            
-            scene_counter = 0
-
-            core = CarlaCore(config)
-
-            # Load Town01 once to get around a bug in CARLA where the
-            # pedestrian navigation information for the wrong town is loaded.
-            core.load_map('Town01')
-
-            core.spawn_vehicle()
-            
-            core.start_scene()
-
-            core.tick()
-
-            core.stop_scene()
-
-            core.destroy_vehicle()
-            
-            # Check to see how many scenes have already been created. Then,
-            # create the remaining scenes.
-            for split in ['train', 'val', 'test']:
-                if args.save and os.path.exists(f'{args.path}/simbev/infos/simbev_infos_{split}.json'):
-                    with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
-                        infos = json.load(f)
-                    
-                    scene_counter += len(infos['data'])
-
-            if args.save:
-                # Remove any stale files from the previous run.
-                if os.path.exists(f'{args.path}/simbev'):
-                    stale_scene_id = f'{scene_counter:04d}'
-
-                    logger.debug(f'Removing stale files for scene {stale_scene_id}...')
-
-                    os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
-                    
-                    logger.debug(f'Removed stale files for scene {stale_scene_id}.')
-
-            for split in ['train', 'val', 'test']:
-                data = {}
-
-                if args.save and os.path.exists(f'{args.path}/simbev/infos/simbev_infos_{split}.json'):
-                    with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
-                        infos = json.load(f)
-
-                    data = infos['data']
-
-                    # For each split and each town, check how many scenes have
-                    # already been created.
-                    for key in data.keys():
-                        town = data[key]['scene_info']['map']
-                        
-                        if town in config[f'{split}_scene_config']:
-                            config[f'{split}_scene_config'][town] -= 1
-
-                # Create the scenes for each town.
-                if config[f'{split}_scene_config'] is not None:
-                    for town in config[f'{split}_scene_config']:
-                        if config[f'{split}_scene_config'][town] > 0:
-                            if config['use_scene_number_for_random_seed']:
-                                seed = scene_counter + config['random_seed_offset']
-
-                                random.seed(seed)
-                                np.random.seed(seed)
-                            else:
-                                seed = None
-                            
-                            core.connect_client()
-                            
-                            core.load_map(town)
-
-                            core.spawn_vehicle()
-
-                            for i in range(config[f'{split}_scene_config'][town]):
-                                logger.info(f'Creating scene {scene_counter:04d} in {town} for the {split} set...')
-
-                                if config['use_scene_number_for_random_seed']:
-                                    seed = scene_counter + config['random_seed_offset']
-
-                                    random.seed(seed)
-                                    np.random.seed(seed)
-                                else:
-                                    seed = None
-                                
-                                # Randomly select the scene duration.
-                                scene_duration = max(
-                                    round(np.random.uniform(
-                                        config['min_scene_duration'],
-                                        config['max_scene_duration'])
-                                    ),
-                                    1
-                                )
-
-                                core.set_scene_duration(scene_duration)
-
-                                logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
-                                
-                                # Move the vehicle to a new location for all
-                                # but the first scene.
-                                if i > 0:
-                                    core.move_vehicle()
-
-                                core.start_scene(seed)
-
-                                # Run the simulation for a few seconds so
-                                # everything gets going.
-                                pbar = tqdm(
-                                    range(round(config['warmup_duration'] / config['timestep'])),
-                                    desc='Warming up',
-                                    ncols=120,
-                                    colour='#FF0000'
-                                )
-
-                                for _ in pbar:
-                                    core.tick()
-
-                                # Start logging the scene.
-                                if args.save:
-                                    core.client.start_recorder(
-                                        f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log',
-                                        True
-                                    )
-
-                                # Start data collection.
-                                pbar = tqdm(
-                                    range(round(scene_duration / config['timestep'])),
-                                    desc=f'Scene {scene_counter:04d}',
-                                    ncols=120,
-                                    colour='#00FF00'
-                                )
-
-                                for j in pbar:
-                                    if not (core.get_world_manager().get_terminate_scene() and \
-                                            j % round(1.0 / config['timestep']) == 0):
-                                        core.tick(args.path, scene_counter, j, args.render, args.save)
-                                    else:
-                                        logger.warning('Termination conditions met. Ending scene early.')
-
-                                        core.set_scene_info({'terminated_early': True})
-
-                                        break
-                                
-                                if args.save:
-                                    # Stop logging the scene.
-                                    core.client.stop_recorder()
-
-                                    # Get the scene data and save it.
-                                    scene_data = core.package_data()
-
-                                    scene_data['scene_info']['log'] = f'{args.path}/simbev/logs/' \
-                                        f'SimBEV-scene-{scene_counter:04d}.log'
-                                    scene_data['scene_info']['config'] = f'{args.path}/simbev/configs/' \
-                                        f'SimBEV-scene-{scene_counter:04d}.yaml'
-
-                                    data[f'scene_{scene_counter:04d}'] = copy.deepcopy(scene_data)
-                                    
-                                    info = {'metadata': metadata, 'data': data}
-
-                                    with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
-                                        json.dump(info, f, indent=4)
-                                    
-                                    with open(
-                                        f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml',
-                                        'w'
-                                    ) as f:
-                                        yaml.dump(config, f)
-
-                                core.stop_scene()
-                                
-                                scene_counter += 1
-
-                            core.destroy_vehicle()
+            _create_directory_structure(args, config)
         
-        elif config['mode'] == 'replace' and args.save:
-            logger.info('Setting things up...')
-
-            core = CarlaCore(config)
-
-            # Load Town01 once to get around a bug in CARLA where the
-            # pedestrian navigation information for the wrong town is loaded.
-            core.load_map('Town01')
-
-            core.spawn_vehicle()
-            
-            core.start_scene()
-
-            core.tick()
-
-            core.stop_scene()
-
-            core.destroy_vehicle()
-            
-            for split in ['train', 'val', 'test']:
-                if os.path.exists(f'{args.path}/simbev/infos/simbev_infos_{split}.json'):
-                    with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
-                        infos = json.load(f)
-
-                    data = infos['data']
-
-                    # Replace the specified scenes.
-                    for scene_counter in config['replacement_scene_config']:
-                        # Remove the files of the specified scene.
-                        if os.path.exists(f'{args.path}/simbev'):
-                            stale_scene_id = f'{scene_counter:04d}'
-
-                            logger.debug(f'Removing the files of scene {stale_scene_id}...')
-
-                            os.system(f'find "{args.path}/simbev" | grep "scene-{stale_scene_id}" | xargs rm -f')
-
-                            logger.debug(f'Removed the files of scene {stale_scene_id}.')
-
-                        if f'scene_{scene_counter:04d}' in data.keys():
-                            town = data[f'scene_{scene_counter:04d}']['scene_info']['map']
-
-                            if config['use_scene_number_for_random_seed']:
-                                seed = scene_counter + config['random_seed_offset']
-
-                                random.seed(seed)
-                                np.random.seed(seed)
-                            else:
-                                seed = None
-
-                            # Load a new map if necessary.
-                            if town != core.get_world_manager().get_map_name():
-                                core.connect_client()
-                                
-                                core.load_map(town)
-
-                            logger.info(f'Replacing scene {scene_counter:04d} in {town} for the {split} set...')
-
-                            # Randomly select the scene duration.
-                            scene_duration = max(
-                                round(np.random.uniform(config['min_scene_duration'], config['max_scene_duration'])),
-                                1
-                            )
-
-                            core.set_scene_duration(scene_duration)
-
-                            logger.info(f'Scene {scene_counter:04d} duration: {scene_duration} seconds.')
-                            
-                            core.spawn_vehicle()
-                            
-                            core.start_scene(seed)
-
-                            # Run the simulation for a few seconds so
-                            # everything gets going.
-                            pbar = tqdm(
-                                range(round(config['warmup_duration'] / config['timestep'])),
-                                desc='Warming up',
-                                ncols=120,
-                                colour='#FF0000'
-                            )
-                            
-                            for _ in pbar:
-                                core.tick()
-
-                            # Start logging the scene.
-                            core.client.start_recorder(
-                                f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log',
-                                True
-                            )
-
-                            # Start data collection.
-                            pbar = tqdm(
-                                range(round(scene_duration / config['timestep'])),
-                                desc=f'Scene {scene_counter:04d}',
-                                ncols=120,
-                                colour='#00FF00'
-                            )
-
-                            for j in pbar:
-                                if not (core.get_world_manager().get_terminate_scene() and \
-                                        j % round(1.0 / config['timestep']) == 0):
-                                    core.tick(args.path, scene_counter, j, args.render, args.save)
-                                else:
-                                    logger.warning('Termination conditions met. Ending scene early.')
-
-                                    core.set_scene_info({'terminated_early': True})
-                                    
-                                    break
-
-                            # Stop logging the scene.
-                            core.client.stop_recorder()
-
-                            # Get the scene data and save it.
-                            scene_data = core.package_data()
-
-                            scene_data['scene_info']['log'] = f'{args.path}/simbev/logs/' \
-                                f'SimBEV-scene-{scene_counter:04d}.log'
-                            scene_data['scene_info']['config'] = f'{args.path}/simbev/configs/' \
-                                f'SimBEV-scene-{scene_counter:04d}.yaml'
-
-                            data[f'scene_{scene_counter:04d}'] = copy.deepcopy(scene_data)
-                            
-                            info = {'metadata': metadata, 'data': data}
-
-                            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
-                                json.dump(info, f, indent=4)
-
-                            with open(f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}.yaml', 'w') as f:
-                                yaml.dump(config, f)
-                            
-                            core.stop_scene()
-
-                            core.destroy_vehicle()             
-                        else:
-                            logger.warning(f'Scene {scene_counter:04d} not found in the {split} set. Skipping...')
+        # Initialize CarlaCore.
+        core = _initialize_carla_core(config, logger)
+        
+        # Run data collection with the specified mode.
+        collect_data(args, config['mode'], core, config, metadata, logger)
         
         logger.warning('Killing all servers...')
         
         kill_all_servers()
-
+    
     except Exception:
         logger.critical(traceback.format_exc())
-
+        
         logger.warning('Killing all servers...')
-
+        
         kill_all_servers()
-
+        
         time.sleep(3.0)
 
 def entry():

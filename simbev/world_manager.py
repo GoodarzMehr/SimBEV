@@ -50,6 +50,10 @@ class WorldManager:
         '''Get the name of the current map.'''
         return self._map_name
     
+    def get_world(self) -> carla.World:
+        '''Get the CARLA world.'''
+        return self._world
+    
     def set_scene_duration(self, duration: int):
         '''
         Set scene duration.
@@ -277,6 +281,16 @@ class WorldManager:
 
         logger.debug('Vehicle Manager created.')
     
+    def set_carla_seed(self, seed: int):
+        '''
+        Set CARLA's random seed.
+
+        Args:
+            seed: random seed.
+        '''
+        self._world.set_pedestrians_seed(seed)
+        self._traffic_manager.set_random_device_seed(seed)
+    
     def spawn_vehicle(self):
         '''Prepare to spawn the ego vehicle at a spawn point.'''
         # Get the ego vehicle blueprint and spawn points.
@@ -347,10 +361,6 @@ class WorldManager:
             self._termination_counter = 0
             
             self._terminate_scene = False
-
-            if seed is not None:
-                self._world.set_pedestrians_seed(seed)
-                self._traffic_manager.set_random_device_seed(seed)
 
             if self._config['dynamic_settings_adjustments']:
                 if self._map_name in ['Town12', 'Town13']:
@@ -506,6 +516,14 @@ class WorldManager:
     def destroy_vehicle(self):
         '''Destroy the vehicle.'''
         return self._vehicle_manager.destroy_vehicle()
+    
+    def shut_down_traffic_manager(self):
+        '''Shut down the Traffic Manager.'''
+        logger.debug('Shutting down the Traffic Manager...')
+
+        self._traffic_manager.shut_down()
+
+        logger.debug('Traffic Manager shut down.')
     
     def package_data(self) -> dict:
         '''

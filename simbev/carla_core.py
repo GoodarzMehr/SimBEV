@@ -73,7 +73,7 @@ class CarlaCore:
     def _init_server(self):
         '''Initialize the CARLA server.'''
         # Start server on a random port.
-        self._server_port = random.randint(15000, 32000)
+        self._server_port = 17279
 
         server_port_used = is_used(self._server_port)
         stream_port_used = is_used(self._server_port + 1)
@@ -193,6 +193,17 @@ class CarlaCore:
 
         return self._world_manager.load_map(map_name)
     
+    def set_carla_seed(self, seed: int):
+        '''
+        Set CARLA's random seed.
+
+        Args:
+            seed: random seed.
+        '''
+        self._pause.wait()
+
+        return self._world_manager.set_carla_seed(seed)
+    
     def spawn_vehicle(self):
         '''Spawn a vehicle.'''
         self._pause.wait()
@@ -242,6 +253,12 @@ class CarlaCore:
         self._pause.wait()
         
         return self._world_manager.destroy_vehicle()
+    
+    def shut_down_traffic_manager(self):
+        '''Shut down the Traffic Manager.'''
+        self._pause.wait()
+
+        return self._world_manager.shut_down_traffic_manager()
     
     def package_data(self):
         '''Package scene information and data and return it.'''
