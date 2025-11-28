@@ -438,7 +438,15 @@ class WorldManager:
             )
         )
 
-    def tick(self, path: str = None, scene: int = None, frame: int = None, render: bool = False, save: bool = False):
+    def tick(
+            self,
+            path: str = None,
+            scene: int = None,
+            frame: int = None,
+            render: bool = False,
+            save: bool = False,
+            augment: bool = False
+        ):
         '''
         Proceed for one time step.
 
@@ -448,6 +456,7 @@ class WorldManager:
             frame: frame number.
             render: whether to render sensor data.
             save: whether to save sensor data to file.
+            augment: whether the dataset is being augmented.
         '''
         # Wait for all I/O operations to finish before proceeding.
         if save:
@@ -497,7 +506,9 @@ class WorldManager:
         # Save the data and ground truth to file.
         if save and all(v is not None for v in [path, scene, frame]):
             self._vehicle_manager.get_ground_truth_manager().save(path, scene, frame)
-            self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
+
+            if not augment:
+                self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
 
         # Decide whether to terminate the scene.
         if scene is not None and self._config['early_scene_termination']:

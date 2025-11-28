@@ -227,7 +227,15 @@ class CarlaCore:
 
         return self._world_manager.start_scene(seed)
 
-    def tick(self, path: str = None, scene: int = None, frame: int = None, render: bool = False, save: bool = False):
+    def tick(
+            self,
+            path: str = None,
+            scene: int = None,
+            frame: int = None,
+            render: bool = False,
+            save: bool = False,
+            augment: bool = False
+        ):
         '''
         Proceed for one time step.
 
@@ -237,10 +245,11 @@ class CarlaCore:
             frame: frame number.
             render: whether to render sensor data.
             save: whether to save sensor data to file.
+            augment: whether the dataset is being augmented.
         '''
         self._pause.wait()
 
-        return self._world_manager.tick(path, scene, frame, render, save)
+        return self._world_manager.tick(path, scene, frame, render, save, augment)
     
     def stop_scene(self):
         '''Stop the scene.'''

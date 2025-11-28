@@ -1,4 +1,4 @@
-mode: 'augment' # can be 'create', 'replace', or 'augment'
+mode: 'create' # can be 'create', 'replace', or 'augment'
 
 # When mode is 'create' the following configurations denote the number of
 # scenes that should be generated for each map.
@@ -16,12 +16,12 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  # Town01: 2
+  # Town01: 1
   # Town02: 2
-  # Town03: 2
+  # Town03: 1
   # Town04: 2
   # Town05: 2
-  # Town06: 2
+  Town06: 1
   # Town07: 2
   # Town10HD: 1
   # Town12: 1
@@ -29,7 +29,7 @@ val_scene_config:
   # Town15: 1
 
 test_scene_config:
-  Town01: 5
+  # Town01: 5
   # Town02: 1
   # Town03: 1
   # Town04: 1
@@ -47,7 +47,7 @@ replacement_scene_config: [0]
 
 # When mode is 'augment' the following denotes the list of scenes that should
 # be augmented.
-augmentation_scene_config: [1, 3]
+augmentation_scene_config: [0, 1, 2, 3, 4]
 
 vehicle: 'mustang_2016'
 vehicle_color: '0,0,0'
@@ -76,7 +76,7 @@ render_gpu: 0
 max_io_workers: 48
 
 use_scene_number_for_random_seed: True
-random_seed_offset: 37
+random_seed_offset: 27
 
 dynamic_settings_adjustments: True
 
@@ -152,7 +152,7 @@ use_rgb_camera: False
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: True
+use_semantic_camera: False
 
 semantic_camera_properties:
   {}
@@ -184,7 +184,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.02'
 
-use_semantic_lidar: False
+use_semantic_lidar: True
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -228,8 +228,8 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-# n_vehicles: 80
-# n_walkers: 80
+n_vehicles: 400
+n_walkers: 0
 
 # walker_cross_factor: 0.6
 

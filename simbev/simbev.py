@@ -338,7 +338,8 @@ def _run_data_collection(
         config: dict,
         logger: logging.Logger,
         scene_counter: int,
-        scene_duration: int
+        scene_duration: int,
+        augment: bool = False
     ):
     '''
     Run the data collection phase.
@@ -350,6 +351,7 @@ def _run_data_collection(
         logger: logger instance.
         scene_counter: scene number.
         scene_duration: duration of the scene in seconds.
+        augment: whether the dataset is being augmented.
     '''
     pbar = tqdm(
         range(round(scene_duration / config['timestep'])),
@@ -365,7 +367,7 @@ def _run_data_collection(
         )
         
         if not should_terminate:
-            core.tick(args.path, scene_counter, j, args.render, args.save)
+            core.tick(args.path, scene_counter, j, args.render, args.save, augment)
         else:
             logger.warning('Termination conditions met. Ending scene early.')
 
@@ -380,7 +382,8 @@ def _generate_scene(
         logger: logging.Logger,
         scene_counter: int,
         data: dict,
-        seed: int = None
+        seed: int = None,
+        augment: bool = False
     ):
     '''
     Generate a single scene.
@@ -394,6 +397,7 @@ def _generate_scene(
         scene_counter: scene number.
         data: scene data information dictionary.
         seed: random seed.
+        augment: whether the dataset is being augmented.
     '''
     # Randomly select scene duration.
     scene_duration = max(round(np.random.uniform(config['min_scene_duration'], config['max_scene_duration'])), 1)
@@ -408,15 +412,16 @@ def _generate_scene(
     _run_warmup(core, config)
     
     # Start logging the scene.
-    if args.save:
+    if args.save and not augment:
         core.client.start_recorder(f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log', True)
     
     # Start data collection.
-    _run_data_collection(args, core, config, logger, scene_counter, scene_duration)
+    _run_data_collection(args, core, config, logger, scene_counter, scene_duration, augment)
     
     if args.save:
         # Stop logging the scene.
-        core.client.stop_recorder()
+        if not augment:
+            core.client.stop_recorder()
         
         # Get the scene data information and save it.
         scene_data = core.package_data()
@@ -696,6 +701,9 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
         with open(info_path, 'r') as f:
             infos = json.load(f)
         
+        with open(f'{args.path}/simbev/infos/simbev_infos_{split}_original.json', 'w') as f:
+            json.dump(infos, f, indent=4)
+        
         data = infos['data']
         
         # Augment the specified scenes.
@@ -777,10 +785,17 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
             core.set_carla_seed(seed)
             
             # Generate and save the replacement scene.
-            _generate_scene(args, core, config, logger, scene_counter, data, seed)
+            _generate_scene(args, core, config, logger, scene_counter, data, seed, augment=True)
 
-            for i, frame in enumerate(data[scene_key]['scene_data']):
-                frame.update(original_data['scene_data'][i])
+            try:
+                for i, frame in enumerate(data[scene_key]['scene_data']):
+                    frame.update(original_data['scene_data'][i])
+            
+            except IndexError:
+                logger.warning(
+                    f'Frame count mismatch when augmenting scene {scene_counter:04d}. The augmented data may be '
+                    'inconsistent with the original data.'
+                )
             
             # Save the updated data information.
             info = {'metadata': metadata, 'data': data}
