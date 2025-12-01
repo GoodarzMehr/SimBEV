@@ -41,6 +41,65 @@ DOOR_STATUS = [
     carla.VehicleDoor.All
 ]
 
+MAX_VEHICLE_LENGTH = {
+    'car': 6.0,
+    'truck': 10.0,
+    'van': 10.0,
+    'bus': 12.0,
+    'motorcycle': 4.0,
+    'bicycle': 2.0
+}
+
+TRAFFIC_CONES = [
+    'constructioncone',
+    'orangeconesmall'
+]
+
+CONSTRUCTION_CONES = [
+    'trafficcone01',
+    'trafficcone02',
+    'concretebarrier',
+    'orangeconebig',
+    'roadsideconstructioncone',
+    'skinnycone'
+]
+
+WORK_PROPS = [
+    'barrel',
+    'ironplank',
+    'closedsandbag',
+    'concretebarrier',
+    'concretepiece1',
+    'concretepipe',
+    'concreteslab1',
+    'constructionlight',
+    'cylinder',
+    'dirtpile',
+    'electricalbox',
+    'floorboard',
+    'floorgrill',
+    'gutter',
+    'handtruck',
+    'opensandbag',
+    'pallet',
+    'shovel',
+    'stonering',
+    'toolbox',
+    'wheelbarrow',
+    'woodenwheel',
+    'bucket',
+    'concretepiece2',
+    'concreteslab2',
+    'walker',
+    'none'
+]
+
+BARRIERS = [
+    'streetbarrier',
+    'concretebarrier',
+    'woodenbarrier'
+]
+
 
 class ScenarioManager:
     '''
@@ -200,10 +259,41 @@ class ScenarioManager:
         
         logger.debug('Lights configured.')
 
-        # Spawn NPCs.
-        logger.debug('Spawning NPCs...')
+        # Create road hazards.
+        logger.debug('Creating road hazards...')
 
         self._npc_spawn_radius = self._config['npc_spawn_radius']
+
+        hazard_spawn_points = [
+            sp for sp in spawn_points if vehicle_location.distance(sp.location) < self._npc_spawn_radius
+        ]
+
+        num_hazards = round(len(hazard_spawn_points) * self._config['hazard_area_percentage'] / 100.0)
+
+        num_accident_hazards = 0
+        num_road_work_hazards = 0
+
+        self._hazard_vehicle_list = []
+        self._hazard_walker_list = []
+        self._hazard_prop_list = []
+
+        p = self._config['accident_hazard_percentage'] / 100.0
+
+        for _ in range(num_hazards):
+            if np.random.choice(2, p=[1 - p, p]):
+                hazard_created = self._create_accident_hazard(hazard_spawn_points, tm_port)
+
+                num_accident_hazards += int(hazard_created)
+            else:
+                hazard_created = self._create_road_work_hazard(hazard_spawn_points)
+
+                num_road_work_hazards += int(hazard_created)
+
+        logger.info(f'Created {num_accident_hazards} accident hazards.')
+        logger.info(f'Created {num_road_work_hazards} road work hazards.')
+        
+        # Spawn NPCs.
+        logger.debug('Spawning NPCs...')
 
         if self._config['dynamic_settings_adjustments']:
             if self.scene_duration <= 12.0:
@@ -216,9 +306,7 @@ class ScenarioManager:
             logger.debug(f'Changed NPC spawn radius to {self._npc_spawn_radius:.2f} m.')
 
         npc_spawn_points = [
-            sp for sp in spawn_points if vehicle_location.distance(
-                sp.location
-            ) < self._npc_spawn_radius
+            sp for sp in spawn_points if vehicle_location.distance(sp.location) < self._npc_spawn_radius
         ]
 
         logger.debug(f'{len(npc_spawn_points)} NPC spawn points available.')
@@ -360,6 +448,395 @@ class ScenarioManager:
 
             self.scene_info['street_lights_on'] = False
 
+    def _create_accident_hazard(self, hazard_spawn_points: list[carla.Transform], tm_port: int) -> bool:
+        '''
+        Create an accident hazard by spawning two stopped vehicle on the road.
+        Sometimes a police vehicle is also spawned behind them.
+
+        Args:
+            hazard_spawn_points: list of spawn points for hazards.
+            tm_port: port number of the traffic manager.
+        
+        Returns:
+            success: whether the hazard was created successfully.
+        '''
+        p = self._config['emergency_vehicle_at_accident_percentage'] / 100.0
+
+        spawn_emergency_vehicle = np.random.choice(2, p=[1 - p, p])
+
+        # Get vehicle blueprints.
+        v_blueprints_all = self._world.get_blueprint_library().filter('vehicle.*')
+        v_blueprints = [v for v in v_blueprints_all if v.get_attribute('has_lights').__bool__() == True]
+
+        v_blueprints_non_emergency = [v for v in v_blueprints if not v.get_attribute('special_type') == 'emergency']
+        v_blueprints_emergency = [v for v in v_blueprints if v.get_attribute('special_type') == 'emergency']
+        
+        bps = []
+
+        for _ in range(2):
+            bps.append(random.choice(v_blueprints_non_emergency))
+        
+        if spawn_emergency_vehicle:
+            bps.append(random.choice(v_blueprints_emergency))
+
+        # Choose the spawn points for hazard vehicles.
+        spawn_point = random.choice(hazard_spawn_points)
+
+        hwp = self._world.get_map().get_waypoint(spawn_point.location)
+
+        wps = []
+
+        try:
+            wps.append(hwp.next(MAX_VEHICLE_LENGTH[bps[0].get_attribute('base_type').as_str()] / 2.0)[0])
+            wps.append(hwp.previous(MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] / 2.0)[0])
+                
+            if spawn_emergency_vehicle:
+                wps.append(
+                    hwp.previous(
+                        MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] + \
+                            MAX_VEHICLE_LENGTH[bps[2].get_attribute('base_type').as_str()] / 2.0 + 1.0
+                    )[0]
+                )
+            else:
+                wps.append(hwp.previous(MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] + 2.0)[0])
+        except IndexError:
+            return False
+        
+        spawn_points = []
+        
+        for i, wp in enumerate(wps):
+            point = wp.transform
+            
+            point.location.z += 0.1
+            
+            if i < len(bps):
+                if bps[i].get_attribute('base_type').as_str() in ['motorcycle', 'bicycle']:
+                    point.rotation.yaw += random.uniform(-90.0, 90.0)
+                elif bps[i].get_attribute('base_type').as_str() in ['car']:
+                    point.rotation.yaw += random.uniform(-30.0, 30.0)
+                else:
+                    point.rotation.yaw += random.uniform(-10.0, 10.0)
+            
+            spawn_points.append(point)
+        
+        # Choose the spawn points for pedestrians around the hazard vehicles.
+        walker_wps = []
+
+        try:
+            walker_wps.append(hwp.next(MAX_VEHICLE_LENGTH[bps[0].get_attribute('base_type').as_str()])[0])
+            walker_wps.append(hwp)
+                
+            if spawn_emergency_vehicle:
+                walker_wps.append(hwp.previous(MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()])[0])
+        except IndexError:
+            return False
+        
+        walker_spawn_points = []
+
+        for wp in walker_wps:
+            for _ in range(random.randint(1, 3)):
+                point = wp.transform
+
+                point.location += carla.Location(x=random.uniform(-0.6, 0.6), y=random.uniform(-0.6, 0.6), z=0.1)
+                point.rotation.yaw += random.uniform(-180.0, 180.0)
+
+                walker_spawn_points.append(point)
+        
+        vehicle_list = []
+        
+        for i, bp in enumerate(bps):
+            # Spawn the hazard vehicle.
+            bp.set_attribute('role_name', f'hazard_vehicle_{i}')
+
+            if bp.has_attribute('color'):
+                bp.set_attribute('color', random.choice(bp.get_attribute('color').recommended_values))
+
+            vehicle = self._world.try_spawn_actor(bp, spawn_points[i])
+
+            if vehicle is None:
+                for v in vehicle_list:
+                    v.destroy()
+                
+                return False
+            
+            # Set autopilot to true and set the desired speed to zero so
+            # lane chaning works properly.
+            vehicle.set_autopilot(True, tm_port)
+            vehicle.set_simulate_physics(self._config['simulate_physics'])
+
+            self._traffic_manager.set_desired_speed(vehicle, 0.0)
+            
+            # Configure hazard vehicle lights and doors.
+            self._traffic_manager.update_vehicle_lights(vehicle, True)
+
+            if i == 2:
+                vehicle.set_light_state(carla.VehicleLightState.Special1)
+            
+            if vehicle.attributes['has_dynamic_doors'] == 'true':
+                vehicle.open_door(random.choice(DOOR_STATUS))
+            
+            vehicle_list.append(vehicle)
+        
+        self._hazard_vehicle_list.extend(vehicle_list)
+
+        #Spawn pedestrians around the hazard vehicles.
+        walker_library = self._world.get_blueprint_library().filter('walker.pedestrian.*')
+
+        if spawn_emergency_vehicle and 'police' in vehicle_list[2].type_id:
+            walker_bpl = walker_library
+        else:
+            walker_bpl = [wbp for wbp in walker_library if all(x not in wbp.id for x in ['30', '32'])]
+        
+        for point in walker_spawn_points:
+            if random.choice([True, False]):
+                wbp = random.choice(walker_bpl)
+
+                walker = self._world.try_spawn_actor(wbp, point)
+
+                if walker is not None:
+                    walker.set_collisions(True)
+                    walker.set_simulate_physics(self._config['simulate_physics'])
+
+                    self._hazard_walker_list.append(walker)
+        
+        # Spawn traffic cones around the hazard vehicles.
+        cone_bp = self._world.get_blueprint_library().find('static.prop.' + random.choice(TRAFFIC_CONES))
+
+        for wp in wps[:-1]:
+            self._spawn_cones(wp, cone_bp)
+
+        if not spawn_emergency_vehicle:
+            point = spawn_points[2]
+
+            point.location += carla.Location(x=random.uniform(-1.0, 1.0), y=random.uniform(-1.0, 1.0), z=0.0)
+
+            cone = self._world.try_spawn_actor(cone_bp, point)
+
+            if cone is not None:
+                cone.set_collisions(True)
+                cone.set_simulate_physics(self._config['simulate_physics'])
+
+                self._hazard_prop_list.append(cone)
+        else:
+            # Spawn a warning sign before the hazard area.
+            sign_bp = self._world.get_blueprint_library().find('static.prop.warningaccident')
+
+            self._spawn_warning_sign(hwp, sign_bp, random.uniform(40.0, 80.0))
+        
+        return True
+    
+    def _create_road_work_hazard(self, hazard_spawn_points: list[carla.Transform]) -> bool:
+        '''
+        Create a road work hazard by spawning construction props on the road.
+
+        Args:
+            hazard_spawn_points: list of spawn points for hazards.
+        
+        Returns:
+            success: whether the hazard was created successfully.
+        '''
+        # Choose the spawn point for road work hazard.
+        spawn_point = random.choice(hazard_spawn_points)
+
+        wp = self._world.get_map().get_waypoint(spawn_point.location)
+
+        spawn_points = []
+
+        sp = wp.transform
+        
+        sp.location.z += 0.1
+
+        spawn_points.append(sp)
+
+        sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
+        sp.rotation.yaw += random.uniform(-90.0, 90.0)
+
+        # Choose the first prop to spawn.
+        prop = random.choice(WORK_PROPS)
+
+        if prop == 'none':
+            return False
+        
+        # self._spawn_work_prop(sp, prop)
+
+        # wpnl = wp.next(2.0)
+
+        # if len(wpnl) == 0:
+        #     return True
+        
+        # wpn = wpnl[0]
+
+        # while wpn is not None:
+        #     wpnn = wpn.next(2.0)
+
+        #     if len(wpnn) == 0:
+        #         sp = wpn.transform
+
+        #         sp.location.z += 0.1
+
+        #         spawn_points.append(sp)
+
+        #         sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
+        #         sp.rotation.yaw += random.uniform(-30.0, 30.0)
+
+        #         prop = random.choice(BARRIERS)
+
+        #         # self._spawn_work_prop(sp, prop)
+
+        #         break
+        #     elif wpnn[0].is_junction:
+        #         sp = wpn.transform
+
+        #         sp.location.z += 0.1
+
+        #         spawn_points.append(sp)
+
+        #         sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
+        #         sp.rotation.yaw += random.uniform(-30.0, 30.0)
+
+        #         prop = random.choice(BARRIERS)
+
+        #         # self._spawn_work_prop(sp, prop)
+
+        #         break
+        #     else:
+        #         sp = wpn.transform
+
+        #         sp.location.z += 0.1
+
+        #         spawn_points.append(sp)
+
+        #         sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
+        #         sp.rotation.yaw += random.uniform(-90.0, 90.0)
+
+        #         prop = random.choice(WORK_PROPS)
+
+        #         if prop == 'none':
+        #             break
+
+        #         # self._spawn_work_prop(sp, prop)
+
+        #         wpn = wpnn[0]
+        
+        cone_bp = self._world.get_blueprint_library().find('static.prop.' + random.choice(CONSTRUCTION_CONES))
+
+        # for point in spawn_points:
+        #     self._spawn_cones(point, cone_bp, wp.lane_width)
+
+        self._spawn_cones(wp, cone_bp)
+
+        # sign_bp = self._world.get_blueprint_library().find('static.prop.warningconstruction')
+
+        # self._spawn_warning_sign(wp, sign_bp, random.uniform(40.0, 80.0))
+
+        # sign_bp = self._world.get_blueprint_library().find('static.prop.trafficwarning')
+
+        # self._spawn_warning_sign(wp, sign_bp, 0.0)
+
+        return True
+    
+    def _spawn_cones(self, wp: carla.Waypoint, cone_bp):
+        '''
+        Spawn traffic/construction cones on both sides of the waypoint.
+        
+        Args:
+            wp: hazard element waypoint.
+            cone_bp: blueprint of the traffic/construction cone.
+        '''
+        wp_transform = wp.transform
+        
+        wp_transform.rotation.yaw += 90.0
+        
+        for j in [-1, 1]:
+            cone_location = wp_transform.location + j * 0.44 * wp.lane_width * wp_transform.get_forward_vector()
+
+            cone_location += carla.Location(x=random.uniform(-0.2, 0.2), y=random.uniform(-0.2, 0.2), z=0.0)
+
+            if 'concretebarrier' in cone_bp.id:
+                cone_transform = wp.transform
+
+                cone_transform = carla.Transform(cone_location, cone_transform.rotation)
+            else:
+                cone_transform = carla.Transform(cone_location, wp_transform.rotation)
+
+            cone = self._world.try_spawn_actor(cone_bp, cone_transform)
+            
+            if cone is not None:
+                cone.set_collisions(True)
+                cone.set_simulate_physics(self._config['simulate_physics'])
+                
+                self._hazard_prop_list.append(cone)
+    
+    def _spawn_warning_sign(self, wp: carla.Waypoint, sign_bp, distance: float):
+        '''
+        Spawn a warning sign before the hazard area.
+
+        Args:
+            wp: hazard waypoint.
+            sign_bp: blueprint of the warning sign.
+            distance: distance ahead of the hazard area to spawn the sign.
+        '''
+        swp = wp if (distance <= 1.0 or len(wp.previous(distance)) == 0) else wp.previous(distance)[0]
+
+        sign_sp = None
+        
+        rwp = swp.get_right_lane()
+
+        attempts = 0
+
+        # Find the right sidewalk or shoulder to place the sign.
+        while rwp:
+            if rwp.lane_type in [carla.LaneType.Sidewalk, carla.LaneType.Shoulder]:
+                sign_sp = rwp.transform
+
+                break
+            elif rwp.lane_type == carla.LaneType.Driving:
+                rwp = rwp.get_right_lane()
+            else:
+                break
+
+            if attempts > 10:
+                break
+
+            attempts += 1
+
+        # Spawn the sign if a valid spawn point was found.
+        if sign_sp is not None:
+            sign_sp.location.z += 0.2
+            sign_sp.rotation.yaw += (random.uniform(-10.0, 10.0) + 90.0)
+
+            sign = self._world.try_spawn_actor(sign_bp, sign_sp)
+
+            if sign is not None:
+                sign.set_collisions(True)
+                sign.set_simulate_physics(self._config['simulate_physics'])
+
+                self._hazard_prop_list.append(sign)
+    
+    def _spawn_work_prop(self, spawn_point: carla.Transform, prop: str):
+        '''
+        Spawn a construction prop at the specified spawn point.
+
+        Args:
+            spawn_point: spawn point for the construction prop.
+            prop_name: name of the construction prop to spawn.
+        '''
+        if prop == 'walker':
+            bp = self._world.get_blueprint_library().find('walker.pedestrian.0052')
+        else:
+            bp = self._world.get_blueprint_library().find('static.prop.' + prop)
+
+        actor = self._world.try_spawn_actor(bp, spawn_point)
+
+        if actor is not None:
+            actor.set_collisions(True)
+            actor.set_simulate_physics(self._config['simulate_physics'])
+
+            if prop == 'walker':
+                self._hazard_walker_list.append(actor)
+            else:
+                self._hazard_prop_list.append(actor)
+    
     def _spawn_npcs(
             self,
             n_vehicles: int,
@@ -729,13 +1206,28 @@ class ScenarioManager:
         self._client.apply_batch([carla.command.DestroyActor(x) for x in self._npc_vehicles_list])
 
         logger.debug('NPC vehicles destroyed.')
+        logger.debug('Destroying hazard vehicles...')
+
+        self._client.apply_batch([carla.command.DestroyActor(x) for x in self._hazard_vehicle_list])
+
+        logger.debug('Hazard vehicles destroyed.')
         logger.debug('Destroying walkers...')
 
         self._client.apply_batch([carla.command.DestroyActor(x) for x in self._walkers_list])
 
         logger.debug('Walkers destroyed.')
+        logger.debug('Destroying hazard walkers...')
+
+        self._client.apply_batch([carla.command.DestroyActor(x) for x in self._hazard_walker_list])
+
+        logger.debug('Hazard walkers destroyed.')
         logger.debug('Destroying controllers...')
 
         self._client.apply_batch([carla.command.DestroyActor(x) for x in self._controllers_list])
 
         logger.debug('Controllers destroyed.')
+        logger.debug('Destroying hazard props...')
+
+        self._client.apply_batch([carla.command.DestroyActor(x) for x in self._hazard_prop_list])
+
+        logger.debug('Hazard props destroyed.')

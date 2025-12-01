@@ -479,7 +479,6 @@ def _create_scenes_for_map(
         core.set_carla_seed(seed)
 
     core.spawn_vehicle()
-    core.set_carla_seed(seed)
     
     for i in range(num_scenes):
         logger.info(f'Creating scene {scene_counter:04d} in {map_name} for the {split} set...')
@@ -494,7 +493,6 @@ def _create_scenes_for_map(
 
                 core.set_carla_seed(seed)
                 core.spawn_vehicle()
-                core.set_carla_seed(seed)
             else:
                 seed = None
         
@@ -661,9 +659,6 @@ def collect_data_replace_mode(args, core: CarlaCore, config: dict, metadata: dic
                 core.set_carla_seed(seed)
 
             core.spawn_vehicle()
-
-            if seed is not None:
-                core.set_carla_seed(seed)
             
             # Generate and save the replacement scene.
             _generate_scene(args, core, config, logger, scene_counter, data, seed)
@@ -782,7 +777,6 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
 
             core.set_carla_seed(seed)
             core.spawn_vehicle()
-            core.set_carla_seed(seed)
             
             # Generate and save the replacement scene.
             _generate_scene(args, core, config, logger, scene_counter, data, seed, augment=True)
