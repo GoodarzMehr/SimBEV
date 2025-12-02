@@ -16,17 +16,17 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  # Town01: 1
-  # Town02: 2
-  # Town03: 1
+  Town01: 4
+  # Town02: 1
+  # Town03: 2
   # Town04: 2
   # Town05: 2
-  Town06: 4
+  # Town06: 2
   # Town07: 2
   # Town10HD: 2
-  # Town12: 1
-  # Town13: 4
-  # Town15: 1
+  # Town12: 2
+  # Town13: 2
+  # Town15: 2
 
 test_scene_config:
   # Town01: 5
@@ -142,8 +142,9 @@ turn_off_building_lights: False
 turn_off_street_lights: False
 
 hazard_area_percentage: 4.0
-accident_hazard_percentage: 100.0
+accident_hazard_percentage: 50.0
 emergency_vehicle_at_accident_percentage: 50.0
+cone_dropout_percentage: 32.0
 
 use_cityscapes_palette: False
 
@@ -241,29 +242,29 @@ n_walkers: 0
 # distance_to_leading: 8.0
 # green_time: 12.0
 
-initial_weather:
-  cloudiness: 10.0
-  precipitation: 0.0
-  precipitation_deposits: 0.0
-  wind_intensity: 10.0
-  sun_azimuth_angle: 300.0
-  sun_altitude_angle: 20.0
-  wetness: 0.0
-  fog_density: 2.0
-  fog_distance: 0.75
-  fog_falloff: 0.1
+# initial_weather:
+#   cloudiness: 10.0
+#   precipitation: 0.0
+#   precipitation_deposits: 0.0
+#   wind_intensity: 10.0
+#   sun_azimuth_angle: 300.0
+#   sun_altitude_angle: 20.0
+#   wetness: 0.0
+#   fog_density: 2.0
+#   fog_distance: 0.75
+#   fog_falloff: 0.1
 
-final_weather:
-  cloudiness: 10.0
-  precipitation: 0.0
-  precipitation_deposits: 0.0
-  wind_intensity: 10.0
-  sun_azimuth_angle: 300.0
-  sun_altitude_angle: 21.0
-  wetness: 10.0
-  fog_density: 2.0
-  fog_distance: 100.0
-  fog_falloff: 1.0
+# final_weather:
+#   cloudiness: 10.0
+#   precipitation: 0.0
+#   precipitation_deposits: 0.0
+#   wind_intensity: 10.0
+#   sun_azimuth_angle: 300.0
+#   sun_altitude_angle: 21.0
+#   wetness: 10.0
+#   fog_density: 2.0
+#   fog_distance: 100.0
+#   fog_falloff: 1.0
 
 # ego_vehicle_spawn_point:
 #   Town04: [

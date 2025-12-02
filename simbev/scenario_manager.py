@@ -64,6 +64,12 @@ CONSTRUCTION_CONES = [
     'skinnycone'
 ]
 
+BARRIERS = [
+    'streetbarrier',
+    'concretebarrier',
+    'woodenbarrier'
+]
+
 WORK_PROPS = [
     'barrel',
     'ironplank',
@@ -94,10 +100,26 @@ WORK_PROPS = [
     'none'
 ]
 
-BARRIERS = [
-    'streetbarrier',
-    'concretebarrier',
-    'woodenbarrier'
+SMALL_PROPS = [
+    'barrel',
+    'closedsandbag',
+    'concretepiece1',
+    'concreteslab1',
+    'cylinder',
+    'electricalbox',
+    'floorgrill',
+    'gutter',
+    'handtruck',
+    'opensandbag',
+    'pallet',
+    'shovel',
+    'stonering',
+    'toolbox',
+    'wheelbarrow',
+    'woodenwheel',
+    'bucket',
+    'concretepiece2',
+    'concreteslab2'
 ]
 
 
@@ -259,13 +281,27 @@ class ScenarioManager:
         
         logger.debug('Lights configured.')
 
+        self._npc_spawn_radius = self._config['npc_spawn_radius']
+
+        if self._config['dynamic_settings_adjustments']:
+            if self.scene_duration <= 12.0:
+                self._npc_spawn_radius = 30.0 * (self.scene_duration + self._config['warmup_duration'])
+            elif self.scene_duration <= 16.0:
+                self._npc_spawn_radius = 25.0 * (self.scene_duration + self._config['warmup_duration'])
+            else:
+                self._npc_spawn_radius = 20.0 * (self.scene_duration + self._config['warmup_duration'])
+        
+            logger.debug(f'Changed NPC spawn radius to {self._npc_spawn_radius:.2f} m.')
+
         # Create road hazards.
         logger.debug('Creating road hazards...')
 
-        self._npc_spawn_radius = self._config['npc_spawn_radius']
-
         hazard_spawn_points = [
-            sp for sp in spawn_points if vehicle_location.distance(sp.location) < self._npc_spawn_radius
+            sp for sp in spawn_points if (
+                self._config['spawn_point_separation_distance'] < \
+                    vehicle_location.distance(sp.location) < \
+                        self._npc_spawn_radius
+            )
         ]
 
         num_hazards = round(len(hazard_spawn_points) * self._config['hazard_area_percentage'] / 100.0)
@@ -294,16 +330,6 @@ class ScenarioManager:
         
         # Spawn NPCs.
         logger.debug('Spawning NPCs...')
-
-        if self._config['dynamic_settings_adjustments']:
-            if self.scene_duration <= 12.0:
-                self._npc_spawn_radius = 30.0 * (self.scene_duration + self._config['warmup_duration'])
-            elif self.scene_duration <= 16.0:
-                self._npc_spawn_radius = 25.0 * (self.scene_duration + self._config['warmup_duration'])
-            else:
-                self._npc_spawn_radius = 20.0 * (self.scene_duration + self._config['warmup_duration'])
-        
-            logger.debug(f'Changed NPC spawn radius to {self._npc_spawn_radius:.2f} m.')
 
         npc_spawn_points = [
             sp for sp in spawn_points if vehicle_location.distance(sp.location) < self._npc_spawn_radius
@@ -454,7 +480,7 @@ class ScenarioManager:
         Sometimes a police vehicle is also spawned behind them.
 
         Args:
-            hazard_spawn_points: list of spawn points for hazards.
+            hazard_spawn_points: list of possible spawn points for the hazard.
             tm_port: port number of the traffic manager.
         
         Returns:
@@ -621,7 +647,7 @@ class ScenarioManager:
             # Spawn a warning sign before the hazard area.
             sign_bp = self._world.get_blueprint_library().find('static.prop.warningaccident')
 
-            self._spawn_warning_sign(hwp, sign_bp, random.uniform(40.0, 80.0))
+            self._spawn_warning_sign(hwp, sign_bp, random.uniform(40.0, 160.0))
         
         return True
     
@@ -630,7 +656,7 @@ class ScenarioManager:
         Create a road work hazard by spawning construction props on the road.
 
         Args:
-            hazard_spawn_points: list of spawn points for hazards.
+            hazard_spawn_points: list of possible spawn points for the hazard.
         
         Returns:
             success: whether the hazard was created successfully.
@@ -638,100 +664,63 @@ class ScenarioManager:
         # Choose the spawn point for road work hazard.
         spawn_point = random.choice(hazard_spawn_points)
 
-        wp = self._world.get_map().get_waypoint(spawn_point.location)
+        wps = []
 
-        spawn_points = []
+        hwp = self._world.get_map().get_waypoint(spawn_point.location)
 
-        sp = wp.transform
+        nwp = hwp.next(2.0)
+
+        # Check if there is enough space to spawn the road work hazard.
+        if len(nwp) == 0 or nwp[0].is_junction:
+            return False
+        else:
+            nwp = hwp.next(2.0)[0]
         
-        sp.location.z += 0.1
+        nnwp = nwp.next(2.0)
 
-        spawn_points.append(sp)
-
-        sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
-        sp.rotation.yaw += random.uniform(-90.0, 90.0)
-
-        # Choose the first prop to spawn.
-        prop = random.choice(WORK_PROPS)
-
-        if prop == 'none':
+        if len(nnwp) == 0 or nnwp[0].is_junction:
             return False
         
-        # self._spawn_work_prop(sp, prop)
+        barrier = random.choice(BARRIERS)
 
-        # wpnl = wp.next(2.0)
+        # Spawn the first road barrier to mark the start of the hazard area.
+        self._spawn_work_prop(hwp, barrier)
 
-        # if len(wpnl) == 0:
-        #     return True
-        
-        # wpn = wpnl[0]
+        wps.append(hwp)
 
-        # while wpn is not None:
-        #     wpnn = wpn.next(2.0)
+        while nwp is not None:
+            prop = random.choice(WORK_PROPS)
+            
+            if prop in SMALL_PROPS:
+                nnwp = nwp.next(random.uniform(0.4, 1.6))
+            else:
+                nnwp = nwp.next(random.uniform(1.6, 3.2))
 
-        #     if len(wpnn) == 0:
-        #         sp = wpn.transform
+            if prop == 'none' or len(nnwp) == 0 or nnwp[0].is_junction:
+                # Spawn the second road barrier to mark the end of the hazard area.
+                self._spawn_work_prop(nwp, barrier)
 
-        #         sp.location.z += 0.1
+                wps.append(nwp)
 
-        #         spawn_points.append(sp)
+                break
+            else:
+                self._spawn_work_prop(nwp, prop)
 
-        #         sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
-        #         sp.rotation.yaw += random.uniform(-30.0, 30.0)
+                wps.append(nwp)
 
-        #         prop = random.choice(BARRIERS)
-
-        #         # self._spawn_work_prop(sp, prop)
-
-        #         break
-        #     elif wpnn[0].is_junction:
-        #         sp = wpn.transform
-
-        #         sp.location.z += 0.1
-
-        #         spawn_points.append(sp)
-
-        #         sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
-        #         sp.rotation.yaw += random.uniform(-30.0, 30.0)
-
-        #         prop = random.choice(BARRIERS)
-
-        #         # self._spawn_work_prop(sp, prop)
-
-        #         break
-        #     else:
-        #         sp = wpn.transform
-
-        #         sp.location.z += 0.1
-
-        #         spawn_points.append(sp)
-
-        #         sp.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.0)
-        #         sp.rotation.yaw += random.uniform(-90.0, 90.0)
-
-        #         prop = random.choice(WORK_PROPS)
-
-        #         if prop == 'none':
-        #             break
-
-        #         # self._spawn_work_prop(sp, prop)
-
-        #         wpn = wpnn[0]
+                nwp = nnwp[0]
         
         cone_bp = self._world.get_blueprint_library().find('static.prop.' + random.choice(CONSTRUCTION_CONES))
 
-        # for point in spawn_points:
-        #     self._spawn_cones(point, cone_bp, wp.lane_width)
+        for wp in wps[1:-1:4]:
+            self._spawn_cones(wp, cone_bp)
 
-        self._spawn_cones(wp, cone_bp)
+        if random.choice([True, False]):
+            sign_bp = self._world.get_blueprint_library().find('static.prop.warningconstruction')
+        else:
+            sign_bp = self._world.get_blueprint_library().find('static.prop.trafficwarning')
 
-        # sign_bp = self._world.get_blueprint_library().find('static.prop.warningconstruction')
-
-        # self._spawn_warning_sign(wp, sign_bp, random.uniform(40.0, 80.0))
-
-        # sign_bp = self._world.get_blueprint_library().find('static.prop.trafficwarning')
-
-        # self._spawn_warning_sign(wp, sign_bp, 0.0)
+        self._spawn_warning_sign(hwp, sign_bp, random.uniform(40.0, 160.0))
 
         return True
     
@@ -743,29 +732,32 @@ class ScenarioManager:
             wp: hazard element waypoint.
             cone_bp: blueprint of the traffic/construction cone.
         '''
+        p = self._config['cone_dropout_percentage'] / 100.0
+
         wp_transform = wp.transform
         
         wp_transform.rotation.yaw += 90.0
         
         for j in [-1, 1]:
-            cone_location = wp_transform.location + j * 0.44 * wp.lane_width * wp_transform.get_forward_vector()
+            if np.random.choice(2, p=[p, 1 - p]):
+                cone_location = wp_transform.location + j * 0.42 * wp.lane_width * wp_transform.get_forward_vector()
 
-            cone_location += carla.Location(x=random.uniform(-0.2, 0.2), y=random.uniform(-0.2, 0.2), z=0.0)
+                cone_location += carla.Location(x=random.uniform(-0.2, 0.2), y=random.uniform(-0.2, 0.2), z=0.0)
 
-            if 'concretebarrier' in cone_bp.id:
-                cone_transform = wp.transform
+                if 'concretebarrier' in cone_bp.id:
+                    cone_transform = wp.transform
 
-                cone_transform = carla.Transform(cone_location, cone_transform.rotation)
-            else:
-                cone_transform = carla.Transform(cone_location, wp_transform.rotation)
+                    cone_transform = carla.Transform(cone_location, cone_transform.rotation)
+                else:
+                    cone_transform = carla.Transform(cone_location, wp_transform.rotation)
 
-            cone = self._world.try_spawn_actor(cone_bp, cone_transform)
-            
-            if cone is not None:
-                cone.set_collisions(True)
-                cone.set_simulate_physics(self._config['simulate_physics'])
+                cone = self._world.try_spawn_actor(cone_bp, cone_transform)
                 
-                self._hazard_prop_list.append(cone)
+                if cone is not None:
+                    cone.set_collisions(True)
+                    cone.set_simulate_physics(self._config['simulate_physics'])
+                    
+                    self._hazard_prop_list.append(cone)
     
     def _spawn_warning_sign(self, wp: carla.Waypoint, sign_bp, distance: float):
         '''
@@ -786,10 +778,13 @@ class ScenarioManager:
 
         # Find the right sidewalk or shoulder to place the sign.
         while rwp:
-            if rwp.lane_type in [carla.LaneType.Sidewalk, carla.LaneType.Shoulder]:
-                sign_sp = rwp.transform
+            if rwp.lane_type in [carla.LaneType.Sidewalk, carla.LaneType.Shoulder, carla.LaneType.Parking]:
+                if rwp.is_junction or rwp.lane_width < 1.0:
+                    rwp = rwp.get_right_lane()
+                else:
+                    sign_sp = rwp.transform
 
-                break
+                    break
             elif rwp.lane_type == carla.LaneType.Driving:
                 rwp = rwp.get_right_lane()
             else:
@@ -803,7 +798,11 @@ class ScenarioManager:
         # Spawn the sign if a valid spawn point was found.
         if sign_sp is not None:
             sign_sp.location.z += 0.2
-            sign_sp.rotation.yaw += (random.uniform(-10.0, 10.0) + 90.0)
+            
+            if 'trafficwarning' in sign_bp.id:
+                sign_sp.rotation.yaw += (random.uniform(-10.0, 10.0) - 90.0)
+            else:
+                sign_sp.rotation.yaw += (random.uniform(-10.0, 10.0) + 90.0)
 
             sign = self._world.try_spawn_actor(sign_bp, sign_sp)
 
@@ -813,20 +812,25 @@ class ScenarioManager:
 
                 self._hazard_prop_list.append(sign)
     
-    def _spawn_work_prop(self, spawn_point: carla.Transform, prop: str):
+    def _spawn_work_prop(self, wp: carla.Waypoint, prop: str):
         '''
-        Spawn a construction prop at the specified spawn point.
+        Spawn a construction prop at the specified waypoint.
 
         Args:
-            spawn_point: spawn point for the construction prop.
-            prop_name: name of the construction prop to spawn.
+            wp: waypoint.
+            prop: name of the construction prop to spawn.
         '''
         if prop == 'walker':
             bp = self._world.get_blueprint_library().find('walker.pedestrian.0052')
         else:
             bp = self._world.get_blueprint_library().find('static.prop.' + prop)
 
-        actor = self._world.try_spawn_actor(bp, spawn_point)
+        wp_transform = wp.transform
+
+        wp_transform.location += carla.Location(x=random.uniform(-0.4, 0.4), y=random.uniform(-0.4, 0.4), z=0.1)
+        wp_transform.rotation.yaw += random.uniform(-180.0, 180.0)
+        
+        actor = self._world.try_spawn_actor(bp, wp_transform)
 
         if actor is not None:
             actor.set_collisions(True)
