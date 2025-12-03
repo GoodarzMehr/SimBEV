@@ -16,14 +16,14 @@ train_scene_config:
   # Town15: 1
 
 val_scene_config:
-  Town01: 4
+  # Town01: 4
   # Town02: 1
   # Town03: 2
   # Town04: 2
   # Town05: 2
-  # Town06: 2
+  Town06: 1
   # Town07: 2
-  # Town10HD: 2
+  # Town10HD: 4
   # Town12: 2
   # Town13: 2
   # Town15: 2
@@ -141,7 +141,7 @@ street_light_failure_percentage: 10.0
 turn_off_building_lights: False
 turn_off_street_lights: False
 
-hazard_area_percentage: 4.0
+hazard_area_percentage: 1.0
 accident_hazard_percentage: 50.0
 emergency_vehicle_at_accident_percentage: 50.0
 cone_dropout_percentage: 32.0
@@ -189,7 +189,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.02'
 
-use_semantic_lidar: False
+use_semantic_lidar: True
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0

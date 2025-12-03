@@ -56,6 +56,9 @@ LABEL_COLORS = np.array([
     (150, 100, 100), # Bridge
     (230, 150, 140), # RailTrack
     (180, 165, 180), # GuardRail
+    (110, 110, 110), # Rock
+    (255, 165, 0),   # TrafficCone
+    (200, 128, 128)  # Barrier
 ]) / 255.0
 
 
