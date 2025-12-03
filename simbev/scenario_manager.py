@@ -296,9 +296,11 @@ class ScenarioManager:
         # Create road hazards.
         logger.debug('Creating road hazards...')
 
+        self._hazard_endpoints = []
+
         hazard_spawn_points = [
             sp for sp in spawn_points if (
-                self._config['spawn_point_separation_distance'] < \
+                (self._config['spawn_point_separation_distance'] / 2.0) < \
                     vehicle_location.distance(sp.location) < \
                         self._npc_spawn_radius
             )
@@ -321,7 +323,7 @@ class ScenarioManager:
 
                 num_accident_hazards += int(hazard_created)
             else:
-                hazard_created = self._create_road_work_hazard(hazard_spawn_points)
+                hazard_created = self._create_road_work_hazard(hazard_spawn_points, vehicle_location)
 
                 num_road_work_hazards += int(hazard_created)
 
@@ -331,9 +333,27 @@ class ScenarioManager:
         # Spawn NPCs.
         logger.debug('Spawning NPCs...')
 
-        npc_spawn_points = [
+        all_npc_spawn_points = [
             sp for sp in spawn_points if vehicle_location.distance(sp.location) < self._npc_spawn_radius
         ]
+
+        npc_spawn_points = []
+
+        for point in all_npc_spawn_points:
+            wp = self._world.get_map().get_waypoint(point.location)
+
+            for bwp, fwp in self._hazard_endpoints:
+                if (wp.transform.location.distance(bwp.transform.location) < \
+                    (self._config['spawn_point_separation_distance'] / 2.0) \
+                    and wp.road_id == bwp.road_id and wp.lane_id == bwp.lane_id) or \
+                     (wp.transform.location.distance(fwp.transform.location) < \
+                    (self._config['spawn_point_separation_distance'] / 2.0) \
+                        and wp.road_id == fwp.road_id and wp.lane_id == fwp.lane_id):
+                    pass
+                else:
+                    npc_spawn_points.append(point)
+                    
+                    break
 
         logger.debug(f'{len(npc_spawn_points)} NPC spawn points available.')
 
@@ -513,6 +533,26 @@ class ScenarioManager:
         wps = []
 
         try:
+            hfwp = hwp.next(MAX_VEHICLE_LENGTH[bps[0].get_attribute('base_type').as_str()])[0]
+            
+            if spawn_emergency_vehicle:
+                hbwp = hwp.previous(
+                    MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] + \
+                        MAX_VEHICLE_LENGTH[bps[2].get_attribute('base_type').as_str()]
+                )[0]
+            else:
+                hbwp = hwp.previous(MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] + 2.0)[0]
+            
+            for bwp, fwp in self._hazard_endpoints:
+                if hfwp.transform.location.distance(bwp.transform.location) < \
+                    (self._config['spawn_point_separation_distance'] / 2.0) \
+                        and hfwp.road_id == bwp.road_id and hfwp.lane_id == bwp.lane_id:
+                    return False
+                if hbwp.transform.location.distance(fwp.transform.location) < \
+                    (self._config['spawn_point_separation_distance'] / 2.0) \
+                        and hbwp.road_id == fwp.road_id and hbwp.lane_id == fwp.lane_id:
+                    return False
+            
             wps.append(hwp.next(MAX_VEHICLE_LENGTH[bps[0].get_attribute('base_type').as_str()] / 2.0)[0])
             wps.append(hwp.previous(MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] / 2.0)[0])
                 
@@ -649,14 +689,37 @@ class ScenarioManager:
 
             self._spawn_warning_sign(hwp, sign_bp, random.uniform(40.0, 160.0))
         
+        try:
+            front_wp = hwp.next(MAX_VEHICLE_LENGTH[bps[0].get_attribute('base_type').as_str()])[0]
+        except IndexError:
+            front_wp = hwp
+        
+        try:
+            if spawn_emergency_vehicle:
+                back_wp = hwp.previous(
+                    MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] + \
+                        MAX_VEHICLE_LENGTH[bps[2].get_attribute('base_type').as_str()]
+                )[0]
+            else:
+                back_wp = hwp.previous(MAX_VEHICLE_LENGTH[bps[1].get_attribute('base_type').as_str()] + 2.0)[0]
+        except IndexError:
+            back_wp = hwp
+        
+        self._hazard_endpoints.append((back_wp, front_wp))
+        
         return True
     
-    def _create_road_work_hazard(self, hazard_spawn_points: list[carla.Transform]) -> bool:
+    def _create_road_work_hazard(
+            self,
+            hazard_spawn_points: list[carla.Transform],
+            vehicle_location: carla.Location
+        ) -> bool:
         '''
         Create a road work hazard by spawning construction props on the road.
 
         Args:
             hazard_spawn_points: list of possible spawn points for the hazard.
+            vehicle_location: location of the ego vehicle.
         
         Returns:
             success: whether the hazard was created successfully.
@@ -675,6 +738,12 @@ class ScenarioManager:
             return False
         else:
             nwp = hwp.next(2.0)[0]
+        
+        for bwp, _ in self._hazard_endpoints:
+            if nwp.transform.location.distance(bwp.transform.location) < \
+                (self._config['spawn_point_separation_distance'] / 2.0) \
+                    and nwp.road_id == bwp.road_id and nwp.lane_id == bwp.lane_id:
+                return False
         
         nnwp = nwp.next(2.0)
 
@@ -695,8 +764,17 @@ class ScenarioManager:
                 nnwp = nwp.next(random.uniform(0.4, 1.6))
             else:
                 nnwp = nwp.next(random.uniform(1.6, 3.2))
+            
+            for bwp, _ in self._hazard_endpoints:
+                if nwp.transform.location.distance(bwp.transform.location) < \
+                    (self._config['spawn_point_separation_distance'] / 2.0) \
+                        and nwp.road_id == bwp.road_id and nwp.lane_id == bwp.lane_id:
+                    prop = 'none'
+                    
+                    break
 
-            if prop == 'none' or len(nnwp) == 0 or nnwp[0].is_junction:
+            if prop == 'none' or len(nnwp) == 0 or nnwp[0].is_junction or \
+                vehicle_location.distance(nnwp[0].transform.location) < self._config['spawn_point_separation_distance']:
                 # Spawn the second road barrier to mark the end of the hazard area.
                 self._spawn_work_prop(nwp, barrier)
 
@@ -722,6 +800,8 @@ class ScenarioManager:
 
         self._spawn_warning_sign(hwp, sign_bp, random.uniform(40.0, 160.0))
 
+        self._hazard_endpoints.append((wps[0], wps[-1]))
+
         return True
     
     def _spawn_cones(self, wp: carla.Waypoint, cone_bp):
@@ -732,7 +812,7 @@ class ScenarioManager:
             wp: hazard element waypoint.
             cone_bp: blueprint of the traffic/construction cone.
         '''
-        p = self._config['cone_dropout_percentage'] / 100.0
+        p = self._config['missing_cone_percentage'] / 100.0
 
         wp_transform = wp.transform
         

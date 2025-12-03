@@ -21,7 +21,7 @@ val_scene_config:
   # Town03: 2
   # Town04: 2
   # Town05: 2
-  Town06: 1
+  Town06: 4
   # Town07: 2
   # Town10HD: 4
   # Town12: 2
@@ -56,8 +56,8 @@ show_debug_telemetry: False
 simulate_physics: True
 
 warmup_duration: 4
-min_scene_duration: 80
-max_scene_duration: 80
+min_scene_duration: 40
+max_scene_duration: 40
 
 early_scene_termination: False
 termination_timeout: 8
@@ -98,7 +98,7 @@ bev_camera_height: 1000.0
 bev_dim: 400
 bev_res: 0.4
 
-spectator_height: 4.0
+spectator_height: 16.0
 
 collect_traffic_light_bbox: True
 collect_traffic_sign_bbox: True
@@ -144,7 +144,7 @@ turn_off_street_lights: False
 hazard_area_percentage: 1.0
 accident_hazard_percentage: 50.0
 emergency_vehicle_at_accident_percentage: 50.0
-cone_dropout_percentage: 32.0
+missing_cone_percentage: 32.0
 
 use_cityscapes_palette: False
 
@@ -189,7 +189,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.02'
 
-use_semantic_lidar: True
+use_semantic_lidar: False
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -233,7 +233,7 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-n_vehicles: 0
+n_vehicles: 800
 n_walkers: 0
 
 # walker_cross_factor: 0.6
@@ -242,29 +242,29 @@ n_walkers: 0
 # distance_to_leading: 8.0
 # green_time: 12.0
 
-# initial_weather:
-#   cloudiness: 10.0
-#   precipitation: 0.0
-#   precipitation_deposits: 0.0
-#   wind_intensity: 10.0
-#   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: 20.0
-#   wetness: 0.0
-#   fog_density: 2.0
-#   fog_distance: 0.75
-#   fog_falloff: 0.1
+initial_weather:
+  cloudiness: 10.0
+  precipitation: 0.0
+  precipitation_deposits: 0.0
+  wind_intensity: 10.0
+  sun_azimuth_angle: 300.0
+  sun_altitude_angle: 20.0
+  wetness: 0.0
+  fog_density: 2.0
+  fog_distance: 0.75
+  fog_falloff: 0.1
 
-# final_weather:
-#   cloudiness: 10.0
-#   precipitation: 0.0
-#   precipitation_deposits: 0.0
-#   wind_intensity: 10.0
-#   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: 21.0
-#   wetness: 10.0
-#   fog_density: 2.0
-#   fog_distance: 100.0
-#   fog_falloff: 1.0
+final_weather:
+  cloudiness: 10.0
+  precipitation: 0.0
+  precipitation_deposits: 0.0
+  wind_intensity: 10.0
+  sun_azimuth_angle: 300.0
+  sun_altitude_angle: 21.0
+  wetness: 10.0
+  fog_density: 2.0
+  fog_distance: 100.0
+  fog_falloff: 1.0
 
 # ego_vehicle_spawn_point:
 #   Town04: [

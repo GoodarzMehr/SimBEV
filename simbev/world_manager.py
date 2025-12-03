@@ -313,7 +313,7 @@ class WorldManager:
         ]
 
         for sp in self._spawn_points:
-            sp.location.z += 0.6
+            sp.location.z += 0.2
 
         self._spawn_points_copy = self._spawn_points
         
