@@ -35,7 +35,9 @@ OBJECT_CLASSES = {
     15: 'truck',
     16: 'bus',
     18: 'motorcycle',
-    19: 'bicycle'
+    19: 'bicycle',
+    30: 'traffic_cone',
+    31: 'barrier'
 }
 
 DISTANCE_THRESHOLDS = {
@@ -47,7 +49,9 @@ DISTANCE_THRESHOLDS = {
     'truck':         [40.0, 80.0],
     'bus':           [40.0, 80.0],
     'motorcycle':    [20.0, 40.0],
-    'bicycle':       [20.0, 40.0]
+    'bicycle':       [20.0, 40.0],
+    'traffic_cone':  [20.0, 40.0],
+    'barrier':       [20.0, 40.0]
 }
 
 POINT_THRESHOLDS = {
@@ -59,7 +63,9 @@ POINT_THRESHOLDS = {
     'truck':         [100, 40],
     'bus':           [100, 40],
     'motorcycle':    [40, 20],
-    'bicycle':       [40, 20]
+    'bicycle':       [40, 20],
+    'traffic_cone':  [20, 10],
+    'barrier':       [20, 10]
 }
 
 CAM_NAME = [

@@ -18,10 +18,10 @@ train_scene_config:
 val_scene_config:
   # Town01: 4
   # Town02: 1
-  # Town03: 2
+  Town03: 2
   # Town04: 2
   # Town05: 2
-  Town06: 4
+  # Town06: 1
   # Town07: 2
   # Town10HD: 4
   # Town12: 2
@@ -98,7 +98,7 @@ bev_camera_height: 1000.0
 bev_dim: 400
 bev_res: 0.4
 
-spectator_height: 16.0
+spectator_height: 4.0
 
 collect_traffic_light_bbox: True
 collect_traffic_sign_bbox: True
@@ -141,8 +141,8 @@ street_light_failure_percentage: 10.0
 turn_off_building_lights: False
 turn_off_street_lights: False
 
-hazard_area_percentage: 1.0
-accident_hazard_percentage: 50.0
+hazard_area_percentage: 10.0
+accident_hazard_percentage: 0.0
 emergency_vehicle_at_accident_percentage: 50.0
 missing_cone_percentage: 32.0
 
@@ -152,7 +152,7 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: False
+use_rgb_camera: True
 
 rgb_camera_properties:
   fstop: '1.8'
@@ -162,7 +162,7 @@ use_semantic_camera: False
 semantic_camera_properties:
   {}
 
-use_instance_camera: False
+use_instance_camera: True
 
 instance_camera_properties:
  {}
@@ -233,7 +233,7 @@ imu_properties:
 
 # street_light_intensity_change: -2000000.0
 
-n_vehicles: 800
+n_vehicles: 0
 n_walkers: 0
 
 # walker_cross_factor: 0.6

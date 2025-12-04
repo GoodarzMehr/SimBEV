@@ -29,7 +29,9 @@ BBOX_COLORS = {
     'rider': [0.9375, 0.5625, 0.0],
     'pedestrian': [0.9375, 0.0, 0.0],
     'traffic_light': [0.9375, 0.625, 0.0],
-    'traffic_sign': [0.9375, 0.0, 0.5]
+    'traffic_sign': [0.9375, 0.0, 0.5],
+    'traffic_cone': [0.984375, 0.703125, 0.0],
+    'barrier': [0.78125, 0.5, 0.5],
 }
 
 

@@ -108,11 +108,35 @@ BAD_CROSSWALKS = [
     'Road_Crosswalk_Town07_9_'
 ]
 
+CONES = [
+    'constructioncone',
+    'orangeconesmall',
+    'trafficcone01',
+    'trafficcone02',
+    'orangeconebig',
+    'roadsideconstructioncone',
+    'skinnycone'
+]
+
+BARRIERS = [
+    'streetbarrier',
+    'concretebarrier',
+    'woodenbarrier'
+]
+
+WARNINGS = [
+    'trafficwarning',
+    'warningaccident',
+    'warningconstruction'
+]
+
 MAP_PALETTE = {
     'road': (196, 80, 196),
     'road_line': (160, 240, 40),
     'sidewalk': (240, 196, 240),
     'crosswalk': (240, 196, 196),
+    'traffic_cone': (255, 165, 0),
+    'barrier': (200, 128, 128),
     'car': (0, 128, 240),
     'truck': (80, 240, 80),
     'bus': (0, 144, 0),
@@ -127,6 +151,8 @@ CITYSCAPE_PALETTE = {
     'road_line': (227, 227, 227),
     'sidewalk': (244, 35, 232),
     'crosswalk': (157, 234, 50),
+    'traffic_cone': (255, 165, 0),
+    'barrier': (200, 128, 128),
     'car': (0, 0, 142),
     'truck': (0, 0, 70),
     'bus': (0, 60, 100),
@@ -645,20 +671,17 @@ class GTManager:
         bus_list = self._world.get_environment_objects(carla.CityObjectLabel.Bus)
         motorcycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Motorcycle)
         bicycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Bicycle)
+        traffic_cone_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficCone)
+        barrier_list = self._world.get_environment_objects(carla.CityObjectLabel.Barrier)
 
         if self._config['collect_traffic_sign_bbox']:
             traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
 
-            if self._map_name == 'Town15':
-                static_list = self._world.get_environment_objects(carla.CityObjectLabel.Static)
-
-                for obj in static_list:
-                    if 'SM_Signal' in obj.name:
-                        traffic_sign_list.append(obj)
-
-            self._object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list
+            self._object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + \
+                bicycle_list + traffic_cone_list + barrier_list
         else:
-            self._object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list
+            self._object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list + \
+                traffic_cone_list + barrier_list
     
     def get_bev_gt(self, elevation_difference: bool = False) -> np.ndarray:
         '''
@@ -679,6 +702,8 @@ class GTManager:
             'road_line': None,
             'sidewalk': None,
             'crosswalk': None,
+            'traffic_cone': None,
+            'barrier': None,
             'car': None,
             'truck': None,
             'bus': None,
@@ -748,6 +773,8 @@ class GTManager:
             mask['crosswalk'] = binary_closing(np.logical_and(crosswalk_mask, mask['road']))
 
             bbox_list = {
+                'traffic_cone': [],
+                'barrier': [],
                 'car': [],
                 'truck': [],
                 'bus': [],
@@ -780,6 +807,10 @@ class GTManager:
                             bbox_list['motorcycle'].append(bbox)
                         if 19 in actor['semantic_tags']:
                             bbox_list['bicycle'].append(bbox)
+                        if 30 in actor['semantic_tags']:
+                            bbox_list['traffic_cone'].append(bbox)
+                        if 31 in actor['semantic_tags']:
+                            bbox_list['barrier'].append(bbox)
             
             for key in bbox_list.keys():
                 if len(bbox_list[key]) > 0:
@@ -822,6 +853,11 @@ class GTManager:
 
             mask['crosswalk'] = binary_closing(np.logical_and(crosswalk_mask, mask['road']))
 
+            mask['traffic_cone'] = np.logical_or(
+                np.logical_and(bottom_bev_image[:, :, 1] == 165, bottom_bev_image[:, :, 2] == 255),
+                np.logical_and(top_bev_image[:, :, 1] == 165, top_bev_image[:, :, 2] == 255)
+            )
+            mask['barrier'] = np.logical_or(bottom_bev_image[:, :, 2] == 200, top_bev_image[:, :, 2] == 200)
             mask['car'] = np.logical_or(bottom_bev_image[:, :, 0] == 142, top_bev_image[:, :, 0] == 142)
             mask['truck'] = np.logical_or(
                 np.logical_and(bottom_bev_image[:, :, 0] == 70, bottom_bev_image[:, :, 1] == 0),
@@ -861,10 +897,18 @@ class GTManager:
 
             if vehicle_location.distance(actor_location) < self._config['bbox_collection_radius'] \
                 and all(x not in actor.type_id for x in ['spectator', 'sensor', 'controller']) \
-                    and any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19]):
+                    and (any(x in actor.semantic_tags for x in [12, 13, 14, 15, 16, 18, 19, 30, 31]) \
+                         or any(x in actor.type_id for x in CONES + BARRIERS + WARNINGS)):
                 actor_properties = self._get_basic_actor_properties(actor)
                 
                 actor_properties['semantic_tags'] = actor.semantic_tags
+
+                if any(x in actor.type_id for x in WARNINGS):
+                    actor_properties['semantic_tags'].append(8)
+                if any(x in actor.type_id for x in CONES):
+                    actor_properties['semantic_tags'].append(30)
+                if any(x in actor.type_id for x in BARRIERS):
+                    actor_properties['semantic_tags'].append(31)
 
                 actor_properties['bounding_box'] = carla_vector_to_numpy(
                     actor.bounding_box.get_world_vertices(actor.get_transform())
@@ -999,7 +1043,7 @@ class GTManager:
 
                 object_properties['bounding_box'][:, 1] *= -1.0
 
-                if obj.type in [carla.CityObjectLabel.TrafficSigns, carla.CityObjectLabel.Static]:
+                if obj.type == carla.CityObjectLabel.TrafficSigns:
                     object_properties['semantic_tags'] = [8]
                     object_properties['sign_type'] = ''
 
@@ -1011,7 +1055,7 @@ class GTManager:
                         'speed_limit' in object_properties['sign_type']:
                         object_properties['sign_type'] = 'speed_limit'
                     
-                    if self._map_name == 'Town15' and obj.type == carla.CityObjectLabel.Static:
+                    if self._map_name == 'Town15' and obj.bounding_box.extent.z > 0.8:
                         max_extent = max(obj.bounding_box.extent.x, obj.bounding_box.extent.y)
 
                         frac = max_extent / obj.bounding_box.extent.z
@@ -1032,6 +1076,10 @@ class GTManager:
                     object_properties['semantic_tags'] = [18]
                 elif obj.type == carla.CityObjectLabel.Bicycle:
                     object_properties['semantic_tags'] = [19]
+                elif obj.type == carla.CityObjectLabel.TrafficCone:
+                    object_properties['semantic_tags'] = [30]
+                elif obj.type == carla.CityObjectLabel.Barrier:
+                    object_properties['semantic_tags'] = [31]
                 else:
                     object_properties['semantic_tags'] = []
 

@@ -28,7 +28,9 @@ OBJECT_CLASSES = {
     15: 'truck',
     16: 'bus',
     18: 'motorcycle',
-    19: 'bicycle'
+    19: 'bicycle',
+    30: 'traffic_cone',
+    31: 'barrier'
 }
 
 SIMBEV_PALETTE = {
@@ -41,7 +43,9 @@ SIMBEV_PALETTE = {
     'rider': (240, 144, 0),
     'pedestrian': (240, 0, 0),
     'traffic_light': (240, 160, 0),
-    'traffic_sign': (240, 0, 128)
+    'traffic_sign': (240, 0, 128),
+    'traffic_cone': (252, 180, 0),
+    'barrier': (240, 128, 128)
 }
 
 RANGE = np.linspace(0.0, 1.0, 256)
