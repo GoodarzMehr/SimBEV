@@ -156,6 +156,15 @@ class ScenarioManager:
 
         self.scene_duration = 0.5
     
+    def get_hazard_locations(self) -> dict:
+        '''
+        Get the locations of the hazards in the scenario.
+
+        Returns:
+            hazard_locations: list of hazard endpoints.
+        '''
+        return self._hazard_endpoints
+    
     def set_scene_info(self, info: dict):
         '''
         Set scene information.

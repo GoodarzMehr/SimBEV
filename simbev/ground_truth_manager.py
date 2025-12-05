@@ -135,6 +135,7 @@ MAP_PALETTE = {
     'road_line': (160, 240, 40),
     'sidewalk': (240, 196, 240),
     'crosswalk': (240, 196, 196),
+    'hazard': (240, 80, 80),
     'traffic_cone': (255, 165, 0),
     'barrier': (200, 128, 128),
     'car': (0, 128, 240),
@@ -151,6 +152,7 @@ CITYSCAPE_PALETTE = {
     'road_line': (227, 227, 227),
     'sidewalk': (244, 35, 232),
     'crosswalk': (157, 234, 50),
+    'hazard': (240, 80, 80),
     'traffic_cone': (255, 165, 0),
     'barrier': (200, 128, 128),
     'car': (0, 0, 142),
@@ -557,6 +559,52 @@ class GTManager:
         
         logger.debug(f'Compiled a list of {len(self._area_crosswalks)} crosswalks.')
 
+    def get_hazards(self, hazard_endpoints: list[tuple[carla.Waypoint]]):
+        '''
+        Get the hazard areas within the mapping area.
+
+        Args:
+            hazard_endpoints: list of all hazard area endpoint waypoint
+                tuples.
+        '''
+        self._hazards = []
+
+        logger.debug('Compiling a list of hazard areas...')
+
+        for bwp, fwp in hazard_endpoints:
+            left_points = []
+            right_points = []
+            
+            nwp = bwp
+
+            while nwp is not None and len(left_points + right_points) < 2000 and \
+                nwp.transform.location.distance(fwp.transform.location) > self._config['waypoint_distance'] / 2.0:
+                wp_transform = nwp.transform
+                            
+                wp_transform.rotation.yaw += 90.0
+
+                # Get the left and right borders.
+                left_points.append(wp_transform.location - 0.5 * nwp.lane_width * wp_transform.get_forward_vector())
+                right_points.append(wp_transform.location + 0.5 * nwp.lane_width * wp_transform.get_forward_vector())
+
+                nnwp = nwp.next(self._config['waypoint_distance'])
+
+                if len(nnwp) > 0:
+                    nwp = nnwp[0]
+                else:
+                    nwp = None
+            
+            if len(left_points + right_points) >= 2000:
+                logger.warning('Something went wrong when processing a hazard area. Skipping it...')
+            else:
+                hazard_area = carla_vector_to_numpy(left_points + right_points[::-1])
+
+                hazard_area[:, 1] *= -1.0
+
+                self._hazards.append(hazard_area)
+        
+        logger.debug(f'Compiled a list of {len(self._hazards)} hazard areas.')
+    
     def trim_map_sections(self):
         '''
         Trim the list of road, sidewalk, and crosswalk sections and only leave
@@ -699,6 +747,7 @@ class GTManager:
 
         mask = {
             'road': None,
+            'hazard': None,
             'road_line': None,
             'sidewalk': None,
             'crosswalk': None,
@@ -718,6 +767,8 @@ class GTManager:
         # of the ego vehicle.
         level_roads = self._process_level_sections(self._local_roads) \
             if elevation_difference else copy.deepcopy(self._local_roads)
+        level_hazards = self._process_level_sections(self._hazards) \
+            if elevation_difference else copy.deepcopy(self._hazards)
         level_road_lines = self._process_level_sections(self._local_road_lines) \
             if elevation_difference else copy.deepcopy(self._local_road_lines)
         level_sidewalks = self._process_level_sections(self._local_sidewalks) \
@@ -732,6 +783,16 @@ class GTManager:
             vehicle_transform,
             self._config['bev_dim'],
             self._config['bev_res']
+        )
+
+        # Get the hazard area mask from hazard sections.
+        mask['hazard'] = binary_closing(
+            get_multi_polygon_mask(
+                level_hazards,
+                vehicle_transform,
+                self._config['bev_dim'],
+                self._config['bev_res']
+            )
         )
 
         # Get the road line mask from road lines.

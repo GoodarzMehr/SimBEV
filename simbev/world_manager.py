@@ -313,7 +313,7 @@ class WorldManager:
         ]
 
         for sp in self._spawn_points:
-            sp.location.z += 0.2
+            sp.location.z += 0.4
 
         self._spawn_points_copy = self._spawn_points
         
@@ -389,19 +389,20 @@ class WorldManager:
 
             # Preprocess the waypoints and crosswalks for ground truth
             # generation.
-            self._vehicle_manager.get_ground_truth_manager().augment_waypoints(
-                self._waypoints,
-                self._scenario_manager.scene_duration
-            )
-            self._vehicle_manager.get_ground_truth_manager().get_area_crosswalks(self._crosswalks)
-            self._vehicle_manager.get_ground_truth_manager().get_environment_objects()
-            self._vehicle_manager.get_ground_truth_manager().get_bounding_boxes()
+            ground_truth_manager = self._vehicle_manager.get_ground_truth_manager()
+
+            ground_truth_manager.augment_waypoints(self._waypoints, self._scenario_manager.scene_duration)
+            ground_truth_manager.get_area_crosswalks(self._crosswalks)
+            ground_truth_manager.get_environment_objects()
+            ground_truth_manager.get_bounding_boxes()
 
             self._scenario_manager.setup_scenario(
                 self._vehicle_manager.vehicle.get_location(),
                 self._spawn_points_copy,
                 self._tm_port
             )
+
+            ground_truth_manager.get_hazards(self._scenario_manager.get_hazard_locations())
 
             self._set_spectator_view()
 
@@ -491,6 +492,7 @@ class WorldManager:
             self._vehicle_location = self._vehicle_manager.vehicle.get_location()
 
             ground_truth_manager = self._vehicle_manager.get_ground_truth_manager()
+            sensor_manager = self._vehicle_manager.get_sensor_manager()
             
             if self._counter % round(0.5 / self._config['timestep']) == 0:
                 ground_truth_manager.trim_map_sections()
@@ -501,15 +503,15 @@ class WorldManager:
 
         # Render the data and ground truth.
         if render:
-            self._vehicle_manager.get_ground_truth_manager().render()
-            self._vehicle_manager.get_sensor_manager().render()
+            ground_truth_manager.render()
+            sensor_manager.render()
         
         # Save the data and ground truth to file.
         if save and all(v is not None for v in [path, scene, frame]):
             if not augment:
-                self._vehicle_manager.get_ground_truth_manager().save(path, scene, frame)
+                ground_truth_manager.save(path, scene, frame)
             
-            self._vehicle_manager.get_sensor_manager().save(path, scene, frame)
+            sensor_manager.save(path, scene, frame)
 
         # Decide whether to terminate the scene.
         if scene is not None and self._config['early_scene_termination']:
