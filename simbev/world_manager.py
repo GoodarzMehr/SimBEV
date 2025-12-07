@@ -338,6 +338,16 @@ class WorldManager:
         '''Move the ego vehicle to a new spawn point.'''
         self._scenario_manager.scene_info = self._vehicle_manager.move_vehicle(self._spawn_points, self._tm_port)
     
+    def find_vehicle(self):
+        '''Find the vehicle in the world.'''
+        startup_actors = self._world.get_actors()
+
+        self._vehicle_manager.find_vehicle()
+
+        actors = self._world.get_actors()
+
+        self._replay_actors = [actor for actor in actors if actor not in startup_actors]
+    
     def _dynamic_settings_adjustment(self, scene_duration: float):
         '''Adjust world settings dynamically for large maps.'''
         settings = self._world.get_settings()
@@ -417,28 +427,41 @@ class WorldManager:
 
             raise Exception('Cannot start the scene. Good bye!')
 
+    def configure_replay_weather(self, initial_weather: dict, final_weather: dict = None):
+        '''
+        Configure the weather for replaying a scenario.
+
+        Args:
+            initial_weather: initial weather parameters.
+            final_weather: final weather parameters.
+        '''
+        return self._scenario_manager.configure_replay_weather(initial_weather, final_weather)
+    
     def _set_spectator_view(self):
         '''Set the spectator view to follow the ego vehicle.'''
-        # Get the ego vehicle's coordinates.
-        transform = self._vehicle_manager.vehicle.get_transform()
+        if self._vehicle_manager.vehicle is not None:
+            # Get the ego vehicle's coordinates.
+            transform = self._vehicle_manager.vehicle.get_transform()
 
-        # Calculate the spectator's desired position.
-        view_x = transform.location.x - 2 * self._config['spectator_height'] * transform.get_forward_vector().x
-        view_y = transform.location.y - 2 * self._config['spectator_height'] * transform.get_forward_vector().y
-        view_z = transform.location.z + self._config['spectator_height']
+            # Calculate the spectator's desired position.
+            view_x = transform.location.x - 2 * self._config['spectator_height'] * transform.get_forward_vector().x
+            view_y = transform.location.y - 2 * self._config['spectator_height'] * transform.get_forward_vector().y
+            view_z = transform.location.z + self._config['spectator_height']
 
-        # Calculate the spectator's desired orientation.
-        view_roll = transform.rotation.roll
-        view_pitch = transform.rotation.pitch - 16.0
-        view_yaw = transform.rotation.yaw
+            # Calculate the spectator's desired orientation.
+            view_roll = transform.rotation.roll
+            view_pitch = transform.rotation.pitch - 16.0
+            view_yaw = transform.rotation.yaw
 
-        # Get the spectator and place it in the calculated position.
-        self._spectator.set_transform(
-            carla.Transform(
-                carla.Location(x=view_x, y=view_y, z=view_z),
-                carla.Rotation(roll=view_roll, pitch=view_pitch, yaw=view_yaw)
+            # Get the spectator and place it in the calculated position.
+            self._spectator.set_transform(
+                carla.Transform(
+                    carla.Location(x=view_x, y=view_y, z=view_z),
+                    carla.Rotation(roll=view_roll, pitch=view_pitch, yaw=view_yaw)
+                )
             )
-        )
+        else:
+            return
 
     def tick(
             self,
@@ -447,7 +470,8 @@ class WorldManager:
             frame: int = None,
             render: bool = False,
             save: bool = False,
-            augment: bool = False
+            augment: bool = False,
+            replay: bool = False
         ):
         '''
         Proceed for one time step.
@@ -459,6 +483,7 @@ class WorldManager:
             render: whether to render sensor data.
             save: whether to save sensor data to file.
             augment: whether the dataset is being augmented.
+            replay: whether the scene is being replayed.
         '''
         # Wait for all I/O operations to finish before proceeding.
         if save:
@@ -467,13 +492,14 @@ class WorldManager:
         # Clear all sensor queues before proceeding.
         self._vehicle_manager.get_sensor_manager().clear_queues()
 
-        # Randomly open the door of some vehicles that are stopped, then close
-        # them when the vehicles start moving.
-        self._scenario_manager.manage_doors()
+        if not replay:
+            # Randomly open the door of some vehicles that are stopped, then close
+            # them when the vehicles start moving.
+            self._scenario_manager.manage_doors()
 
         # Change the weather if configured to do so.
         if self._config['dynamic_weather'] and scene is not None:
-            self._scenario_manager.adjust_weather()
+            self._scenario_manager.adjust_weather(replay)
         
         # Sometimes the data may not get updated in time for the first frame,
         # so wait a bit before and after ticking the world.
@@ -491,19 +517,23 @@ class WorldManager:
         if render or save:
             self._vehicle_location = self._vehicle_manager.vehicle.get_location()
 
-            ground_truth_manager = self._vehicle_manager.get_ground_truth_manager()
             sensor_manager = self._vehicle_manager.get_sensor_manager()
-            
-            if self._counter % round(0.5 / self._config['timestep']) == 0:
-                ground_truth_manager.trim_map_sections()
-            
-            self._counter += 1
-            
-            ground_truth_manager.get_ground_truth()
+
+            if not augment:
+                ground_truth_manager = self._vehicle_manager.get_ground_truth_manager()
+                
+                if self._counter % round(0.5 / self._config['timestep']) == 0:
+                    ground_truth_manager.trim_map_sections()
+                
+                ground_truth_manager.get_ground_truth()
+
+                self._counter += 1
 
         # Render the data and ground truth.
         if render:
-            ground_truth_manager.render()
+            if not augment:
+                ground_truth_manager.render()
+            
             sensor_manager.render()
         
         # Save the data and ground truth to file.
@@ -513,15 +543,20 @@ class WorldManager:
             
             sensor_manager.save(path, scene, frame)
 
-        # Decide whether to terminate the scene.
-        if scene is not None and self._config['early_scene_termination']:
-            if self._vehicle_manager.vehicle.get_velocity().length() < 0.1:
-                self._termination_counter += 1
-            else:
-                self._termination_counter = 0
-            
-            if self._termination_counter * self._config['timestep'] >= self._config['termination_timeout']:
-                self._terminate_scene = True
+        if not replay:
+            # Decide whether to terminate the scene.
+            if scene is not None and self._config['early_scene_termination']:
+                if self._vehicle_manager.vehicle.get_velocity().length() < 0.1:
+                    self._termination_counter += 1
+                else:
+                    self._termination_counter = 0
+                
+                if self._termination_counter * self._config['timestep'] >= self._config['termination_timeout']:
+                    self._terminate_scene = True
+    
+    def wait_for_saves(self):
+        '''Wait for all save operations to complete.'''
+        self._vehicle_manager.get_sensor_manager().wait_for_saves()
     
     def stop_scene(self):
         '''Stop the scene.'''
@@ -530,6 +565,36 @@ class WorldManager:
     def destroy_vehicle(self):
         '''Destroy the vehicle.'''
         return self._vehicle_manager.destroy_vehicle()
+    
+    def destroy_replay_actors(self):
+        '''Destroy the actors that were added during replay.'''
+        logger.debug('Destroying replay actors...')
+
+        self._vehicle_manager.get_sensor_manager().destroy()
+
+        self._world.tick()
+
+        try:
+            for actor in self._world.get_actors():
+                if 'controller' in actor.type_id:
+                    actor.stop()
+
+        except Exception:
+            pass
+
+        self._world.tick()
+        
+        for actor in self._replay_actors:
+            if all(x not in actor.type_id for x in ['sensor', 'spectator']):
+                actor.destroy()
+
+        self._replay_actors = []
+
+        self._vehicle_manager.vehicle = None
+
+        self._world.tick()
+        
+        logger.debug('Replay actors destroyed.')
     
     def shut_down_traffic_manager(self):
         '''Shut down the Traffic Manager.'''

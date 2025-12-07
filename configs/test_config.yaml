@@ -1,21 +1,34 @@
-mode: 'create' # can be 'create', 'replace', or 'augment'
+mode: 'create' # can be 'create', 'replace', 'replay', or 'augment'
 
 # When mode is 'create' the following configurations denote the number of
 # scenes that should be generated for each map.
 
 train_scene_config:
-  # Town01: 1
-  # Town02: 2
-  # Town03: 2
-  # Town04: 2
-  # Town05: 1
-  # Town06: 1
-  # Town07: 1
-  # Town10HD: 1
-  # Town12: 1
-  # Town15: 1
+  Town01: 3
+  Town02: 3
+  Town03: 3
+  Town04: 3
+  Town05: 3
+  Town06: 3
+  Town07: 3
+  Town10HD: 3
+  Town12: 3
+  Town15: 3
 
 val_scene_config:
+  Town01: 2
+  Town02: 2
+  Town03: 2
+  Town04: 2
+  Town05: 2
+  Town06: 2
+  Town07: 2
+  Town10HD: 2
+  Town12: 2
+  Town13: 2
+  Town15: 2
+
+test_scene_config:
   Town01: 1
   Town02: 1
   Town03: 1
@@ -28,26 +41,17 @@ val_scene_config:
   Town13: 1
   Town15: 1
 
-test_scene_config:
-  # Town01: 5
-  # Town02: 1
-  # Town03: 1
-  # Town04: 1
-  # Town05: 1
-  # Town06: 1
-  # Town07: 1
-  # Town10HD: 1
-  # Town12: 1
-  # Town13: 4
-  # Town15: 1
-
 # When mode is 'replace' the following denotes the list of scenes that should
 # be overwritten.
-replacement_scene_config: [0]
+replacement_scene_config: []
+
+# When mode is 'replay' the following denotes the list of scenes that should
+# be replayed and augmented.
+replay_scene_config: []
 
 # When mode is 'augment' the following denotes the list of scenes that should
 # be augmented.
-augmentation_scene_config: [0, 1, 2, 3, 4]
+augmentation_scene_config: []
 
 vehicle: 'mustang_2016'
 vehicle_color: '0,0,0'
@@ -75,7 +79,7 @@ render_gpu: 0
 
 max_io_workers: 48
 
-use_scene_number_for_random_seed: False
+use_scene_number_for_random_seed: True
 random_seed_offset: 27
 
 dynamic_settings_adjustments: True
@@ -117,8 +121,8 @@ emergency_lights_percentage: 50.0
 reckless_ego_percentage: 1.0
 reckless_npc_percentage: 1.0
 
-distracted_ego_percentage: 4.0
-distracted_npc_percentage: 4.0
+distracted_ego_percentage: 2.0
+distracted_npc_percentage: 2.0
 
 max_n_walkers: 640
 
@@ -126,7 +130,7 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
-wheelchair_use_percentage: 4.0
+wheelchair_use_percentage: 2.0
 
 dynamic_weather: True
 
@@ -141,7 +145,7 @@ street_light_failure_percentage: 10.0
 turn_off_building_lights: False
 turn_off_street_lights: False
 
-hazard_area_percentage: 4.0
+hazard_area_percentage: 1.0
 accident_hazard_percentage: 50.0
 emergency_vehicle_at_accident_percentage: 50.0
 missing_cone_percentage: 32.0
@@ -167,12 +171,12 @@ use_instance_camera: True
 instance_camera_properties:
  {}
 
-use_depth_camera: False
+use_depth_camera: True
 
 depth_camera_properties:
  {}
 
-use_flow_camera: False
+use_flow_camera: True
 
 flow_camera_properties:
  {}
@@ -207,7 +211,7 @@ radar_vertical_fov: 12.0
 radar_properties:
   points_per_second: '40000'
 
-use_gnss: False
+use_gnss: True
 
 gnss_properties:
   noise_seed: '27'
@@ -215,7 +219,7 @@ gnss_properties:
   noise_lat_stddev: '0.0000004'
   noise_lon_stddev: '0.0000004'
 
-use_imu: False
+use_imu: True
 
 imu_properties:
   noise_seed: '27'
@@ -260,7 +264,7 @@ imu_properties:
 #   precipitation_deposits: 0.0
 #   wind_intensity: 10.0
 #   sun_azimuth_angle: 300.0
-#   sun_altitude_angle: 21.0
+#   sun_altitude_angle: -21.0
 #   wetness: 10.0
 #   fog_density: 2.0
 #   fog_distance: 100.0

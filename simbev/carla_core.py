@@ -216,6 +216,12 @@ class CarlaCore:
 
         return self._world_manager.move_vehicle()
     
+    def find_vehicle(self):
+        '''Find the vehicle in the world.'''
+        self._pause.wait()
+
+        return self._world_manager.find_vehicle()
+    
     def start_scene(self, seed: int = None):
         '''
         Start the scene.
@@ -227,6 +233,18 @@ class CarlaCore:
 
         return self._world_manager.start_scene(seed)
 
+    def configure_replay_weather(self, initial_weather: dict, final_weather: dict = None):
+        '''
+        Configure the weather for replaying a scenario.
+
+        Args:
+            initial_weather: initial weather parameters.
+            final_weather: final weather parameters.
+        '''
+        self._pause.wait()
+        
+        return self._world_manager.configure_replay_weather(initial_weather, final_weather)
+    
     def tick(
             self,
             path: str = None,
@@ -234,7 +252,8 @@ class CarlaCore:
             frame: int = None,
             render: bool = False,
             save: bool = False,
-            augment: bool = False
+            augment: bool = False,
+            replay: bool = False
         ):
         '''
         Proceed for one time step.
@@ -246,10 +265,17 @@ class CarlaCore:
             render: whether to render sensor data.
             save: whether to save sensor data to file.
             augment: whether the dataset is being augmented.
+            replay: whether the scene is being replayed.
         '''
         self._pause.wait()
 
-        return self._world_manager.tick(path, scene, frame, render, save, augment)
+        return self._world_manager.tick(path, scene, frame, render, save, augment, replay)
+    
+    def wait_for_saves(self):
+        '''Wait for all save operations to complete.'''
+        self._pause.wait()
+
+        return self._world_manager.wait_for_saves()
     
     def stop_scene(self):
         '''Stop the scene.'''
@@ -262,6 +288,12 @@ class CarlaCore:
         self._pause.wait()
         
         return self._world_manager.destroy_vehicle()
+    
+    def destroy_replay_actors(self):
+        '''Destroy the replay actors.'''
+        self._pause.wait()
+        
+        return self._world_manager.destroy_replay_actors()
     
     def shut_down_traffic_manager(self):
         '''Shut down the Traffic Manager.'''

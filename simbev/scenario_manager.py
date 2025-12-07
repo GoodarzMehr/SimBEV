@@ -370,7 +370,7 @@ class ScenarioManager:
             n_vehicles = self._config['n_vehicles']
             if n_vehicles == 27: logger.debug('rheM zradooG 4202 © thgirypoC')
         else:
-            n_vehicles = random.randint(0, len(npc_spawn_points) - 3)
+            n_vehicles = random.randint(0, max(len(npc_spawn_points) - 3, 0))
         
         if 'n_walkers' in self._config:
             n_walkers = self._config['n_walkers']
@@ -440,6 +440,32 @@ class ScenarioManager:
                 weather.fog_falloff /= 20.0
         
         return weather
+    
+    def configure_replay_weather(self, initial_weather: dict, final_weather: dict = None):
+        '''
+        Configure the weather for replaying a scenario.
+
+        Args:
+            initial_weather: initial weather parameters.
+            final_weather: final weather parameters.
+        '''
+        weather = self._world.get_weather()
+
+        for attribute in initial_weather:
+            weather.__setattr__(attribute, initial_weather[attribute])
+
+        self._world.set_weather(weather)
+
+        if final_weather is not None:
+            self._weather_increment = self._world.get_weather()
+
+            num_steps = round(self.scene_duration / self._config['timestep'])
+
+            for attribute in final_weather:
+                self._weather_increment.__setattr__(
+                    attribute,
+                    (final_weather[attribute] - initial_weather[attribute]) / num_steps
+                )
     
     def _configure_lights(self):
         '''Configure the lights.'''
@@ -1257,11 +1283,12 @@ class ScenarioManager:
                 elif role_name in self._tried_to_open_door_list and vehicle.get_velocity().length() > 1.0:
                     self._tried_to_open_door_list.remove(role_name)
     
-    def adjust_weather(self):
+    def adjust_weather(self, replay: bool = False):
         '''Adjust weather conditions.'''
         weather = self._world.get_weather()
 
-        old_sun_altitude_angle = weather.sun_altitude_angle
+        if not replay:
+            old_sun_altitude_angle = weather.sun_altitude_angle
 
         for attribute in weather.__dir__():
             if attribute in WEATHER_ATTRIBUTES:
@@ -1270,19 +1297,20 @@ class ScenarioManager:
                     weather.__getattribute__(attribute) + self._weather_increment.__getattribute__(attribute)
                 )
         
-        new_sun_altitude_angle = weather.sun_altitude_angle
+        if not replay:
+            new_sun_altitude_angle = weather.sun_altitude_angle
 
-        if self._light_change:
-            self._light_manager.set_day_night_cycle(True)
+            if self._light_change:
+                self._light_manager.set_day_night_cycle(True)
+                
+                self._light_change = False
             
-            self._light_change = False
-        
-        if old_sun_altitude_angle > 0.0 and new_sun_altitude_angle <= 0.0:
-            self._configure_lights()
-            
-            self._light_manager.set_day_night_cycle(False)
-            
-            self._light_change = True
+            if old_sun_altitude_angle > 0.0 and new_sun_altitude_angle <= 0.0:
+                self._configure_lights()
+                
+                self._light_manager.set_day_night_cycle(False)
+                
+                self._light_change = True
         
         self._world.set_weather(weather)
     

@@ -54,6 +54,209 @@ class VehicleManager:
         '''Get the Ground Truth Manager.'''
         return self._ground_truth_manager
     
+    def _spawn_sensors(self):
+        '''Spawn the sensors attached to the ego vehicle.'''
+        logger.debug('Creating the Sensor Manager...')
+
+        self._sensor_manager = SensorManager(self._config, self.vehicle)
+
+        logger.debug('Sensor Manager created.')
+        logger.debug('Creating the sensors...')
+        
+        # Set up camera locations.
+        camera_location_front_left = carla.Transform(
+            carla.Location(x=0.4, y=-0.4, z=1.6),
+            carla.Rotation(yaw=-55.0)
+        )
+        camera_location_front = carla.Transform(
+            carla.Location(x=0.6, y=0.0, z=1.6),
+            carla.Rotation(yaw=0.0)
+        )
+        camera_location_front_right = carla.Transform(
+            carla.Location(x=0.4, y=0.4, z=1.6),
+            carla.Rotation(yaw=55.0)
+        )
+        camera_location_back_left = carla.Transform(
+            carla.Location(x=0.0, y=-0.4, z=1.6),
+            carla.Rotation(yaw=-110)
+        )
+        camera_location_back = carla.Transform(
+            carla.Location(x=-1.0, y=0.0, z=1.6),
+            carla.Rotation(yaw=180.0)
+        )
+        camera_location_back_right = carla.Transform(
+            carla.Location(x=0.0, y=0.4, z=1.6),
+            carla.Rotation(yaw=110.0)
+        )
+
+        camera_locations = [
+            camera_location_front_left,
+            camera_location_front,
+            camera_location_front_right,
+            camera_location_back_left,
+            camera_location_back,
+            camera_location_back_right
+        ]
+
+        # Create the cameras.
+        if self._config['use_rgb_camera']:
+            for location in camera_locations:
+                RGBCamera(
+                    self._world,
+                    self._sensor_manager,
+                    location,
+                    self.vehicle,
+                    self._config['camera_width'],
+                    self._config['camera_height'],
+                    self._config['rgb_camera_properties']
+                )
+        
+        if self._config['use_semantic_camera']:
+            for location in camera_locations:
+                SemanticCamera(
+                    self._world,
+                    self._sensor_manager,
+                    location,
+                    self.vehicle,
+                    self._config['camera_width'],
+                    self._config['camera_height'],
+                    self._config['semantic_camera_properties']
+                )
+        
+        if self._config['use_instance_camera']:
+            for location in camera_locations:
+                InstanceCamera(
+                    self._world,
+                    self._sensor_manager,
+                    location,
+                    self.vehicle,
+                    self._config['camera_width'],
+                    self._config['camera_height'],
+                    self._config['instance_camera_properties']
+                )
+            
+        
+        if self._config['use_depth_camera']:
+            for location in camera_locations:
+                DepthCamera(
+                    self._world,
+                    self._sensor_manager,
+                    location,
+                    self.vehicle,
+                    self._config['camera_width'],
+                    self._config['camera_height'],
+                    self._config['depth_camera_properties']
+                )
+        
+        if self._config['use_flow_camera']:
+            for location in camera_locations:
+                FlowCamera(
+                    self._world,
+                    self._sensor_manager,
+                    location,
+                    self.vehicle,
+                    self._config['camera_width'],
+                    self._config['camera_height'],
+                    self._config['flow_camera_properties']
+                )
+        
+        # Create a lidar.
+        if self._config['use_lidar']:
+            Lidar(
+                self._world,
+                self._sensor_manager,
+                carla.Transform(carla.Location(x=0.0, y=0.0, z=1.8)),
+                self.vehicle,
+                self._config['lidar_channels'],
+                self._config['lidar_range'],
+                self._config['lidar_properties']
+            )
+        
+        # Create a semantic lidar.
+        if self._config['use_semantic_lidar']:
+            SemanticLidar(
+                self._world,
+                self._sensor_manager,
+                carla.Transform(carla.Location(x=0.0, y=0.0, z=1.8), carla.Rotation(yaw=0.0)),
+                self.vehicle,
+                self._config['semantic_lidar_channels'],
+                self._config['semantic_lidar_range'],
+                self._config['semantic_lidar_properties']
+            )
+        
+        radar_location_left = carla.Transform(carla.Location(x=0.0, y=-1.0, z=0.6), carla.Rotation(yaw=-90.0))
+        radar_location_front = carla.Transform(carla.Location(x=2.4, y=0.0, z=0.6), carla.Rotation(yaw=0.0))
+        radar_location_right = carla.Transform(carla.Location(x=0.0, y=1.0, z=0.6), carla.Rotation(yaw=90.0))
+        radar_location_back = carla.Transform(carla.Location(x=-2.4, y=0.0, z=0.6), carla.Rotation(yaw=180.0))
+
+        radar_locations = [
+            radar_location_left,
+            radar_location_front,
+            radar_location_right,
+            radar_location_back,
+        ]
+        
+        # Create the radars
+        if self._config['use_radar']:
+            for location in radar_locations:
+                Radar(
+                    self._world,
+                    self._sensor_manager,
+                    location,
+                    self.vehicle,
+                    self._config['radar_range'],
+                    self._config['radar_horizontal_fov'],
+                    self._config['radar_vertical_fov'],
+                    self._config['radar_properties']
+                )
+        
+        # Create a GNSS sensor.
+        if self._config['use_gnss']:
+            GNSS(
+                self._world,
+                self._sensor_manager,
+                carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0)),
+                self.vehicle,
+                self._config['gnss_properties']
+            )
+        
+        # Create an IMU sensor.
+        if self._config['use_imu']:
+            IMU(
+                self._world,
+                self._sensor_manager,
+                carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0)),
+                self.vehicle,
+                self._config['imu_properties']
+            )
+        
+        # Create BEV semantic cameras for obtaining the ground truth.
+        bev_location_above = carla.Transform(
+            carla.Location(x=0.0, y=0.0, z=self._config['bev_camera_height']),
+            carla.Rotation(pitch=-90)
+        )
+        bev_location_below = carla.Transform(
+            carla.Location(x=0.0, y=0.0, z=-self._config['bev_camera_height']),
+            carla.Rotation(pitch=90)
+        )
+
+        bev_locations = [bev_location_above, bev_location_below]
+        
+        for location in bev_locations:
+            SemanticBEVCamera(
+                self._world,
+                self._sensor_manager,
+                location,
+                self.vehicle,
+                self._config['bev_dim'],
+                self._config['bev_dim'],
+                self._config['bev_properties']
+            )
+        
+        self._world.tick()
+
+        logger.debug('Sensors created.')
+    
     def spawn_vehicle(self, bp: carla.ActorBlueprint, spawn_points: list[carla.Waypoint], tm_port: int) -> dict:
         '''Spawn the ego vehicle and its sensors.'''
         try:
@@ -136,207 +339,7 @@ class VehicleManager:
             
             logger.debug('Ego vehicle behavior configured.')
 
-            # Instantiate the Sensor Manager.
-            logger.debug('Creating the Sensor Manager...')
-
-            self._sensor_manager = SensorManager(self._config, self.vehicle)
-
-            logger.debug('Sensor Manager created.')
-            logger.debug('Creating the sensors...')
-            
-            # Set up camera locations.
-            camera_location_front_left = carla.Transform(
-                carla.Location(x=0.4, y=-0.4, z=1.6),
-                carla.Rotation(yaw=-55.0)
-            )
-            camera_location_front = carla.Transform(
-                carla.Location(x=0.6, y=0.0, z=1.6),
-                carla.Rotation(yaw=0.0)
-            )
-            camera_location_front_right = carla.Transform(
-                carla.Location(x=0.4, y=0.4, z=1.6),
-                carla.Rotation(yaw=55.0)
-            )
-            camera_location_back_left = carla.Transform(
-                carla.Location(x=0.0, y=-0.4, z=1.6),
-                carla.Rotation(yaw=-110)
-            )
-            camera_location_back = carla.Transform(
-                carla.Location(x=-1.0, y=0.0, z=1.6),
-                carla.Rotation(yaw=180.0)
-            )
-            camera_location_back_right = carla.Transform(
-                carla.Location(x=0.0, y=0.4, z=1.6),
-                carla.Rotation(yaw=110.0)
-            )
-
-            camera_locations = [
-                camera_location_front_left,
-                camera_location_front,
-                camera_location_front_right,
-                camera_location_back_left,
-                camera_location_back,
-                camera_location_back_right
-            ]
-
-            # Create the cameras.
-            if self._config['use_rgb_camera']:
-                for location in camera_locations:
-                    RGBCamera(
-                        self._world,
-                        self._sensor_manager,
-                        location,
-                        self.vehicle,
-                        self._config['camera_width'],
-                        self._config['camera_height'],
-                        self._config['rgb_camera_properties']
-                    )
-            
-            if self._config['use_semantic_camera']:
-                for location in camera_locations:
-                    SemanticCamera(
-                        self._world,
-                        self._sensor_manager,
-                        location,
-                        self.vehicle,
-                        self._config['camera_width'],
-                        self._config['camera_height'],
-                        self._config['semantic_camera_properties']
-                    )
-            
-            if self._config['use_instance_camera']:
-                for location in camera_locations:
-                    InstanceCamera(
-                        self._world,
-                        self._sensor_manager,
-                        location,
-                        self.vehicle,
-                        self._config['camera_width'],
-                        self._config['camera_height'],
-                        self._config['instance_camera_properties']
-                    )
-                
-            
-            if self._config['use_depth_camera']:
-                for location in camera_locations:
-                    DepthCamera(
-                        self._world,
-                        self._sensor_manager,
-                        location,
-                        self.vehicle,
-                        self._config['camera_width'],
-                        self._config['camera_height'],
-                        self._config['depth_camera_properties']
-                    )
-            
-            if self._config['use_flow_camera']:
-                for location in camera_locations:
-                    FlowCamera(
-                        self._world,
-                        self._sensor_manager,
-                        location,
-                        self.vehicle,
-                        self._config['camera_width'],
-                        self._config['camera_height'],
-                        self._config['flow_camera_properties']
-                    )
-            
-            # Create a lidar.
-            if self._config['use_lidar']:
-                Lidar(
-                    self._world,
-                    self._sensor_manager,
-                    carla.Transform(carla.Location(x=0.0, y=0.0, z=1.8)),
-                    self.vehicle,
-                    self._config['lidar_channels'],
-                    self._config['lidar_range'],
-                    self._config['lidar_properties']
-                )
-            
-            # Create a semantic lidar.
-            if self._config['use_semantic_lidar']:
-                SemanticLidar(
-                    self._world,
-                    self._sensor_manager,
-                    carla.Transform(carla.Location(x=0.0, y=0.0, z=1.8), carla.Rotation(yaw=0.0)),
-                    self.vehicle,
-                    self._config['semantic_lidar_channels'],
-                    self._config['semantic_lidar_range'],
-                    self._config['semantic_lidar_properties']
-                )
-            
-            radar_location_left = carla.Transform(carla.Location(x=0.0, y=-1.0, z=0.6), carla.Rotation(yaw=-90.0))
-            radar_location_front = carla.Transform(carla.Location(x=2.4, y=0.0, z=0.6), carla.Rotation(yaw=0.0))
-            radar_location_right = carla.Transform(carla.Location(x=0.0, y=1.0, z=0.6), carla.Rotation(yaw=90.0))
-            radar_location_back = carla.Transform(carla.Location(x=-2.4, y=0.0, z=0.6), carla.Rotation(yaw=180.0))
-
-            radar_locations = [
-                radar_location_left,
-                radar_location_front,
-                radar_location_right,
-                radar_location_back,
-            ]
-            
-            # Create the radars
-            if self._config['use_radar']:
-                for location in radar_locations:
-                    Radar(
-                        self._world,
-                        self._sensor_manager,
-                        location,
-                        self.vehicle,
-                        self._config['radar_range'],
-                        self._config['radar_horizontal_fov'],
-                        self._config['radar_vertical_fov'],
-                        self._config['radar_properties']
-                    )
-            
-            # Create a GNSS sensor.
-            if self._config['use_gnss']:
-                GNSS(
-                    self._world,
-                    self._sensor_manager,
-                    carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0)),
-                    self.vehicle,
-                    self._config['gnss_properties']
-                )
-            
-            # Create an IMU sensor.
-            if self._config['use_imu']:
-                IMU(
-                    self._world,
-                    self._sensor_manager,
-                    carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0)),
-                    self.vehicle,
-                    self._config['imu_properties']
-                )
-            
-            # Create BEV semantic cameras for obtaining the ground truth.
-            bev_location_above = carla.Transform(
-                carla.Location(x=0.0, y=0.0, z=self._config['bev_camera_height']),
-                carla.Rotation(pitch=-90)
-            )
-            bev_location_below = carla.Transform(
-                carla.Location(x=0.0, y=0.0, z=-self._config['bev_camera_height']),
-                carla.Rotation(pitch=90)
-            )
-
-            bev_locations = [bev_location_above, bev_location_below]
-            
-            for location in bev_locations:
-                SemanticBEVCamera(
-                    self._world,
-                    self._sensor_manager,
-                    location,
-                    self.vehicle,
-                    self._config['bev_dim'],
-                    self._config['bev_dim'],
-                    self._config['bev_properties']
-                )
-            
-            self._world.tick()
-
-            logger.debug('Sensors created.')
+            self._spawn_sensors()
 
             # Instantiate the Ground Truth Manager.
             logger.debug('Creating the Ground Truth Manager...')
@@ -474,6 +477,38 @@ class VehicleManager:
             time.sleep(3.0)
 
             raise Exception('Cannot move the vehicle. Good bye!')
+    
+    def find_vehicle(self):
+        '''Find the vehicle in the world.'''
+        try:
+            logger.debug('Finding the ego vehicle in the world...')
+
+            self._world.tick()
+
+            actors = self._world.get_actors()
+
+            for actor in actors:
+                if 'role_name' in actor.attributes and actor.attributes['role_name'] == 'hero':
+                    self.vehicle = actor
+
+                    logger.debug('Ego vehicle found.')
+
+                    self._spawn_sensors()
+
+                    self._world.tick()
+
+                    return
+            
+            raise Exception('Ego vehicle not found in the world.')
+
+        except Exception as e:
+            logger.error(f'Error while finding the vehicle: {e}')
+
+            kill_all_servers()
+
+            time.sleep(3.0)
+
+            raise Exception('Cannot find the vehicle. Good bye!')
     
     def destroy_vehicle(self):
         '''Destroy the Sensor Manager and the vehicle.'''

@@ -339,7 +339,8 @@ def _run_data_collection(
         logger: logging.Logger,
         scene_counter: int,
         scene_duration: int,
-        augment: bool = False
+        augment: bool = False,
+        replay: bool = False
     ):
     '''
     Run the data collection phase.
@@ -352,6 +353,7 @@ def _run_data_collection(
         scene_counter: scene number.
         scene_duration: duration of the scene in seconds.
         augment: whether the dataset is being augmented.
+        replay: whether the scene is being replayed.
     '''
     pbar = tqdm(
         range(round(scene_duration / config['timestep'])),
@@ -361,13 +363,16 @@ def _run_data_collection(
     )
     
     for j in pbar:
-        should_terminate = (
-            core.get_world_manager().get_terminate_scene() and
-            j % round(1.0 / config['timestep']) == 0
-        )
+        if not replay:
+            should_terminate = (
+                core.get_world_manager().get_terminate_scene() and
+                j % round(1.0 / config['timestep']) == 0
+            )
+        else:
+            should_terminate = False
         
         if not should_terminate:
-            core.tick(args.path, scene_counter, j, args.render, args.save, augment)
+            core.tick(args.path, scene_counter, j, args.render, args.save, augment, replay)
         else:
             logger.warning('Termination conditions met. Ending scene early.')
 
@@ -415,10 +420,19 @@ def _generate_scene(
     if args.save and not augment:
         core.client.start_recorder(f'{args.path}/simbev/logs/SimBEV-scene-{scene_counter:04d}.log', True)
     
+    # Tick 3 times so when replayed, the recorder data matches the saved data.
+    for _ in range(3):
+        core.tick()
+    
     # Start data collection.
     _run_data_collection(args, core, config, logger, scene_counter, scene_duration, augment)
+
+    core.wait_for_saves()
     
     if args.save:
+        for _ in range(2):
+            core.tick()
+        
         # Stop logging the scene.
         if not augment:
             core.client.stop_recorder()
@@ -696,8 +710,14 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
         with open(info_path, 'r') as f:
             infos = json.load(f)
         
-        with open(f'{args.path}/simbev/infos/simbev_infos_{split}_original.json', 'w') as f:
-            json.dump(infos, f, indent=4)
+        for i in range(100):
+            info_path = f'{args.path}/simbev/infos/simbev_infos_{split}_original_{i}.json'
+
+            if not os.path.exists(info_path):
+                with open(info_path, 'w') as f:
+                    json.dump(infos, f, indent=4)
+                
+                break
         
         data = infos['data']
         
@@ -720,39 +740,7 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
                 
                 continue
 
-            original_data = copy.deepcopy(data[scene_key])
-
-            new_config = copy.deepcopy(config)
-            config = copy.deepcopy(original_config)
-
-            # Replace the sensor parameters of the original configuration with
-            # those of the new one.
-            for sensor in [
-                'rgb_camera',
-                'semantic_camera',
-                'instance_camera',
-                'depth_camera',
-                'flow_camera',
-                'lidar',
-                'semantic_lidar',
-                'radar',
-                'gnss',
-                'imu'
-            ]:
-                config[f'use_{sensor}'] = new_config[f'use_{sensor}']
-                config[f'{sensor}_properties'] = new_config[f'{sensor}_properties']
-                
-                if sensor in ['lidar', 'semantic_lidar']:
-                    config[f'{sensor}_channels'] = new_config[f'{sensor}_channels']
-                    config[f'{sensor}_range'] = new_config[f'{sensor}_range']
-                
-            config['camera_width'] = new_config['camera_width']
-            config['camera_height'] = new_config['camera_height']
-            config['camera_fov'] = new_config['camera_fov']
-
-            config['radar_range'] = new_config['radar_range']
-            config['radar_horizontal_fov'] = new_config['radar_horizontal_fov']
-            config['radar_vertical_fov'] = new_config['radar_vertical_fov']
+            original_data = copy.deepcopy(data)
             
             map_name = data[scene_key]['scene_info']['map']
 
@@ -782,8 +770,8 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
             _generate_scene(args, core, config, logger, scene_counter, data, seed, augment=True)
 
             try:
-                for i, frame in enumerate(data[scene_key]['scene_data']):
-                    frame.update(original_data['scene_data'][i])
+                for i, frame in enumerate(original_data[scene_key]['scene_data']):
+                    frame.update(data[scene_key]['scene_data'][i])
             
             except IndexError:
                 logger.warning(
@@ -792,7 +780,7 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
                 )
             
             # Save the updated data information.
-            info = {'metadata': metadata, 'data': data}
+            info = {'metadata': metadata, 'data': original_data}
             
             with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
                 json.dump(info, f, indent=4)
@@ -800,17 +788,138 @@ def collect_data_augment_mode(args, core: CarlaCore, config: dict, metadata: dic
             for i in range(100):
                 config_path = f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}-augment-{i}.yaml'
                 
-                if os.path.exists(config_path):
-                    continue
-                
-                with open(config_path, 'w') as f:
-                    yaml.dump(config, f)
-                    
-                break
+                if not os.path.exists(config_path):
+                    with open(config_path, 'w') as f:
+                        yaml.dump(config, f)
+                        
+                    break
             
             core.destroy_vehicle()
 
-            config = copy.deepcopy(new_config)
+            data = copy.deepcopy(original_data)
+
+def collect_data_replay_mode(args, core: CarlaCore, config: dict, metadata: dict, logger: logging.Logger):
+    '''
+    Replay specified scenes and potentially augment them with additional
+        sensor data.
+    
+    Args:
+        args: command line arguments.
+        core: CarlaCore instance.
+        config: configuration dictionary.
+        metadata: dataset metadata.
+        logger: logger instance.
+    '''
+    first_setup = True
+
+    for split in ['train', 'val', 'test']:
+        info_path = f'{args.path}/simbev/infos/simbev_infos_{split}.json'
+        
+        if not os.path.exists(info_path):
+            continue
+        
+        with open(info_path, 'r') as f:
+            infos = json.load(f)
+        
+        for i in range(100):
+            info_path = f'{args.path}/simbev/infos/simbev_infos_{split}_original_{i}.json'
+
+            if not os.path.exists(info_path):
+                with open(info_path, 'w') as f:
+                    json.dump(infos, f, indent=4)
+                
+                break
+        
+        data = infos['data']
+        
+        # Replay the specified scenes.
+        for scene_counter in config['replay_scene_config']:            
+            scene_key = f'scene_{scene_counter:04d}'
+            
+            if scene_key not in data.keys():
+                logger.debug(f'Scene {scene_counter:04d} not found in the {split} set. Skipping...')
+                
+                continue
+
+            original_data = copy.deepcopy(data)
+
+            scene_info = data[scene_key]['scene_info']
+            
+            map_name = scene_info['map']
+            
+            if first_setup:
+                core.connect_client()
+                core.load_map(map_name)
+                
+                first_setup = False
+            
+            # Load a new map if necessary.
+            if map_name != core.get_world_manager().get_map_name():
+                core.shut_down_traffic_manager()
+                core.connect_client()
+                core.load_map(map_name)
+            
+            logger.info(f'Replaying scene {scene_counter:04d} in {map_name} for the {split} set...')
+
+            log_path = scene_info['log']
+
+            core.client.replay_file(log_path, 0, 0, 0)
+
+            core.find_vehicle()
+
+            scene_duration = len(data[scene_key]['scene_data']) * config['timestep']
+
+            core.set_scene_duration(scene_duration)
+
+            if 'final_weather_parameters' in scene_info:
+                core.configure_replay_weather(
+                    scene_info['initial_weather_parameters'],
+                    scene_info['final_weather_parameters']
+                )
+            else:
+                core.configure_replay_weather(scene_info['initial_weather_parameters'])
+
+            # Generate and save the replacement scene.
+            _run_data_collection(args, core, config, logger, scene_counter, scene_duration, augment=True, replay=True)
+
+            core.client.stop_replayer(keep_actors=False)
+
+            core.wait_for_saves()
+
+            core.tick(augment=True, replay=True)
+
+            scene_data = core.package_data()
+            
+            data[f'scene_{scene_counter:04d}'] = copy.deepcopy(scene_data)
+
+            try:
+                for i, frame in enumerate(original_data[scene_key]['scene_data']):
+                    frame.update(data[scene_key]['scene_data'][i])
+            
+            except IndexError:
+                logger.warning(
+                    f'Frame count mismatch when augmenting scene {scene_counter:04d}. The augmented data may be '
+                    'inconsistent with the original data.'
+                )
+            
+            # Save the updated data information.
+            info = {'metadata': metadata, 'data': original_data}
+            
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
+                json.dump(info, f, indent=4)
+            
+            for i in range(100):
+                config_path = f'{args.path}/simbev/configs/SimBEV-scene-{scene_counter:04d}-augment-{i}.yaml'
+                
+                if not os.path.exists(config_path):
+                    with open(config_path, 'w') as f:
+                        yaml.dump(config, f)
+                        
+                    break
+            
+            core.destroy_replay_actors()
+
+            data = copy.deepcopy(original_data)
 
 def collect_data(args, mode: str, core: CarlaCore, config: dict, metadata: dict, logger: logging.Logger):
     '''
@@ -827,7 +936,8 @@ def collect_data(args, mode: str, core: CarlaCore, config: dict, metadata: dict,
     mode_handlers = {
         'create': collect_data_create_mode,
         'replace': collect_data_replace_mode,
-        'augment': collect_data_augment_mode
+        'augment': collect_data_augment_mode,
+        'replay': collect_data_replay_mode
     }
     
     if mode not in mode_handlers:

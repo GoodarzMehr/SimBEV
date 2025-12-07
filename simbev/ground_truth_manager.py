@@ -132,10 +132,10 @@ WARNINGS = [
 
 MAP_PALETTE = {
     'road': (196, 80, 196),
+    'hazard': (240, 80, 80),
     'road_line': (160, 240, 40),
     'sidewalk': (240, 196, 240),
     'crosswalk': (240, 196, 196),
-    'hazard': (240, 80, 80),
     'traffic_cone': (255, 165, 0),
     'barrier': (200, 128, 128),
     'car': (0, 128, 240),
@@ -149,10 +149,10 @@ MAP_PALETTE = {
 
 CITYSCAPE_PALETTE = {
     'road': (128, 64, 128),
+    'hazard': (240, 80, 80),
     'road_line': (227, 227, 227),
     'sidewalk': (244, 35, 232),
     'crosswalk': (157, 234, 50),
-    'hazard': (240, 80, 80),
     'traffic_cone': (255, 165, 0),
     'barrier': (200, 128, 128),
     'car': (0, 0, 142),
