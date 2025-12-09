@@ -213,7 +213,8 @@ class RGBCamera(BaseCamera):
         '''
         cv2.imwrite(
             f'{path}/simbev/sweeps/RGB-{camera_name}/SimBEV-scene-{scene:04d}-frame-{frame:04d}-RGB-{camera_name}.jpg',
-            self._save_queue.get(True, 10.0)
+            self._save_queue.get(True, 10.0),
+            [cv2.IMWRITE_JPEG_QUALITY, 80]
         )
 
 

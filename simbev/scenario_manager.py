@@ -490,7 +490,7 @@ class ScenarioManager:
             if 'street_light_intensity_change' in self._config:
                 intensity_change = self._config['street_light_intensity_change']
             else:
-                intensity_change = random.uniform(
+                intensity_change = np.random.uniform(
                     -np.mean(street_light_intensity),
                     np.mean(street_light_intensity)
                 )

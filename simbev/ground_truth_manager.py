@@ -1124,9 +1124,9 @@ class GTManager:
                         object_properties['bounding_box'][::2, 2] = object_properties['bounding_box'][1::2, 2] - \
                             2 * max_extent
                         
-                        object_properties['bounding_box'][::2, :1] = object_properties['bounding_box'][1::2, :1] + \
-                            frac * (object_properties['bounding_box'][::2, :1] - \
-                                    object_properties['bounding_box'][1::2, :1])
+                        object_properties['bounding_box'][::2, :2] = object_properties['bounding_box'][1::2, :2] + \
+                            frac * (object_properties['bounding_box'][::2, :2] - \
+                                    object_properties['bounding_box'][1::2, :2])
                 elif obj.type == carla.CityObjectLabel.Car:
                     object_properties['semantic_tags'] = [14]
                 elif obj.type == carla.CityObjectLabel.Truck:

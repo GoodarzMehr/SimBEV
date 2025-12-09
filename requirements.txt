@@ -2,7 +2,9 @@ tqdm
 ninja
 numpy
 torch
+evdev==1.6.1
 pynput
+psutil
 open3d
 networkx
 matplotlib

@@ -1,4 +1,4 @@
-mode: 'create' # can be 'create' or 'replace'
+mode: 'create' # can be 'create', 'replace', 'replay', or 'augment'
 
 # When mode is 'create' the following configurations denote the number of
 # scenes that should be generated for each map.
@@ -7,53 +7,61 @@ train_scene_config:
   Town01: 16
   Town02: 16
   Town03: 48
-  Town04: 32
-  Town05: 48
+  Town04: 48
+  Town05: 64
   Town06: 32
   Town07: 32
-  Town10HD: 32
+  Town10HD: 48
   Town12: 160
-  Town15: 80
+  Town15: 96
 
 val_scene_config:
   Town01: 4
   Town02: 4
   Town03: 12
-  Town04: 8
-  Town05: 12
+  Town04: 12
+  Town05: 16
   Town06: 8
   Town07: 8
-  Town10HD: 8
+  Town10HD: 12
   Town12: 40
   Town13: 80
-  Town15: 20
+  Town15: 24
 
 test_scene_config:
   Town01: 4
   Town02: 4
   Town03: 12
-  Town04: 8
-  Town05: 12
+  Town04: 12
+  Town05: 16
   Town06: 8
   Town07: 8
-  Town10HD: 8
+  Town10HD: 12
   Town12: 40
   Town13: 80
-  Town15: 20
+  Town15: 24
 
-# When mode is 'replace' the following configuration denotes the list of
-# scenes that should be overwritten.
+# When mode is 'replace' the following list denotes the list of scenes that
+# should be overwritten.
 replacement_scene_config: []
+
+# When mode is 'replay' the following list denotes the list of scenes that
+# should be replayed and augmented.
+replay_scene_config: []
+
+# When mode is 'augment' the following list denotes the list of scenes that
+# should be augmented.
+augmentation_scene_config: []
 
 vehicle: 'mustang_2016'
 vehicle_color: '0,0,0'
 
-show_debug_telemetry: False
 simulate_physics: True
+show_debug_telemetry: False
 
 warmup_duration: 4
 min_scene_duration: 8
-max_scene_duration: 32
+max_scene_duration: 40
 
 early_scene_termination: True
 termination_timeout: 8
@@ -68,23 +76,33 @@ quality_level: 'Epic'
 retries_on_error: 10
 
 render_gpu: 0
-cuda_gpu: 1
 
-tile_stream_distance: 960.0
-actor_active_distance: 960.0
+max_io_workers: 48
+
+use_scene_number_for_random_seed: True
+random_seed_offset: 27
+
+dynamic_settings_adjustments: True
+
+tile_stream_distance: 1600.0
+actor_active_distance: 1600.0
 
 waypoint_distance: 0.4
-mapping_area_radius: 960.0
-nearby_mapping_area_radius: 132.0
+mapping_area_radius: 1600.0
+nearby_mapping_area_radius: 140.0
 
 spawn_point_separation_distance: 24.0
 
-bbox_collection_radius: 120.0
+bbox_collection_radius: 200.0
 
-npc_spawn_radius: 480.0
+npc_spawn_radius: 600.0
+
+bev_camera_height: 1000.0
 
 bev_dim: 400
 bev_res: 0.4
+
+spectator_height: 4.0
 
 collect_traffic_light_bbox: True
 collect_traffic_sign_bbox: True
@@ -100,15 +118,19 @@ door_open_percentage: 10.0
 
 emergency_lights_percentage: 50.0
 
-reckless_ego: True
 reckless_ego_percentage: 1.0
-
-reckless_npc: True
 reckless_npc_percentage: 1.0
+
+distracted_ego_percentage: 2.0
+distracted_npc_percentage: 2.0
+
+max_n_walkers: 640
 
 walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
+
+wheelchair_use_percentage: 4.0
 
 dynamic_weather: True
 
@@ -122,6 +144,11 @@ street_light_failure_percentage: 10.0
 
 turn_off_building_lights: False
 turn_off_street_lights: False
+
+hazard_area_percentage: 1.6
+accident_hazard_percentage: 50.0
+emergency_vehicle_at_accident_percentage: 50.0
+missing_cone_percentage: 32.0
 
 use_cityscapes_palette: False
 
@@ -164,7 +191,7 @@ lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
   dropoff_general_rate: '0.14'
-  noise_stddev: '0.01'
+  noise_stddev: '0.03'
 
 use_semantic_lidar: True
 
@@ -180,7 +207,7 @@ use_radar: True
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
-radar_vertical_fov: 12.0
+radar_vertical_fov: 20.0
 radar_properties:
   points_per_second: '40000'
 
@@ -253,7 +280,10 @@ imu_properties:
 #     [[-218.43, -3.92, 0.3], [0.0, 0.0, 180.0]]
 #   ]
 #   Town06: [
-#     [[-5.5314, -0.3351, 0.3], [0.0, 0.0, 90.0]]
+#     [[61.7792, 48.8402, 0.3], [0.0, 0.0, 0.0]],
+#     [[324.2593, 48.7343, 0.3], [0.0, 0.0, 90.0]],
+#     [[-5.5314, -0.3351, 0.3], [0.0, 0.0, 90.0]],
+#     [[-9.0433, 12.9953, 0.3], [0.0, 0.0, 90.0]]
 #   ]
 #   Town10HD: [
 #     [[-17.1, 13.2, 0.6], [0.0, 0.0, 180.0]],
@@ -270,7 +300,14 @@ imu_properties:
 #     [[-87.6, 13.0, 0.6], [0.0, 0.0, 180.0]]
 #   ]
 #   Town12: [
-#       [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
+#       # [[780.4, 3510.0, 374.0], [0.0, 0.0, 90.0]]
+#       [[-1318.7, 3917.5, 360.0], [0.0, 0.0, 180.0]]
+#   ]
+#   Town13: [
+#       [[2497.6, 4445.6, 171.5], [0.0, 0.0, 126.7]],
+#       [[1253.5, 790.7, 149.2], [0.0, 0.0, 90.0]],
+#       [[2526.3, 6388.1, 166.3], [0.0, 0.0, -131.8]],
+#       [[2314.3, 4143.0, 179.7], [0.0, 0.0, 70.3]]
 #   ]
 #   Town15: [
 #       [[-121.87, 169.54, 151.81], [0.0, 0.28, 3.19]]

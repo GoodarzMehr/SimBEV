@@ -4,42 +4,42 @@ mode: 'create' # can be 'create', 'replace', 'replay', or 'augment'
 # scenes that should be generated for each map.
 
 train_scene_config:
-  Town01: 3
-  Town02: 3
-  Town03: 3
-  Town04: 3
-  Town05: 3
-  Town06: 3
-  Town07: 3
-  Town10HD: 3
-  Town12: 3
-  Town15: 3
+  # Town01: 3
+  # Town02: 3
+  # Town03: 3
+  # Town04: 3
+  # Town05: 3
+  # Town06: 3
+  # Town07: 3
+  # Town10HD: 3
+  # Town12: 3
+  # Town15: 3
 
 val_scene_config:
-  Town01: 2
-  Town02: 2
-  Town03: 2
-  Town04: 2
-  Town05: 2
-  Town06: 2
-  Town07: 2
-  Town10HD: 2
-  Town12: 2
-  Town13: 2
-  Town15: 2
+  # Town01: 2
+  # Town02: 2
+  # Town03: 2
+  # Town04: 2
+  # Town05: 2
+  # Town06: 2
+  # Town07: 2
+  # Town10HD: 2
+  # Town12: 2
+  # Town13: 2
+  # Town15: 2
 
 test_scene_config:
-  Town01: 1
-  Town02: 1
-  Town03: 1
-  Town04: 1
-  Town05: 1
-  Town06: 1
-  Town07: 1
-  Town10HD: 1
-  Town12: 1
-  Town13: 1
-  Town15: 1
+  # Town01: 1
+  # Town02: 1
+  # Town03: 1
+  # Town04: 1
+  # Town05: 1
+  # Town06: 1
+  # Town07: 1
+  # Town10HD: 1
+  # Town12: 1
+  # Town13: 1
+  # Town15: 1
 
 # When mode is 'replace' the following denotes the list of scenes that should
 # be overwritten.
@@ -56,8 +56,8 @@ augmentation_scene_config: []
 vehicle: 'mustang_2016'
 vehicle_color: '0,0,0'
 
-show_debug_telemetry: False
 simulate_physics: True
+show_debug_telemetry: False
 
 warmup_duration: 4
 min_scene_duration: 8
@@ -130,7 +130,7 @@ walker_spawn_attempts: 100
 
 walker_speed_min: 0.8
 
-wheelchair_use_percentage: 2.0
+wheelchair_use_percentage: 4.0
 
 dynamic_weather: True
 
@@ -145,7 +145,7 @@ street_light_failure_percentage: 10.0
 turn_off_building_lights: False
 turn_off_street_lights: False
 
-hazard_area_percentage: 1.0
+hazard_area_percentage: 1.6
 accident_hazard_percentage: 50.0
 emergency_vehicle_at_accident_percentage: 50.0
 missing_cone_percentage: 32.0
@@ -156,32 +156,32 @@ camera_width: 1600
 camera_height: 900
 camera_fov: '80'
 
-use_rgb_camera: True
+use_rgb_camera: False
 
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: True
+use_semantic_camera: False
 
 semantic_camera_properties:
   {}
 
-use_instance_camera: True
+use_instance_camera: False
 
 instance_camera_properties:
  {}
 
-use_depth_camera: True
+use_depth_camera: False
 
 depth_camera_properties:
  {}
 
-use_flow_camera: True
+use_flow_camera: False
 
 flow_camera_properties:
  {}
 
-use_lidar: True
+use_lidar: False
 
 lidar_channels: 128
 lidar_range: 120.0
@@ -191,9 +191,9 @@ lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
   dropoff_general_rate: '0.14'
-  noise_stddev: '0.02'
+  noise_stddev: '0.03'
 
-use_semantic_lidar: True
+use_semantic_lidar: False
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -203,15 +203,15 @@ semantic_lidar_properties:
   upper_fov: '10.67'
   lower_fov: '-30.67'
 
-use_radar: True
+use_radar: False
 
 radar_range: 120.0
 radar_horizontal_fov: 100.0
-radar_vertical_fov: 12.0
+radar_vertical_fov: 20.0
 radar_properties:
   points_per_second: '40000'
 
-use_gnss: True
+use_gnss: False
 
 gnss_properties:
   noise_seed: '27'
@@ -219,7 +219,7 @@ gnss_properties:
   noise_lat_stddev: '0.0000004'
   noise_lon_stddev: '0.0000004'
 
-use_imu: True
+use_imu: False
 
 imu_properties:
   noise_seed: '27'
