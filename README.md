@@ -85,42 +85,59 @@ The SimBEV dataset (collected using SimBEV 1.0) is a collection of 320 scenes sp
 ### Hardware Requirements
 
 We developed and tested SimBEV on a system with the following specifications:
-* AMD Ryzen 9 3900X (Any Intel 9th gen or newer or Ryzen 7/9 CPU will probably work)
-* 64 GB RAM (32 GB is probably enough)
-* Nvidia GeForce RTX 3090
+* AMD Ryzen 9 9950X (Any Intel 9th Gen or newer or Ryzen 7/9 3rd Gen or newer will probably work)
+* 96 GB RAM (32 GB is probably enough)
+* Nvidia GeForce RTX 4090
 * Ubuntu 22.04
 
-To run SimBEV, your system must satisfy CARLA 0.9.15's [minimum system requirements](https://github.com/carla-simulator/carla/tree/ue4-dev?tab=readme-ov-file#recommended-system). You must also have an Nvidia graphics card with at least 16 (preferrably 24) GB of VRAM (RTX 3090/3090 Ti/4080/4080 Super/4090/5070 Ti/5080/5090 or one of the pro models).
+To run SimBEV, your system must satisfy CARLA 0.9.16's [minimum system requirements](https://github.com/carla-simulator/carla/tree/ue4-dev?tab=readme-ov-file#recommended-system).
 
 ### CARLA
 
-SimBEV works best with our modified version of CARLA 0.9.15 that has an enhanced content library. Some of the enhancements are:
-* We added three new sports cars to CARLA's vehicle library using existing 3D models: sixth generation Ford Mustang, Toyota GR Supra, and Bugatti Chiron. The Ford Mustang is SimBEV's default vehicle for collecting data.
+To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). Some of the enhancements in our version are:
+
+* Addition of three new sports cars to CARLA's vehicle library using existing 3D models: sixth generation Ford Mustang, Toyota GR Supra, and Bugatti Chiron. The Ford Mustang is SimBEV's default data collection vehicle.
 
 https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
 
-* We added lights (headlights, taillights, blinkers, etc.) to those older vehicle models in CARLA's library that lacked them, and redesigned existing vehicle lights in Blender using a new multi-layer approach that better visualizes modern multi-purpose lights.
+* Addition of lights (headlights, taillights, blinkers, etc.) to those older vehicle models in CARLA's library that lacked them, and redesigning of existing vehicle lights in Blender using a new multi-layer approach that better visualizes modern multi-purpose lights.
 
-![mustang-lights](assets/MustangLights.png)
+<p align="middle">
+  <img src="assets/MustangLights.png" width="96%" />
+</p>
 
-* We added a set of 160 standard paint colors for most vehicle models (apart from a few like the firetruck) to choose from, and fixed paint color randomization issues for a few vehicles (e.g. the bus).
-* We updated the vehicle dynamics parameters of vehicle models to better match their vehicle's behavior and performance in the real world.
-* We added or updated pedestrian navigation information for CARLA's Town12, Town13, and Town15 maps.
-* We updated motorcycle and bicycle models to select their driver model randomly, instead of always sticking with the same model.
-* We added lights to buildings in Town12 and fixed issues that prevented full control over building/street lights in Town12 and Town15.
-* (SimBEV 2.0) We updated the crosswalk information in the OpenDRIVE map files of Town12, Town13, and Town15.
+* Addition of a set of 160 standard paint colors for most vehicle models (apart from a few like the firetruck) to choose from, and fixing paint color randomization issues for a few vehicles (e.g. the bus).
+* Update to the vehicle dynamics parameters of vehicle models to better match their vehicle's behavior and performance in the real world.
+* Addition of or updating pedestrian navigation information for CARLA's Town12, Town13, and Town15 maps.
+* Update to motorcycle and bicycle models to select their driver model randomly, instead of always using the same model.
+* Addition of lights to buildings in Town12 and fixing issues that prevented full control over building/street lights in Town12 and Town15.
+* Update to the crosswalk information in the OpenDRIVE map files of Town12, Town13, and Town15.
+* Improvements to CARLA's Traffic Manager, including enhancements to the lane changing behavior of vehicles on autopilot and their reaction to static props (street barriers, traffic cones, etc.).
+* Enhancements to the collision mesh of vehicle and pedestrian models that should result in a more realistic depiction of them in point cloud data (see a sample comparison between the old (left) and new (right) models below).
+<p align="middle">
+  <img src="assets/ChargerOld.png" width="48%" />
+  <img src="assets/ChargerNew.png" width="48%" />
+</p>
+<p align="middle">
+  <img src="assets/FireTruckOld.png" width="48%" />
+  <img src="assets/FireTruckNew.png" width="48%" />
+</p>
+<p align="middle">
+  <img src="assets/YamahaOld.png" width="48%" />
+  <img src="assets/YamahaNew.png" width="48%" />
+</p>
+
+* Several bug fixes and improvements, some of which have been contributed to the main CARLA repository as well (see e.g. PR [#9381](https://github.com/carla-simulator/carla/pull/9381), [#9421](https://github.com/carla-simulator/carla/pull/9421), [#9422](https://github.com/carla-simulator/carla/pull/9422), [#9423](https://github.com/carla-simulator/carla/pull/9423), [#9427](https://github.com/carla-simulator/carla/pull/9427), and [#9471](https://github.com/carla-simulator/carla/pull/9471))
 
 SimBEV is compatible with the standard version of CARLA 0.9.15, but some features may not work properly.
 
-**We have not tested SimBEV with CARLA 0.10.0 and advise against using it with SimBEV. While CARLA 0.10.0 offers superior graphics, it lacks some features from CARLA 0.9.15 that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with CARLA 0.9.15.**
+**We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is likely incompatible with SimBEV and while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
 
-1. Download [CARLA 0.9.15 for Ubuntu](https://github.com/carla-simulator/carla/releases/tag/0.9.15) to your desired directory and unzip it.
-2. Download our [enhanced content library](https://drive.google.com/file/d/1NqCFar22Dtf2FY6NODNOMuutZGX7OAOE/view) and unzip it. In your CARLA directory, under `CarlaUE4`, rename the `Content` folder to `Content.bak` to have a backup of the original CARLA content library. Copy the downloaded `Content` folder to the `CarlaUE4` directory.
-3. Open `CarlaUE4/Config/DefaultEngine.ini` and replace all mentions of `Town10HD_Opt` with `Town10HD`.
+**Please download our custom version of CARLA from [here]().**
 
 ### SimBEV
 
-We recommend using SimBEV with Docker. The base Docker image is Ubuntu 20.04 with CUDA 11.3 and Vulkan SDK 1.3.204.1. If you want to use a different base image, you may have to modify `ubuntu2004/x86_64` when fetching keys on line 62 of the [Dockerfile](Dockerfile), based on your Ubuntu release and system architecture. **Ensure that `libnvidia-gl` and `libnvidia-common` version numbers on line 66 of the [Dockerfile](Dockerfile) match your Nvidia driver version number.**
+We recommend using SimBEV with Docker. The base Docker image is Ubuntu 22.04 with CUDA 13.0.2 and Vulkan SDK 1.3.204. If you want to use a different base image, you may have to modify `ubuntu2204/x86_64` when fetching keys on line 61 of the [Dockerfile](Dockerfile), based on your Ubuntu release and system architecture. **Ensure that `libnvidia-gl` and `libnvidia-common` version numbers on line 65 of the [Dockerfile](Dockerfile) match your Nvidia driver version number.**
 
 1. Install [Docker](https://docs.docker.com/engine/install/) on your system.
 2. Install the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installation-guide).
@@ -135,18 +152,27 @@ It exposes your Nvidia graphics card to Docker containers.
    ```
    The following optional build arguments (`ARG`) are available:
    * `USER`: username inside each container, set to _sb_ by default.
-   * `CARLA_VERSION`: installed CARLA version, set to _0.9.15_ by default.
+   * `CARLA_VERSION`: installed CARLA version, set to _0.9.16_ by default.
 5. Launch a container:
    ```Bash
-   docker run --privileged --gpus all --network=host -e DISPLAY=$DISPLAY \
+   docker run --runtime=nvidia --privileged --gpus all --network=host -e DISPLAY=$DISPLAY \
    -v [path/to/CARLA]:/home/carla \
    -v [path/to/SimBEV]:/home/simbev \
    -v [path/to/dataset]:/dataset \
    --shm-size 32g -it simbev:develop /bin/bash
    ```
-   Use `nvidia-smi` to ensure your graphics card is visible inside the container.
+   Use `nvidia-smi` to ensure your graphics card is visible inside the container. Use `vulkaninfo --summary` to ensure Vulkan has access to your graphics cards.
+6. Install CARLA inside the container by running:
+    ```Bash
+    pip carla/PythonAPI/carla/dist/carla-0.9.16-cp310-cp310-linux_x86_64.whl
+    ```
+7. On a separate terminal window, enter the container as the root user by running `docker exec -it -u 0 [container name] /bin/bash`. Then, run:
+    ```Bash
+    cd simbev && python setup.py develop
+    ```
+    Exit the container as the root user but stay inside it as the _sb_ (non-root) user.
 
-If you would like to use SimBEV without Docker, you can replicate the steps in the [Dockerfile](Dockerfile) to install the dependencies. Be sure to add the CARLA `.egg` file (located in `[path/to/CARLA]/PythonAPI/carla/dist/`) to the `PYTHONPATH` environment variable.
+If you would like to use SimBEV without Docker, you can install the dependencies using the [requirements](requirements.txt) file and then following steps 6 and 7 above.
 
 ## Usage
 
