@@ -94,7 +94,7 @@ To run SimBEV, your system must satisfy CARLA 0.9.16's [minimum system requireme
 
 ### CARLA
 
-To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here]().**
+To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here](https://drive.google.com/file/d/1YbajnYo52_OYoJFoCmXABxs7ILDzj_wi/view?usp=sharing).**
 
 **We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is incompatible with SimBEV and while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
 
@@ -131,7 +131,7 @@ https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
   <img src="assets/YamahaNew.png" width="48%" />
 </p>
 
-* Several bug fixes and improvements, some of which have been contributed to the main CARLA repository as well (see e.g. PR [#9381](https://github.com/carla-simulator/carla/pull/9381), [#9421](https://github.com/carla-simulator/carla/pull/9421), [#9422](https://github.com/carla-simulator/carla/pull/9422), [#9423](https://github.com/carla-simulator/carla/pull/9423), [#9427](https://github.com/carla-simulator/carla/pull/9427), and [#9471](https://github.com/carla-simulator/carla/pull/9471))
+* Several bug fixes and improvements, some of which have been contributed to the main CARLA repository as well (see e.g. PR [#9381](https://github.com/carla-simulator/carla/pull/9381), [#9421](https://github.com/carla-simulator/carla/pull/9421), [#9422](https://github.com/carla-simulator/carla/pull/9422), [#9423](https://github.com/carla-simulator/carla/pull/9423), [#9427](https://github.com/carla-simulator/carla/pull/9427), and [#9471](https://github.com/carla-simulator/carla/pull/9471)).
 
 ### SimBEV
 
@@ -174,11 +174,11 @@ If you would like to use SimBEV without Docker, you can install the dependencies
 
 ## Usage
 
-### Creating/Expanding/Replacing a SimBEV Dataset
+### Creating/Expanding a SimBEV Dataset
 
-In the [simbev](simbev) directory, use the [config.yaml](simbev/config.yaml) file to configure SimBEV's behavior (for a detailed explanation of available parameters see the [sample_config.yaml](simbev/sample_config.yaml) file). Then run
+In the [simbev](simbev) directory, use the [config.yaml](configs/config.yaml) file to configure SimBEV's behavior (for a detailed explanation of available parameters see the [sample_config.yaml](configs/sample_config.yaml) file). Set `mode` in the [config.yaml](configs/config.yaml) file to `create` to create a new SimBEV dataset. If a SimBEV dataset already exists (in the path provided by `path`), SimBEV compares the number of existing and desired scenes for each map and creates additional ones if necessary. This feature can be used to continue creating a dataset in the event of a crash or expand an already existing one. Now, run
 ```Bash
-python simbev.py config.yaml [options]
+simbev configs/config.yaml [options]
 ```
 `options` can be any of the following:
 * `path`: path for saving the dataset (`/dataset` by default).
@@ -188,19 +188,25 @@ python simbev.py config.yaml [options]
 
 For instance,
 ```Bash
-python simbev.py config.yaml --render --no-save
+simbev configs/config.yaml --render --no-save
 ```
 visualizes sensor data as it is captured without saving it.
 
-Set `mode` in the [config.yaml](simbev/config.yaml) file to `create` to create a new SimBEV dataset. If a SimBEV dataset already exists (in the path provided by `path`), SimBEV compares the number of existing and desired scenes for each map and creates additional ones if necessary. This feature can be used to continue creating a dataset in the event of a crash or expand an already existing one. To replace undesired scenes, set `mode` to `replace` and denote which scenes should be replaced.
+### Replacing Scenes
+
+If you would like to replace a number of existing scenes, set `mode` in the [config.yaml](configs/config.yaml) file to `replace` and specify the list of scenes that should be replaced using the `replacement_scene_config` field.
+
+### Replaying/Augmenting Scenes
+
+If you would like to replay a number of existing scenes, set `mode` in the [config.yaml](configs/config.yaml) file to `replay` and specify the list of scenes that should be replayed using the `replay_scene_config` field. SimBEV will use the saved CARLA log file of the specified scenes to replay them. This can be useful if you want to collect additional data from a scene. For example, if you have already collected RGB camera data and would like to collect semantic lidar and radar data when replaying the scene, set `use_rgb_camera` field in the [config.yaml](configs/config.yaml) file to `False` and set `use_semantic_lidar` and `use_radar` to `True`.
 
 ### Post-processing
 
-An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if not collected) alongside a flag indicating whether the number of points inside the bounding box is non-zero, and will append this information to bounding box data. To do this, in the [simbev](simbev) directory run
+An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if not collected) alongside a _valid_ flag indicating whether the object is fully occluded (False) or visible to the data collection vehicle (True). By default, an object is _valid_ if the number of points inside the bounding box is non-zero and _invalid_ otherwise. However, if you have collected instance segmentation images you can use the `--use-seg` argument to use those images to assist in determining the validity of an object (if the number of points inside the object's bounding box is zero but the object is visible inside the image, then it is _valid_). The post-processing step also determines the detection difficulty of an object as either _easy_, _medium_, or _hard_ based on the object's class, distance to the data collection vehicle, and the number of points inside its bounding box. This information will be appended to bounding box data. To do this, in the [simbev](simbev) directory run
 ```Bash
-python post_processing.py
+simbev-postprocess [options]
 ```
-where an optional `path` argument can be used to provided the path to the SimBEV dataset (`path` is `/dataset` by default). This will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
+where, alongside the optional `--use-seg` argument, an optional `--path` argument can be used to provid the path to the SimBEV dataset (`path` is `/dataset` by default). The post-processing step will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
 
 ### Data Visualization
 

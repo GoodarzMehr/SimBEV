@@ -1,4 +1,4 @@
-mode: 'create' # can be 'create', 'replace', 'replay', or 'augment'
+mode: 'create' # can be 'create', 'replace', or 'replay'
 
 # When mode is 'create' the following configurations denote the number of
 # scenes that should be generated for each map.
@@ -48,10 +48,6 @@ replacement_scene_config: []
 # When mode is 'replay' the following list denotes the list of scenes that
 # should be replayed and augmented.
 replay_scene_config: []
-
-# When mode is 'augment' the following list denotes the list of scenes that
-# should be augmented.
-augmentation_scene_config: []
 
 vehicle: 'mustang_2016'
 vehicle_color: '0,0,0'
