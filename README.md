@@ -94,7 +94,11 @@ To run SimBEV, your system must satisfy CARLA 0.9.16's [minimum system requireme
 
 ### CARLA
 
-To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). Some of the enhancements in our version are:
+To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here]().**
+
+**We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is incompatible with SimBEV and while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
+
+Some of the enhancements in our version are:
 
 * Addition of three new sports cars to CARLA's vehicle library using existing 3D models: sixth generation Ford Mustang, Toyota GR Supra, and Bugatti Chiron. The Ford Mustang is SimBEV's default data collection vehicle.
 
@@ -129,12 +133,6 @@ https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
 
 * Several bug fixes and improvements, some of which have been contributed to the main CARLA repository as well (see e.g. PR [#9381](https://github.com/carla-simulator/carla/pull/9381), [#9421](https://github.com/carla-simulator/carla/pull/9421), [#9422](https://github.com/carla-simulator/carla/pull/9422), [#9423](https://github.com/carla-simulator/carla/pull/9423), [#9427](https://github.com/carla-simulator/carla/pull/9427), and [#9471](https://github.com/carla-simulator/carla/pull/9471))
 
-SimBEV is compatible with the standard version of CARLA 0.9.15, but some features may not work properly.
-
-**We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is likely incompatible with SimBEV and while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
-
-**Please download our custom version of CARLA from [here]().**
-
 ### SimBEV
 
 We recommend using SimBEV with Docker. The base Docker image is Ubuntu 22.04 with CUDA 13.0.2 and Vulkan SDK 1.3.204. If you want to use a different base image, you may have to modify `ubuntu2204/x86_64` when fetching keys on line 61 of the [Dockerfile](Dockerfile), based on your Ubuntu release and system architecture. **Ensure that `libnvidia-gl` and `libnvidia-common` version numbers on line 65 of the [Dockerfile](Dockerfile) match your Nvidia driver version number.**
@@ -161,18 +159,18 @@ It exposes your Nvidia graphics card to Docker containers.
    -v [path/to/dataset]:/dataset \
    --shm-size 32g -it simbev:develop /bin/bash
    ```
-   Use `nvidia-smi` to ensure your graphics card is visible inside the container. Use `vulkaninfo --summary` to ensure Vulkan has access to your graphics cards.
+   Use `nvidia-smi` to ensure your graphics card(s) is (are) visible inside the container. Use `vulkaninfo --summary` to ensure Vulkan has access to your graphics card(s).
 6. Install CARLA inside the container by running:
     ```Bash
     pip carla/PythonAPI/carla/dist/carla-0.9.16-cp310-cp310-linux_x86_64.whl
     ```
-7. On a separate terminal window, enter the container as the root user by running `docker exec -it -u 0 [container name] /bin/bash`. Then, run:
+7. In a separate terminal window, enter the container as the root user by running `docker exec -it -u 0 [container name] /bin/bash`. Then, run:
     ```Bash
     cd simbev && python setup.py develop
     ```
     Exit the container as the root user but stay inside it as the _sb_ (non-root) user.
 
-If you would like to use SimBEV without Docker, you can install the dependencies using the [requirements](requirements.txt) file and then following steps 6 and 7 above.
+If you would like to use SimBEV without Docker, you can install the dependencies using the [requirements](requirements.txt) file and then follow steps 6 and 7 above.
 
 ## Usage
 
