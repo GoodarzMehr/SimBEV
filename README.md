@@ -444,7 +444,7 @@ The `hd_map` folder contains information about the waypoint at the ego vehicle's
 
 #### infos
 
-Contains the info files for each data split, with the files using the `simbev_infos_{split}.json` naming scheme where `split` is either `train`, `val`, or `test`. Each file is comprised of `metadata` and `data`. `metadata` contains coordinate transformation matrices for all sensors (i.e. `sensor2lidar_translation`, `sensor2lidar_rotation`, `sensor2ego_translation`, and `sensor2ego_rotation`), as well as the camera intrinsics matrix. `data` contains scene information, divided into `scene_info` and `scene_data` for each scene. `scene_info` includes overall scene information, while `scene_data` provides information about individual frames, including file paths for collected sensor data and the corresponding ground truth.
+Contains the info files for each data split, with the files using the `simbev_infos_{split}.json` naming scheme where `split` is either `train`, `val`, or `test`. Each file is comprised of `metadata` and `data`. `metadata` contains coordinate transformation matrices for all sensors (i.e. `sensor2lidar_translation`, `sensor2lidar_rotation`, `sensor2ego_translation`, and `sensor2ego_rotation`), as well as the camera intrinsics matrix. `data` contains scene information, divided into `scene_info` and `scene_data` for each scene. `scene_info` includes the overall scene information, while `scene_data` provides information about individual frames, including file paths for collected sensor data and the corresponding ground truth.
 
 ![collage](assets/Infos.png)
 
@@ -452,7 +452,7 @@ In SimBEV 2.0 the following fields have been added to `scene_info`: `expected_sc
 
 #### logs
 
-Contains the log file for each scene, with the files using the `SimBEV-scene-{scene number}.log` naming scheme. Log files can be used to replay scenes in CARLA and collect additional data.
+Contains the log file for each scene, with the files using the `SimBEV-scene-{scene number}.log` naming scheme. Log files can be used by SimBEV to replay scenes and collect additional data.
 
 #### sweeps
 
@@ -495,6 +495,10 @@ Models are trained on the SimBEV dataset's _train_ set and evaluated on its _tes
 ## Acknowledgement
 
 SimBEV is based on [CARLA](https://carla.org/) and we are grateful to the team that maintains it. SimBEV has also taken inspiration from the [nuScenes](https://www.nuscenes.org/), [SHIFT](https://www.vis.xyz/shift/), [OPV2V](https://mobility-lab.seas.ucla.edu/opv2v/), and [V2X-Sim](https://ai4ce.github.io/V2X-Sim/index.html) datasets.
+
+The sixth generation Ford Mustang model is based on [this](https://www.blenderkit.com/asset-gallery-detail/342206ad-9e8e-4cfc-add0-8007dc86fdbb/) BlenderKit model by Kentik Khudosovtsev.
+
+Hazard area static props are based on [this](https://www.fab.com/listings/6426cc8a-2410-45be-b3ce-edfea87d09cc) Roadside Construction asset by Quixel Megascans.
 
 ## Citation
 
