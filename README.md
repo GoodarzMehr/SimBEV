@@ -181,16 +181,16 @@ In the [simbev](simbev) directory, use the [config.yaml](configs/config.yaml) fi
 simbev configs/config.yaml [options]
 ```
 `options` can be any of the following:
-* `path`: path for saving the dataset (`/dataset` by default).
-* `render`: visualize captured sensor data.
-* `save`: save captured sensor data (used by default).
-* `no-save`: do not save captured sensor data.
+* `--path`: path for saving the dataset (`/dataset` by default).
+* `--render`: visualize captured sensor data.
+* `--save`: save captured sensor data (used by default).
+* `--no-save`: do not save captured sensor data.
 
 For instance,
 ```Bash
 simbev configs/config.yaml --render --no-save
 ```
-visualizes sensor data as it is captured without saving it.
+visualizes sensor data as it is being captured without saving it.
 
 ### Replacing Scenes
 
@@ -198,15 +198,17 @@ If you would like to replace a number of existing scenes, set `mode` in the [con
 
 ### Replaying/Augmenting Scenes
 
-If you would like to replay a number of existing scenes, set `mode` in the [config.yaml](configs/config.yaml) file to `replay` and specify the list of scenes that should be replayed using the `replay_scene_config` field. SimBEV will use the saved CARLA log file of the specified scenes to replay them. This can be useful if you want to collect additional data from a scene. For example, if you have already collected RGB camera data and would like to collect semantic lidar and radar data when replaying the scene, set `use_rgb_camera` field in the [config.yaml](configs/config.yaml) file to `False` and set `use_semantic_lidar` and `use_radar` to `True`.
+If you would like to replay/augment a number of existing scenes, set `mode` in the [config.yaml](configs/config.yaml) file to `replay` and specify the list of scenes that should be replayed using the `replay_scene_config` field. SimBEV will use the saved CARLA log file of the specified scenes to replay them. This can be useful if you want to collect additional data from a scene. For example, if you have already collected RGB camera data and would like to collect semantic lidar and radar data when replaying the scene, set `use_rgb_camera` field in the [config.yaml](configs/config.yaml) file to `False` and set `use_semantic_lidar` and `use_radar` to `True`. Just note that because the rider of motorcycles and bicycles is selected at random by UE4 each time, it will be different when replaying the scene, but this is usually a very small discrepancy and everything else in the replayed scene should exactly match the original scene.
 
 ### Post-processing
 
-An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if not collected) alongside a _valid_ flag indicating whether the object is fully occluded (False) or visible to the data collection vehicle (True). By default, an object is _valid_ if the number of points inside the bounding box is non-zero and _invalid_ otherwise. However, if you have collected instance segmentation images you can use the `--use-seg` argument to use those images to assist in determining the validity of an object (if the number of points inside the object's bounding box is zero but the object is visible inside the image, then it is _valid_). The post-processing step also determines the detection difficulty of an object as either _easy_, _medium_, or _hard_ based on the object's class, distance to the data collection vehicle, and the number of points inside its bounding box. This information will be appended to bounding box data. To do this, in the [simbev](simbev) directory run
+An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if that data is not collected) alongside a _valid_ flag indicating whether the object is fully occluded (False) or visible to the data collection vehicle (True). By default, an object is _valid_ if the number of points inside its bounding box is non-zero and _invalid_ otherwise. However, if you have collected instance segmentation images you can use the `--use-seg` argument to use those images to assist in determining the validity of objects (if the number of points inside the object's bounding box is zero but the object is visible in the image, then it is _valid_). The post-processing step also determines the detection difficulty of an object (either _easy_, _medium_, or _hard_) based on the object's class, distance to the data collection vehicle, and the number of points inside its bounding box. This information will be appended to bounding box data.
+
+To post-process the data, in the [simbev](simbev) directory run
 ```Bash
 simbev-postprocess [options]
 ```
-where, alongside the optional `--use-seg` argument, an optional `--path` argument can be used to provid the path to the SimBEV dataset (`path` is `/dataset` by default). The post-processing step will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
+where, alongside the optional `--use-seg` argument, an optional `--path` argument can be used to provid the path to the SimBEV dataset (`--path` is `/dataset` by default). The post-processing step will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
 
 ### Data Visualization
 
@@ -307,7 +309,7 @@ Consult our implementations of [BEVFusion](https://github.com/GoodarzMehr/bevfus
   <img src="assets/SensorCoordTab.png" width="40%" />
 </p>
 
-###### <p align="center"> Placement and coordinate system of different sensors are shown on the left and tabulated on the right. Coordinate values are relative to a FLU (Front-Left-Up) coordinate system positioned at the center of the ground plane of the vehicle's 3D bounding box. </p>
+###### <p align="center"> The placement and coordinate system of the sensors are shown on the left and tabulated on the right. Coordinate values are relative to a FLU (Front-Left-Up) coordinate system positioned at the center of the ground plane of the vehicle's 3D bounding box. </p>
 
 <p align="middle">
   <img src="assets/SensorTab.png" width="98%" />
@@ -385,38 +387,42 @@ simbev/
 
 #### configs
 
-Contains the config file for each scene, with the files using the `SimBEV-scene-{scene number}.yaml` naming scheme. The files are usually identical, unless the dataset was expanded or some scenes were replaced using a different configuration.
+Contains the config file for each scene, with the files using the `SimBEV-scene-{scene number}.yaml` naming scheme. The files are usually identical, unless the dataset was expanded or some scenes were replaced or augmented using a different configuration. If an existing scene is augmented, the new config file will use the `SimBEV-scene-{scene number}-augment-{i}.yaml` naming scheme, where `i` is the index of the attempt at augmentation (i.e. `i` is 0 for the first augmentation attempt, 1 for the second attempt, etc.).
 
 #### ground-truth
 
 Contains the ground truth files for each frame, with the files using the `SimBEV-scene-{scene number}-frame-{frame number}-{type}.{data type}` naming scheme. For the `det`, `seg`, `seg_viz`, and `hd_map` folders, `type` and `data type` are `GT_DET` and `bin`; `GT_SEG` and `npz`; `GT_SEG_VIZ` and `jpg`; and `HD_MAP` and `json`, respectively.
 
-The `det` folder contains the 3D object ground truth file for each frame. The following information is provided for each object:
+The `det` folder contains the 3D object ground truth files for each frame. In each file, the following information is provided for each object:
 * `id`: object ID supplied by CARLA
 * `type`: object type, e.g. `vehicle.ford.mustang_2016` or `walker.pedestrian.0051`
 * `is_alive`: True if the object is alive, False if destroyed
 * `is_active`: True if the object is active, False otherwise
 * `is_dormant`: True if the object is dormant, False otherwise
-* `parent`: ID of parent object if one exists, `None` otherwise
+* `parent`: ID of the parent object if one exists, `None` otherwise
 * `attributes`: object attributes, e.g. `has_lights`, `color`, `role_name`, etc. for a car
 * `semantic_tags`: object semantic tags
-* `bounding_box`: global coordinates of the corners of the 3D object bounding box
+* `bounding_box`: global coordinates of the corners of the object's 3D bounding box
+* `location`: location ($x$, $y$, $z$) of the object (in a right-handed coordinate frame)
+* `rotation`: rotation (roll, pitch, yaw) of the object (in a right-handed coordinate frame)
 * `linear_velocity`: linear velocity of the object (m/s)
 * `angular_velocity`: angular velocity of the object (deg/s)
-* **[requires post processing]** `num_lidar_pts`: number of lidar points inside the 3D bounding box
-* **[requires post processing]** `num_radar_pts`: number of radar points inside the 3D bounding box
-* **[requires post processing]** `valid_flag`: True if at least one lidar or radar point falls inside the 3D bounding box, False otherwise
-
-The following fields are only available in SimBEV 2.0:
-* **[traffic light only]** `green_time`: number of seconds the traffic light stays green
-* **[traffic light only]** `yellow_time`: number of seconds the traffic light stays yellow
-* **[traffic light only]** `red_time`: number of seconds the traffic light stays red
+* `distance_to_ego`: distance of the object from the data collection vehicle (m)
+* `angle_to_ego`: angle of the object to the data collection vehicle (deg, vehicle's front vector is 0, positive CCW)
+* **[requires post processing]** `num_lidar_pts`: number of lidar points inside the object's 3D bounding box
+* **[requires post processing]** `num_radar_pts`: number of radar points inside the object's 3D bounding box
+* **[requires post processing]** `valid_flag`: True if the object is visible to the data collection vehicle, False otherwise
+* **[requires post processing]** `class`: class of the object
+* **[requires post processing]** `difficulty`: detection difficulty of the object, can be _easy_, _medium_, or _hard_
+* **[traffic light only]** `green_time`: duration the traffic light stays green (s)
+* **[traffic light only]** `yellow_time`: duration the traffic light stays yellow (s)
+* **[traffic light only]** `red_time`: duration the traffic light stays red (s)
 * **[traffic light only]** `state`: current state of the traffic light (i.e. green, yellow, or red)
 * **[traffic light only]** `opendrive_id`: OpenDRIVE ID of the traffic light
 * **[traffic light only]** `pole_index`: index of the traffic light's pole whitin the traffic light group
-* **[traffic sign only]** `sign_type`: type of traffic sign, if it can be extracted from CARLA; generally `stop`, `yield`, or `speed_limit`; for Town12, Town13, and Town15 the speed limit value is also provided, e.g. `speed_limit_30` (30 km/h speed limit) or `speed_limit_55_min_40` (55 km/h speed limit, 40 km/h minimum speed limit)
+* **[traffic sign only]** `sign_type`: traffic sign's type, if it can be extracted from CARLA; generally `stop`, `yield`, or `speed_limit`; in Town12, Town13, and Town15 the speed limit is provided as well, e.g. `speed_limit_30` (30 km/h speed limit) or `speed_limit_55_min_40` (55 km/h speed limit, 40 km/h minimum speed limit)
 
-The `seg` folder contains the BEV ground truth file for each frame. BEV ground truth is a binary $C \times d \times d$ array, where $C$ is the number of classes and $d$ is the dimension of the BEV grid (360 for the SimBEV dataset). In SimBEV 2.0, there are 11 classes, which in order are `road`, `road_line`, `sidewalk`, `crosswalk`, `car`, `truck`, `bus`, `motorcycle`, `bicycle`, `rider`, `pedestrian`. The second and third dimensions of the array increase along the $-x$ and $-y$ axes of the vehicle's FLU coordinate system, respectively.
+The `seg` folder contains the BEV ground truth files for each frame. BEV ground truth is a binary $C \times d \times d$ array, where $C$ is the number of classes and $d$ is the dimension of the BEV grid (360 for the SimBEV dataset). The BEV ground truth contains 14 classes, which in order are `road`, `hazard`, `road_line`, `sidewalk`, `crosswalk`, `traffic_cone`, `barrier`, `car`, `truck`, `bus`, `motorcycle`, `bicycle`, `rider`, `pedestrian`. The second and third dimensions of the array increase along the $-x$ and $-y$ axes of the vehicle's FLU coordinate system, respectively.
 
 The `seg_viz` folder contains the visualization of the BEV ground truth for each frame.
 
@@ -426,14 +432,14 @@ The `hd_map` folder contains information about the waypoint at the ego vehicle's
 * `road_id`: OpenDRIVE ID of the road the waypoint belongs to
 * `section_id`: OpenDRIVE ID of the road section the waypoint belongs to
 * `lane_id`: OpenDRIVE ID of the lane the waypoint belongs to
-* `lane_type`: type of the lane the waypoint belongs to, should be `Driving` but other values include `Sidewalk`, `Shoulder`, `Curb`, etc.
+* `lane_type`: type of the lane the waypoint belongs to, should be `Driving` but other possible values include `Sidewalk`, `Shoulder`, `Curb`, etc.
 * `lane_width`: width of the lane the waypoint belongs to
 * `lane_change`: type of lane change permitted by the lane
 * `is_junction`: whether the waypoint is in a junction
 * `junction_id`: OpenDRIVE ID of the junction if the waypoint is in a junction
 * `is_intersection`: whether the waypoint is in an intersection
 * `transform`: global coordinate transform (location, rotation) of the waypoint
-* `left/right_lane_marking`: information about the left/right lane marking, includes `type` (e.g. `Solid`, `Broken`, `SolidBroken`, etc.), `width`, `color`, and `lane_change`
+* `left/right_lane_marking`: information about the left/right lane markings, includes `type` (e.g. `Solid`, `Broken`, `SolidBroken`, etc.), `width`, `color`, and `lane_change`
 * `left/right_lane`: information about the corresponding waypoint in the left/right lane, includes `id`, `s`, `road_id`, `section_id`, `lane_id`, `lane_type`, `lane_width`, and `lane_change`
 
 #### infos
