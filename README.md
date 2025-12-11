@@ -212,15 +212,16 @@ where, alongside the optional `--use-seg` argument, an optional `--path` argumen
 
 ### Data Visualization
 
-To visualize certain types of collected data (those that are not readily visualized, e.g. semantic segmentation images are already in `.png` format), in the [viz](viz) directory run
+To visualize certain types of collected data (those that are not readily visualized, e.g. semantic segmentation images are already in `.png` format), run
 ```Bash
-python visualization.py [mode] [options]
+simbev-visualize [mode] [options]
 ```
-which will create a new `viz` folder in the dataset's path where the visualizations are stored. Visualizations involving 3D object bounding boxes require data to be post-processed first.
 
+Setting mode to `interactive` launches SimBEV's interactive visualizer for point cloud (lidar, semantic lidar, and radar) data, allowing the user to evaluate and inspect each scene and frame, as shown below:
 
 https://github.com/user-attachments/assets/93186ea8-6617-4650-967b-0b5af7b3c4e2
 
+For all other modes, a new `viz` folder in the dataset's path is created where the visualizations are stored. Visualizations involving 3D object bounding boxes require data to be post-processed first.
 
 `mode` can be `all`, or any combination of the following:
 * `rgb`: RGB images with 3D object bounding boxes overlaid.
@@ -261,44 +262,54 @@ https://github.com/user-attachments/assets/93186ea8-6617-4650-967b-0b5af7b3c4e2
 
 * `lidar`, `lidar-with-bbox`: top-down view of lidar point clouds, without and with 3D object bounding boxes overlaid, respectively.
 <p align="middle">
-  <img src="assets/LIDAR.jpg" width="48%" />
-  <img src="assets/LIDARwBBOX.jpg" width="48%" />
+  <img src="assets/LIDAR-FAR.jpg" width="48%" />
+  <img src="assets/LIDARwBBOX-FAR.jpg" width="48%" />
+  <img src="assets/LIDAR-NEAR.jpg" width="48%" />
+  <img src="assets/LIDARwBBOX-NEAR.jpg" width="48%" />
 </p>
 
 * `lidar3d`, `lidar3d-with-bbox`: 3D view of lidar point clouds, without and with 3D object bounding boxes overlaid, respectively.
 <p align="middle">
-  <img src="assets/LIDAR3D.jpg" width="48%" />
-  <img src="assets/LIDAR3DwBBOX.jpg" width="48%" />
+  <img src="assets/LIDAR3D-FAR.jpg" width="48%" />
+  <img src="assets/LIDAR3DwBBOX-FAR.jpg" width="48%" />
+  <img src="assets/LIDAR3D-NEAR.jpg" width="48%" />
+  <img src="assets/LIDAR3DwBBOX-NEAR.jpg" width="48%" />
 </p>
 
 * `semantic-lidar`, `semantic-lidar3D`: top-down and 3D view of semantic lidar point clouds, respectively.
 <p align="middle">
-  <img src="assets/SEG-LIDAR.jpg" width="32%" />
-  <img src="assets/SEG-LIDAR3D.jpg" width="64%" />
+  <img src="assets/SEG-LIDAR-FAR.jpg" width="32%" />
+  <img src="assets/SEG-LIDAR3D-FAR.jpg" width="64%" />
+  <img src="assets/SEG-LIDAR-NEAR.jpg" width="32%" />
+  <img src="assets/SEG-LIDAR3D-NEAR.jpg" width="64%" />
 </p>
 
 * `radar`, `radar-with-bbox`: top-down view of radar point clouds, without and with 3D object bounding boxes overlaid, respectively.
 <p align="middle">
-  <img src="assets/RADAR.jpg" width="48%" />
-  <img src="assets/RADARwBBOX.jpg" width="48%" />
+  <img src="assets/RADAR-FAR.jpg" width="48%" />
+  <img src="assets/RADARwBBOX-FAR.jpg" width="48%" />
+  <img src="assets/RADAR-NEAR.jpg" width="48%" />
+  <img src="assets/RADARwBBOX-NEAR.jpg" width="48%" />
 </p>
 
 * `radar3d`, `radar3d-with-bbox`: 3D view of radar point clouds, without and with 3D object bounding boxes overlaid, respectively.
 <p align="middle">
-  <img src="assets/RADAR3D.jpg" width="48%" />
-  <img src="assets/RADAR3DwBBOX.jpg" width="48%" />
+  <img src="assets/RADAR3D-FAR.jpg" width="48%" />
+  <img src="assets/RADAR3DwBBOX-FAR.jpg" width="48%" />
+  <img src="assets/RADAR3D-NEAR.jpg" width="48%" />
+  <img src="assets/RADAR3DwBBOX-NEAR.jpg" width="48%" />
 </p>
 
 `options` can be any of the following:
 * `path`: path to the dataset (`/dataset` by default).
-* `s`, `scene`: list of scene numbers to visualize (-1, i.e. all scenes, by default).
-* `f`, `frame`: list of frame numbers to visualize (-1, i.e. all frames, by default).
+* `s`, `scene`: list of scene numbers to visualize, can be individual numbers or a range (-1, i.e. all scenes, by default).
+* `f`, `frame`: list of frame numbers to visualize, can be individual numbers or a range (-1, i.e. all frames, by default).
 
 For instance, using
 ```Bash
-python visualization.py rgb depth lidar3d semantic-lidar radar-with-bbox --scene 0 12 27 --frame 3 30 300
+simbev-visualize rgb depth lidar3d semantic-lidar radar-with-bbox --scene 0 12 27-32 --frame 3 30-49 300
 ```
-visualizes RGB images with 3D object bounding boxes overlaid, depth images, lidar point clouds from a 3D perspective view, semantic lidar point clouds from a top-down view, and radar point clouds from a top-down view with 3D object bounding boxes overlaid for frames 3, 30, and 300 of scenes 0, 12, and 27.
+visualizes RGB images with 3D bounding boxes overlaid, depth images, lidar point clouds from a 3D perspective view, semantic lidar point clouds from a top-down view, and radar point clouds from a top-down view with 3D bounding boxes overlaid for frames 3, 30 to 49, and 300 of scenes 0, 12, and 27 to 32.
 
 ### Using the SimBEV Dataset
 
