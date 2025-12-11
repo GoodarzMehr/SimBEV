@@ -218,6 +218,10 @@ python visualization.py [mode] [options]
 ```
 which will create a new `viz` folder in the dataset's path where the visualizations are stored. Visualizations involving 3D object bounding boxes require data to be post-processed first.
 
+
+https://github.com/user-attachments/assets/93186ea8-6617-4650-967b-0b5af7b3c4e2
+
+
 `mode` can be `all`, or any combination of the following:
 * `rgb`: RGB images with 3D object bounding boxes overlaid.
 <p align="middle">
