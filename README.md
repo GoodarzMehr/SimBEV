@@ -27,7 +27,9 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
   - [CARLA](#carla)
   - [SimBEV](#simbev)
 - [Usage](#usage)
-  - [Creating/Expanding/Replacing a SimBEV Dataset](#creatingexpandingreplacing-a-simbev-dataset)
+  - [Creating/Expanding a SimBEV Dataset](#creatingexpanding-a-simbev-dataset)
+  - [Replacing Scenes](#replacing-scenes)
+  - [Replaying/Augmenting Scenes](#replayingaugmenting-scenes)
   - [Post-processing](#post-processing)
   - [Data Visualization](#data-visualization)
   - [Using the SimBEV Dataset](#using-the-simbev-dataset)
@@ -301,9 +303,10 @@ For all other modes, a new `viz` folder in the dataset's path is created where t
 </p>
 
 `options` can be any of the following:
-* `path`: path to the dataset (`/dataset` by default).
-* `s`, `scene`: list of scene numbers to visualize, can be individual numbers or a range (-1, i.e. all scenes, by default).
-* `f`, `frame`: list of frame numbers to visualize, can be individual numbers or a range (-1, i.e. all frames, by default).
+* `--path`: path to the dataset (`/dataset` by default).
+* `-s`, `--scene`: list of scene numbers to visualize, can be individual numbers or a range (-1, i.e. all scenes, by default).
+* `-f`, `--frame`: list of frame numbers to visualize, can be individual numbers or a range (-1, i.e. all frames, by default).
+* `--ignore-valid-flag`: display all 3D bounding boxes regardless of the value of their _valid_ flag.
 
 For instance, using
 ```Bash
