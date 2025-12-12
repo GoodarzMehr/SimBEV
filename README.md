@@ -48,6 +48,17 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 - [Citation](#citation)
 
 ## News
+**[2025/12/12]** SimBEV2X coming soon...
+
+**[2025/12/12]** SimBEV 3.0 is released, with support for new 3D and BEV classes, randomly-generated hazard areas, an interactive visualizer, and more. SimBEV Dataset v2 coming soon...
+<p align="middle">
+  <img src="assets/TrafficCone.jpg" width="48%" />
+  <img src="assets/Barrier.jpg" width="48%" />
+  <img src="assets/Construction1.png" width="48%" />
+  <img src="assets/Accident2.png" width="48%" />
+  <img src="assets/InteractiveLidar.png" width="96%" />
+</p>
+
 **[2025/8/15]** SimBEV 2.0 is released, with support for new 3D and BEV classes, continuous weather shifts, and more.
 
 <p align="middle">
@@ -123,12 +134,8 @@ https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
 <p align="middle">
   <img src="assets/ChargerOld.png" width="48%" />
   <img src="assets/ChargerNew.png" width="48%" />
-</p>
-<p align="middle">
   <img src="assets/FireTruckOld.png" width="48%" />
   <img src="assets/FireTruckNew.png" width="48%" />
-</p>
-<p align="middle">
   <img src="assets/YamahaOld.png" width="48%" />
   <img src="assets/YamahaNew.png" width="48%" />
 </p>
@@ -193,6 +200,8 @@ For instance,
 simbev configs/config.yaml --render --no-save
 ```
 visualizes sensor data as it is being captured without saving it.
+
+You can pause/resume the simulation at any time by pressing _F9_.
 
 ### Replacing Scenes
 
