@@ -336,6 +336,9 @@ class ScenarioManager:
 
                 num_road_work_hazards += int(hazard_created)
 
+        self.scene_info['n_accident_hazards'] = num_accident_hazards
+        self.scene_info['n_road_work_hazards'] = num_road_work_hazards
+
         logger.info(f'Created {num_accident_hazards} accident hazards.')
         logger.info(f'Created {num_road_work_hazards} road work hazards.')
         
