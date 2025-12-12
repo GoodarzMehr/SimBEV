@@ -135,7 +135,7 @@ def visualize_depth(ctx: VisualizationContext):
 
         log_distance = 255.0 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
 
-        cv2.imwrite(ctx.get_output_path('DPT', camera), log_distance.astype(np.uint8))
+        cv2.imwrite(ctx.get_output_path('DPT', camera), log_distance.astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 80])
     
     # Process all 6 cameras in parallel.
     with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
@@ -153,7 +153,7 @@ def visualize_flow(ctx: VisualizationContext):
         
         image = flow_to_color(flow)
         
-        cv2.imwrite(ctx.get_output_path('FLW', camera), image)
+        cv2.imwrite(ctx.get_output_path('FLW', camera), image, [cv2.IMWRITE_JPEG_QUALITY, 80])
 
     # Process all 6 cameras in parallel.
     with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:

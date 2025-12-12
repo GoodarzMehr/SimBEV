@@ -449,7 +449,7 @@ def visualize_image(
         
         canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
 
-    cv2.imwrite(fpath, canvas)
+    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 80])
 
 def visualize_point_cloud(
         fpath: str,
@@ -575,7 +575,7 @@ def visualize_point_cloud(
                 lineType=cv2.LINE_AA
             )
     
-    cv2.imwrite(fpath, canvas)
+    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 80])
 
 def visualize_point_cloud_3d(
         fpath: str,
@@ -610,4 +610,4 @@ def visualize_point_cloud_3d(
     
     canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
     
-    cv2.imwrite(fpath, canvas)
+    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 80])
