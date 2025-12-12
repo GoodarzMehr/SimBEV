@@ -54,6 +54,7 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 <p align="middle">
   <img src="assets/TrafficCone.jpg" width="48%" />
   <img src="assets/Barrier.jpg" width="48%" />
+  <img src="assets/V3_BEV_Sample.jpg" width="60%" />
   <img src="assets/Construction1.png" width="48%" />
   <img src="assets/Accident2.png" width="48%" />
   <img src="assets/InteractiveLidar.png" width="96%" />
