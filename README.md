@@ -468,8 +468,6 @@ Contains the info files for each data split, with the files using the `simbev_in
 
 ![collage](assets/Infos.png)
 
-In SimBEV 2.0 the following fields have been added to `scene_info`: `expected_scene_duration <int>`, `terminated_early <bool>`, `weather_shift <bool>`. Furthermore, `weather_parameters` has been replaced with `initial_weather_parameters`. If `weather_shift` is `True`, a `final_weather_parameters` field is also included.
-
 #### logs
 
 Contains the log file for each scene, with the files using the `SimBEV-scene-{scene number}.log` naming scheme. Log files can be used by SimBEV to replay scenes and collect additional data.
