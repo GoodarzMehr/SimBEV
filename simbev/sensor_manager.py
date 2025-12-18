@@ -1,7 +1,7 @@
 # Academic Software License: Copyright © 2025 Goodarz Mehr.
 
 '''
-Sensor Manager module that collects data from all sensors on a vehicle and
+Module that collects data from all sensors on a vehicle and
 renders or saves them.
 '''
 
@@ -47,26 +47,14 @@ class SensorManager:
         }
         
         self._name_list = {
-            'camera': ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
-                       'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
+            'camera': ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
             'radar': ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK'],
             'bev_camera': ['TOP_VIEW', 'BOTTOM_VIEW']
         }
 
-        self._camera_type_abbrevs = {
-            'rgb': 'RGB',
-            'semantic': 'SEG',
-            'instance': 'IST',
-            'depth': 'DPT',
-            'flow': 'FLW'
-        }
+        self._camera_type_abbrevs = {'rgb': 'RGB', 'semantic': 'SEG', 'instance': 'IST', 'depth': 'DPT', 'flow': 'FLW'}
         
-        self._other_sensor_abbrevs = {
-            'lidar': 'LIDAR',
-            'semantic_lidar': 'SEG-LIDAR',
-            'gnss': 'GNSS',
-            'imu': 'IMU'
-        }
+        self._other_sensor_abbrevs = {'lidar': 'LIDAR', 'semantic_lidar': 'SEG-LIDAR', 'gnss': 'GNSS', 'imu': 'IMU'}
 
         self._timer = CustomTimer()
         

@@ -535,7 +535,7 @@ class ScenarioManager:
     def _create_accident_hazard(self, hazard_spawn_points: list[carla.Transform], tm_port: int) -> bool:
         '''
         Create an accident hazard by spawning two stopped vehicle on the road.
-        Sometimes a police vehicle is also spawned behind them.
+        Sometimes an emergency vehicle is also spawned behind them.
 
         Args:
             hazard_spawn_points: list of possible spawn points for the hazard.
@@ -650,7 +650,7 @@ class ScenarioManager:
         
         for i, bp in enumerate(bps):
             # Spawn the hazard vehicle.
-            bp.set_attribute('role_name', f'hazard_vehicle_{i}')
+            bp.set_attribute('role_name', f'hazard_vehicle_{i + len(self._hazard_vehicle_list)}')
 
             if bp.has_attribute('color'):
                 bp.set_attribute('color', random.choice(bp.get_attribute('color').recommended_values))

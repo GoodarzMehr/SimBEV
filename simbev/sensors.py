@@ -73,8 +73,7 @@ class BaseSensor:
         transform: sensor's transform relative to what it is attached to.
         attached: CARLA object the sensor is attached to.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached):
+    def __init__(self, world: carla.World, sensor_manager, transform: carla.Transform, attached: carla.Actor):
         self._world = world
         self._sensor_manager = sensor_manager
     
@@ -105,8 +104,16 @@ class BaseCamera(BaseSensor):
         height: image height in pixels.
         options: dictionary of camera options.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         self._world = world
         self._sensor_manager = sensor_manager
         self._width = width
@@ -179,8 +186,16 @@ class RGBCamera(BaseCamera):
     RGB camera class that manages the creation and data acquisition of RGB
     cameras.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, width, height, options)
 
     def _get_camera(self):
@@ -191,7 +206,7 @@ class RGBCamera(BaseCamera):
 
         self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.rgb')
     
-    def render(self, window_name='RGB Image'):
+    def render(self, window_name: str = 'RGB Image'):
         '''
         Render RGB image.
 
@@ -201,7 +216,7 @@ class RGBCamera(BaseCamera):
         cv2.imshow(window_name, cv2.resize(self._render_queue.get(True, 10.0), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
 
-    def save(self, camera_name, path, scene, frame):
+    def save(self, camera_name: str, path: str, scene: int, frame: int):
         '''
         Save RGB image to file.
 
@@ -223,8 +238,16 @@ class SemanticCamera(BaseCamera):
     Semantic segmentation camera class that manages the creation and data
     acquisition of semantic segmentation cameras.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, width, height, options)
     
     def _get_camera(self):
@@ -257,7 +280,7 @@ class SemanticCamera(BaseCamera):
         self._render_queue.put(self._image)
         self._save_queue.put(self._image)
     
-    def render(self, window_name='Segmented Image'):
+    def render(self, window_name: str = 'Segmented Image'):
         '''
         Render semantic segmentation image.
 
@@ -267,7 +290,7 @@ class SemanticCamera(BaseCamera):
         cv2.imshow(window_name, cv2.resize(self._render_queue.get(True, 10.0), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
-    def save(self, camera_name, path, scene, frame):
+    def save(self, camera_name: str, path: str, scene: int, frame: int):
         '''
         Save semantic segmentation image to file.
 
@@ -288,8 +311,16 @@ class InstanceCamera(BaseCamera):
     Instance segmentation camera class that manages the creation and data
     acquisition of instance segmentation cameras.
     '''
-    
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, width, height, options)
     
     def _get_camera(self):
@@ -301,7 +332,7 @@ class InstanceCamera(BaseCamera):
 
         self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.instance_segmentation')
     
-    def render(self, window_name='Instance Image'):
+    def render(self, window_name: str = 'Instance Image'):
         '''
         Render instance segmentation image.
 
@@ -311,7 +342,7 @@ class InstanceCamera(BaseCamera):
         cv2.imshow(window_name, cv2.resize(self._render_queue.get(True, 10.0), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
-    def save(self, camera_name, path, scene, frame):
+    def save(self, camera_name: str, path: str, scene: int, frame: int):
         '''
         Save instance segmentation image to file.
 
@@ -332,8 +363,16 @@ class DepthCamera(BaseCamera):
     Depth camera class that manages the creation and data acquisition of depth
     cameras.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, width, height, options)
     
     def _get_camera(self):
@@ -344,7 +383,7 @@ class DepthCamera(BaseCamera):
 
         self._camera_bp = self._world.get_blueprint_library().find('sensor.camera.depth')
     
-    def render(self, window_name='Depth Image'):
+    def render(self, window_name: str = 'Depth Image'):
         '''
         Render depth image.
 
@@ -364,7 +403,7 @@ class DepthCamera(BaseCamera):
         cv2.imshow(window_name, cv2.resize(log_distance.astype(np.uint8), (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
-    def save(self, camera_name, path, scene, frame):
+    def save(self, camera_name: str, path: str, scene: int, frame: int):
         '''
         Save depth image to file.
 
@@ -385,8 +424,16 @@ class FlowCamera(BaseCamera):
     Flow camera class that manages the creation and data acquisition of flow
     cameras.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, width, height, options)
     
     def _get_camera(self):
@@ -412,7 +459,7 @@ class FlowCamera(BaseCamera):
         self._render_queue.put(self._image)
         self._save_queue.put(self._image)
     
-    def render(self, window_name='Flow Image'):
+    def render(self, window_name: str = 'Flow Image'):
         '''
         Render flow image.
 
@@ -424,7 +471,7 @@ class FlowCamera(BaseCamera):
         cv2.imshow(window_name, cv2.resize(image, (self._width // 4, self._height // 4)))
         cv2.waitKey(1)
     
-    def save(self, camera_name, path, scene, frame):
+    def save(self, camera_name: str, path: str, scene: int, frame: int):
         '''
         Save flow image to file.
 
@@ -454,8 +501,16 @@ class BaseLidar(BaseSensor):
         range: maximum range of the lidar.
         options: dictionary of lidar options.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, channels, range, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        channels: int,
+        range: float,
+        options: dict
+    ):
         self._world = world
         self._sensor_manager = sensor_manager
         self._channels = channels
@@ -509,7 +564,7 @@ class BaseLidar(BaseSensor):
             self._save_queue.unfinished_tasks = 0
             self._save_queue.all_tasks_done.notify_all()
     
-    def _create_visualizer(self, window_name, width=1024, height=1024):
+    def _create_visualizer(self, window_name: str, width: int = 1024, height: int = 1024):
         '''
         Create Open3D visualizer.
 
@@ -528,7 +583,7 @@ class BaseLidar(BaseSensor):
 
         self._visualizer.add_geometry(self._point_list)
     
-    def _draw_points(self, color):
+    def _draw_points(self, color: np.ndarray):
         '''
         Visualize point cloud data in Open3D.
 
@@ -579,8 +634,16 @@ class Lidar(BaseLidar):
     '''
     Lidar class that manages the creation and data acquisition of lidars.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, channels, range, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        channels: int,
+        range: float,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, channels, range, options)
 
     def _get_lidar(self):
@@ -638,7 +701,7 @@ class Lidar(BaseLidar):
         
         self._draw_points(intensity_color)
     
-    def save(self, path, scene, frame):
+    def save(self, path: str, scene: int, frame: int):
         '''
         Save point cloud to file.
 
@@ -656,8 +719,16 @@ class SemanticLidar(BaseLidar):
     Semantic lidar class that manages the creation and data acquisition of
     semantic lidars.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, channels, range, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        channels: int,
+        range: float,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, channels, range, options)
 
     def _get_lidar(self):
@@ -723,7 +794,7 @@ class SemanticLidar(BaseLidar):
 
         self._draw_points(self._label_color)
     
-    def save(self, path, scene, frame):
+    def save(self, path: str, scene: int, frame: int):
         '''
         Save point cloud to file.
 
@@ -754,7 +825,17 @@ class Radar(BaseSensor):
         options: dictionary of radar options.
     '''
 
-    def __init__(self, world, sensor_manager, transform, attached, range, hfov, vfov, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        range: float,
+        hfov: float,
+        vfov: float,
+        options: dict
+    ):
         self._world = world
         self._sensor_manager = sensor_manager
         self._range = range
@@ -824,7 +905,7 @@ class Radar(BaseSensor):
             self._save_queue.unfinished_tasks = 0
             self._save_queue.all_tasks_done.notify_all()
     
-    def _create_visualizer(self, window_name, width=1024, height=1024):
+    def _create_visualizer(self, window_name: str, width: int = 1024, height: int = 1024):
         '''
         Create Open3D visualizer.
 
@@ -842,7 +923,7 @@ class Radar(BaseSensor):
 
         self._visualizer.add_geometry(self._point_list)
     
-    def _draw_points(self, color):
+    def _draw_points(self, color: np.ndarray):
         '''
         Visualize point cloud data in Open3D.
 
@@ -879,7 +960,7 @@ class Radar(BaseSensor):
         
         time.sleep(0.005)
     
-    def render(self, window_name='Radar Point Cloud'):
+    def render(self, window_name: str = 'Radar Point Cloud'):
         '''
         Render point cloud.
 
@@ -917,7 +998,7 @@ class Radar(BaseSensor):
         
         self._draw_points(velocity_color)
     
-    def save(self, radar_name, path, scene, frame):
+    def save(self, radar_name: str, path: str, scene: int, frame: int):
         '''
         Save point cloud to file.
 
@@ -955,8 +1036,14 @@ class GNSS(BaseSensor):
         attached: CARLA object the GNSS is attached to.
         options: dictionary of GNSS options.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        options: dict
+    ):
         self._world = world
         self._sensor_manager = sensor_manager
         self._options = options
@@ -1003,7 +1090,7 @@ class GNSS(BaseSensor):
             self._save_queue.unfinished_tasks = 0
             self._save_queue.all_tasks_done.notify_all()
     
-    def save(self, path, scene, frame):
+    def save(self, path: str, scene: int, frame: int):
         '''
         Save GNSS data to file.
 
@@ -1032,8 +1119,14 @@ class IMU(BaseSensor):
         attached: CARLA object the IMU is attached to.
         options: dictionary of IMU options.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        options: dict
+    ):
         self._world = world
         self._sensor_manager = sensor_manager
         self._options = options
@@ -1090,7 +1183,7 @@ class IMU(BaseSensor):
             self._save_queue.unfinished_tasks = 0
             self._save_queue.all_tasks_done.notify_all()
     
-    def save(self, path, scene, frame):
+    def save(self, path: str, scene: int, frame: int):
         '''
         Save IMU data to file.
 
@@ -1112,8 +1205,16 @@ class SemanticBEVCamera(SemanticCamera):
     BEV semantic segmentation camera class that manages the creation and data
     acquisition of BEV semantic segmentation cameras.
     '''
-
-    def __init__(self, world, sensor_manager, transform, attached, width, height, options):
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        width: int,
+        height: int,
+        options: dict
+    ):
         super().__init__(world, sensor_manager, transform, attached, width, height, options)
 
     def _get_camera(self):
@@ -1129,7 +1230,7 @@ class SemanticBEVCamera(SemanticCamera):
         '''Get the save queue.'''
         return self._save_queue
     
-    def render(self, window_name='Segmented BEV Image'):
+    def render(self, window_name: str = 'Segmented BEV Image'):
         '''
         Render BEV semantic segmentation image.
 

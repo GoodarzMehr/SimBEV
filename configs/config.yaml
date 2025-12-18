@@ -73,7 +73,7 @@ retries_on_error: 10
 
 render_gpu: 0
 
-max_io_workers: 48
+max_io_workers: 32
 
 use_scene_number_for_random_seed: True
 random_seed_offset: 27
@@ -99,9 +99,6 @@ bev_dim: 400
 bev_res: 0.4
 
 spectator_height: 4.0
-
-collect_traffic_light_bbox: True
-collect_traffic_sign_bbox: True
 
 use_bev_for_sidewalks: False
 

@@ -721,16 +721,11 @@ class GTManager:
         bicycle_list = self._world.get_environment_objects(carla.CityObjectLabel.Bicycle)
         traffic_cone_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficCone)
         barrier_list = self._world.get_environment_objects(carla.CityObjectLabel.Barrier)
+        traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
 
-        if self._config['collect_traffic_sign_bbox']:
-            traffic_sign_list = self._world.get_environment_objects(carla.CityObjectLabel.TrafficSigns)
+        self._object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + bicycle_list \
+            + traffic_cone_list + barrier_list
 
-            self._object_list = traffic_sign_list + car_list + truck_list + bus_list + motorcycle_list + \
-                bicycle_list + traffic_cone_list + barrier_list
-        else:
-            self._object_list = car_list + truck_list + bus_list + motorcycle_list + bicycle_list + \
-                traffic_cone_list + barrier_list
-    
     def get_bev_gt(self, elevation_difference: bool = False) -> np.ndarray:
         '''
         Get the BEV ground truth using the top and bottom semantic cameras,
@@ -988,7 +983,7 @@ class GTManager:
                 actors.append(actor_properties)
 
             # Get the traffic lights.
-            if self._config['collect_traffic_light_bbox'] and isinstance(actor, carla.TrafficLight) \
+            if isinstance(actor, carla.TrafficLight) \
                 and vehicle_location.distance(actor_location) < self._config['bbox_collection_radius']:
                 bounding_boxes = actor.get_light_boxes()
 

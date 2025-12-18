@@ -104,7 +104,7 @@ render_gpu: 0
 
 # The following setting controls the maximum number of parallel I/O workers
 # (threads) used for saving simulation data to disk.
-max_io_workers: 48
+max_io_workers: 32
 
 # The following settings control whether to use the scene number to seed
 # random number generators (both NumPy and Random pacakges and in CARLA), and
@@ -181,11 +181,6 @@ bev_res: 0.4 # resolution of the BEV image in meters per pixel
 # The following setting controls the height of the spectator camera behind
 # the ego vehicle.
 spectator_height: 4.0 # height in meters
-
-# The following settings control whether to collect 3D bounding boxes for
-# traffic lights and signs.
-collect_traffic_light_bbox: True
-collect_traffic_sign_bbox: True
 
 # The following setting controls whether to combine the BEV image with map
 # data to get the BEV ground truth for sidewalks or to use map data alone.
