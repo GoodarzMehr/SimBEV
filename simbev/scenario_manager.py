@@ -812,7 +812,8 @@ class ScenarioManager:
                     break
 
             if prop == 'none' or len(nnwp) == 0 or nnwp[0].is_junction or \
-                vehicle_location.distance(nnwp[0].transform.location) < self._config['spawn_point_separation_distance']:
+                vehicle_location.distance(nnwp[0].transform.location) < \
+                    (self._config['spawn_point_separation_distance'] / 2.0):
                 # Spawn the second road barrier to mark the end of the hazard area.
                 self._spawn_work_prop(nwp, barrier)
 
@@ -989,7 +990,7 @@ class ScenarioManager:
         if n_vehicles < n_spawn_points:
             random.shuffle(npc_spawn_points)
         elif n_vehicles > n_spawn_points:
-            logger.warning(f'{n_vehicles} vehicles were requested, but there were only {n_spawn_points} available '
+            logger.warning(f'{n_vehicles} vehicles are requested, but there are only {n_spawn_points} available '
                            'spawn points.')
 
             n_vehicles = n_spawn_points

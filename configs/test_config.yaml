@@ -99,6 +99,8 @@ npc_spawn_radius: 600.0
 
 bev_camera_height: 1000.0
 
+render_bev_camera_images: False
+
 bev_dim: 400
 bev_res: 0.4
 

@@ -623,13 +623,13 @@ class GTManager:
 
         # Trim crosswalk sections.
         self._local_crosswalks = [crosswalk.copy() for crosswalk in self._area_crosswalks if \
-                                 np.min(cdist(crosswalk, vehicle_location)) < \
+                                  np.min(cdist(crosswalk, vehicle_location)) < \
                                     self._config['nearby_mapping_area_radius']]
 
         # For Town06, also trim sidewalk meshes.
         if self._map_name == 'Town06':
             self._local_sidewalk_meshes = [sidewalk for sidewalk in self._sidewalk_meshes if \
-                                          np.min(cdist(sidewalk, vehicle_location)) < \
+                                           np.min(cdist(sidewalk, vehicle_location)) < \
                                             self._config['nearby_mapping_area_radius']]
     
     def _process_sections(self, sections: list[dict], roads: bool = True) -> list[np.ndarray]:
@@ -732,8 +732,8 @@ class GTManager:
         map sections, and 3D object bounding boxes.
 
         Args:
-            elevation_difference: boolean indicating areas of different
-                elevation are present in the scene.
+            elevation_difference: boolean indicating whether areas of
+                different elevation are present in the scene.
         
         Returns:
             bev_gt: BEV ground truth.
@@ -843,7 +843,7 @@ class GTManager:
             actors = self.get_bounding_boxes()
 
             for actor in actors:
-                if any(x in actor['semantic_tags'] for x in [12, 13, 14, 15, 16, 18, 19]):
+                if any(x in actor['semantic_tags'] for x in [12, 13, 14, 15, 16, 18, 19, 30, 31]):
                     if np.abs(actor['bounding_box'][::2, 2] - vehicle_transform.location.z).max() < 4.8:
                         bbox = actor['bounding_box']
 
@@ -1302,7 +1302,7 @@ class GTManager:
         cv2.imshow('Ground Truth', self._canvas)
         cv2.waitKey(1)
     
-    def save(self, path, scene, frame):
+    def save(self, path: str, scene: int, frame: int):
         '''
         Save the ground truth.
 

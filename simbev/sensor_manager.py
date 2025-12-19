@@ -105,12 +105,13 @@ class SensorManager:
         
         for radar, window_name in zip(self.sensor_list['radar'], self._name_list['radar']):
             radar.render(window_name)
-
-        for semantic_bev_camera, window_name in zip(
-            self.sensor_list['semantic_bev_camera'],
-            self._name_list['bev_camera']
-        ):
-            semantic_bev_camera.render(window_name)
+        
+        if self._config['render_bev_camera_images']:
+            for semantic_bev_camera, window_name in zip(
+                self.sensor_list['semantic_bev_camera'],
+                self._name_list['bev_camera']
+            ):
+                semantic_bev_camera.render(window_name)
     
     def save(self, path, scene, frame):
         '''

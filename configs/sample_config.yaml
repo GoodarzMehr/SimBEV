@@ -173,6 +173,10 @@ npc_spawn_radius: 600.0 # radius in meters
 # view (BEV) ground truth.
 bev_camera_height: 1000.0 # height in meters
 
+# The following setting controls whether to render raw BEV camera images
+# during the simulation.
+render_bev_camera_images: False
+
 # The following settings control the size and resolution of the bird's-eye
 # view (BEV) image.
 bev_dim: 400 # height and width of the BEV image in pixels

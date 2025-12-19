@@ -73,7 +73,7 @@ class CarlaCore:
     def _init_server(self):
         '''Initialize the CARLA server.'''
         # Start server on a random port.
-        self._server_port = 17279
+        self._server_port = random.randint(15000, 30000)
 
         server_port_used = is_used(self._server_port)
         stream_port_used = is_used(self._server_port + 1)
