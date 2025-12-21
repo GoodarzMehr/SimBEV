@@ -258,7 +258,14 @@ class VehicleManager:
         logger.debug('Sensors created.')
     
     def spawn_vehicle(self, bp: carla.ActorBlueprint, spawn_points: list[carla.Waypoint], tm_port: int) -> dict:
-        '''Spawn the ego vehicle and its sensors.'''
+        '''
+        Spawn the ego vehicle and its sensors.
+        
+        Args:
+            bp: ego vehicle blueprint.
+            spawn_points: list of available spawn points.
+            tm_port: Traffic Manager port.
+        '''
         try:
             scene_info = {}
             

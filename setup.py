@@ -19,10 +19,10 @@ with open('requirements.txt', 'r', encoding='utf-8') as fh:
 
 # CUDA extensions
 cuda_ext = CUDAExtension(
-    name='tools.bbox_cuda',
+    name='simbev_tools.bbox_cuda',
     sources=[
-        'tools/cuda_extensions/bbox_cuda.cpp',
-        'tools/cuda_extensions/bbox_cuda_kernel.cu',
+        'simbev_tools/cuda_extensions/bbox_cuda.cpp',
+        'simbev_tools/cuda_extensions/bbox_cuda_kernel.cu',
     ],
     extra_compile_args={
         'cxx': ['-O3'],
@@ -69,12 +69,12 @@ setup(
     entry_points={
         'console_scripts': [
             'simbev=simbev.simbev:entry',
-            'simbev-postprocess=tools.post_processing:entry',
-            'simbev-visualize=tools.visualization:entry',
+            'simbev-postprocess=simbev_tools.post_processing:entry',
+            'simbev-visualize=simbev_tools.visualization:entry',
         ],
     },
     include_package_data=True,
     package_data={
-        'tools': ['cuda_extensions/*.cu', 'cuda_extensions/*.cpp'],
+        'simbev_tools': ['cuda_extensions/*.cu', 'cuda_extensions/*.cpp'],
     },
 )

@@ -879,7 +879,7 @@ def collect_data_replay_mode(args, core: CarlaCore, config: dict, metadata: dict
             else:
                 core.configure_replay_weather(scene_info['initial_weather_parameters'])
 
-            # Generate and save the replacement scene.
+            # Replay the scene.
             _run_data_collection(args, core, config, logger, scene_counter, scene_duration, augment=True, replay=True)
 
             core.client.stop_replayer(keep_actors=False)

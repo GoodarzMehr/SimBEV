@@ -222,10 +222,10 @@ distracted_npc_percentage: 2.0
 
 # The following setting controls the maximum number of pedestrians that can be
 # spawned in each scene.
-max_n_walkers: 640
+max_n_walkers: 480
 
 # The following setting controls the number of attempts to spawn a pedestrian.
-walker_spawn_attempts: 100
+walker_spawn_attempts: 20
 
 # The following setting controls the minimum speed of a pedestrian.
 walker_speed_min: 0.8 # speed in meters per second

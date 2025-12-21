@@ -17,7 +17,7 @@ from pyquaternion import Quaternion as Q
 from concurrent.futures import ThreadPoolExecutor
 
 try:
-    from tools.bbox_cuda import num_inside_bbox_cuda as bbox_cuda_kernel
+    from simbev_tools.bbox_cuda import num_inside_bbox_cuda as bbox_cuda_kernel
     
     CUDA_AVAILABLE = True
 

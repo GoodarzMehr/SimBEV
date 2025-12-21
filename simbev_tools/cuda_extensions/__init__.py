@@ -7,6 +7,6 @@ High-performance CUDA kernels for geometric operations in post-processing.
 '''
 
 # This module is built by setup.py and will be available after installation
-# The extension is named 'tools.bbox_cuda'
+# The extension is named 'simbev_tools.bbox_cuda'
 
 __all__ = []
