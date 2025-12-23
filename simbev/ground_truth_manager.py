@@ -1051,7 +1051,8 @@ class GTManager:
             object_location = obj.transform.location
 
             if vehicle_location.distance(object_location) < self._config['bbox_collection_radius'] \
-                and 'BP_Mustang2016' not in obj.name and obj.bounding_box.extent.z < 3.2:
+                and all(name not in obj.name for name in ['BP_Mustang2016', 'BP_Supra', 'BP_Chiron', 'BP_AudiTT']) \
+                    and obj.bounding_box.extent.z < 3.2:
                 object_properties['id'] = obj.id
                 object_properties['type'] = str(obj.type)
                 object_properties['is_alive'] = False
