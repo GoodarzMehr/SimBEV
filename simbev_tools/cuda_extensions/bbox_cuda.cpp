@@ -1,6 +1,6 @@
-// Academic Software License: Copyright © 2025 Goodarz Mehr.
+// Academic Software License: Copyright © 2026 Goodarz Mehr.
 
-// C++ bindings for CUDA bbox extension.
+// C++ bindings for CUDA bounding box processing extension.
 
 #include <torch/extension.h>
 
@@ -21,5 +21,11 @@ torch::Tensor num_inside_bbox(torch::Tensor points, torch::Tensor bbox) {
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("num_inside_bbox_cuda", &num_inside_bbox, "Check if points are inside a 3D bounding box (CUDA).");
+    m.def(
+        "num_inside_bbox_cuda",
+        &num_inside_bbox,
+        "Check if points are inside a 3D bounding box (CUDA).",
+        py::arg("points"),
+        py::arg("bbox")
+    );
 }

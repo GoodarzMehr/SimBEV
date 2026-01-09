@@ -1,4 +1,4 @@
-# Academic Software License: Copyright © 2025 Goodarz Mehr.
+# Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 '''
 Module that manages the calculations for obtaining the BEV ground truth, 3D

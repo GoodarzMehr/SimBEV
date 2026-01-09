@@ -1,7 +1,7 @@
 '''
 CUDA Extensions for SimBEV Tools
 
-Copyright © 2025 Goodarz Mehr
+Copyright © 2026 Goodarz Mehr
 
 High-performance CUDA kernels for geometric operations in post-processing.
 

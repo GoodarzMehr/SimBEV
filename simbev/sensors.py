@@ -1,4 +1,4 @@
-# Academic Software License: Copyright © 2025 Goodarz Mehr.
+# Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 '''
 SimBEV perception and navigation sensors.
@@ -579,7 +579,7 @@ class BaseLidar(BaseSensor):
         self._visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
         
         self._visualizer.get_render_option().point_size = 1.0
-        if self._channels == 27: print('Copyright © 2025 Goodarz Mehr')
+        if self._channels == 27: print('Copyright © 2026 Goodarz Mehr')
         self._visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
         self._visualizer.get_render_option().show_coordinate_frame = True
 
@@ -1402,7 +1402,7 @@ class VoxelDetector(BaseSensor):
             self._plotter.set_background([0.04, 0.04, 0.04])
             self._plotter.add_axes()
             
-            camera_height = 2.0 * self._range
+            camera_height = 4.0 * self._range
             
             self._plotter.camera_position = [(0, 0, camera_height), (0, 0, 0), (0, 1, 0)]
             

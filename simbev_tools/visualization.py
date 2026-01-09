@@ -1,4 +1,4 @@
-# Academic Software License: Copyright © 2025 Goodarz Mehr.
+# Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 import os
 import json

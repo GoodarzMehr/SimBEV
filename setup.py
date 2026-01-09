@@ -1,7 +1,7 @@
 '''
 SimBEV: A Synthetic Multi-Task Multi-Sensor Driving Data Generation Tool
 
-Copyright © 2025 Goodarz Mehr
+Copyright © 2026 Goodarz Mehr
 '''
 
 from setuptools import setup, find_packages

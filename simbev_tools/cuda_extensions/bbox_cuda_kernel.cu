@@ -1,4 +1,4 @@
-// Academic Software License: Copyright © 2025 Goodarz Mehr.
+// Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 // CUDA kernel for efficiently checking how many points lie within a given 3D
 // bounding box.

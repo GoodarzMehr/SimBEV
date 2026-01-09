@@ -1,16 +1,15 @@
-# Academic Software License: Copyright © 2025 Goodarz Mehr.
+# Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 import os
 import cv2
 import json
-import glob
 import time
 import torch
 import argparse
 import traceback
-import torch.multiprocessing as mp
 
 import numpy as np
+import torch.multiprocessing as mp
 
 from tqdm import tqdm
 
@@ -150,24 +149,24 @@ FILLABLE_CLASSES = [3, 6, 20, 21, 26, 27, 28, 29, 7, 8, 30, 31, 15, 16, 14, 18, 
 # speed up the processing.
 CHUNK_SIZE = {
     3:  (400, 400, 80),
-    6:  (10, 10, 10),
-    7:  (10, 10, 10),
-    8:  (10, 10, 10),
-    12: (10, 10, 10),
-    13: (10, 10, 10),
-    14: (20, 20, 20),
-    15: (40, 40, 40),
-    16: (40, 40, 40),
-    18: (10, 10, 10),
-    19: (10, 10, 10),
-    20: (20, 20, 20),
-    21: (20, 20, 20),
-    26: (80, 80, 80),
-    27: (80, 80, 80),
-    28: (20, 20, 20),
-    29: (10, 10, 10),
-    30: (10, 10, 10),
-    31: (10, 10, 10),
+    6:  (8, 8, 8),
+    7:  (8, 8, 8),
+    8:  (8, 8, 8),
+    12: (8, 8, 8),
+    13: (8, 8, 8),
+    14: (16, 16, 16),
+    15: (32, 32, 40),
+    16: (32, 32, 40),
+    18: (8, 8, 8),
+    19: (8, 8, 8),
+    20: (32, 32, 40),
+    21: (32, 32, 40),
+    26: (64, 64, 80),
+    27: (64, 64, 80),
+    28: (16, 16, 16),
+    29: (8, 8, 8),
+    30: (8, 8, 8),
+    31: (8, 8, 8),
 }
 
 # Classes that use morphological closing instead of ray casting. This may be
@@ -499,31 +498,40 @@ def fill_voxels_main():
             
             # Create a queue for progress updates.
             mp.set_start_method('spawn', force=True)
+            
             results_queue = mp.Queue()
             
             # Start worker processes.
             processes = []
+            
             for gpu_id in range(num_gpus):
                 p = mp.Process(
                     target=_gpu_worker,
                     args=(gpu_id, files_per_gpu[gpu_id], args.morph_kernel_size, results_queue)
                 )
+                
                 p.start()
+                
                 processes.append(p)
             
             # Show progress bar.
             pbar = tqdm(total=len(file_pairs), desc='Filling voxels', ncols=120, colour='cyan')
             
             completed = 0
+            
             while completed < len(file_pairs):
                 try:
-                    result = results_queue.get(timeout=1.0)
-                    completed += 1
-                    pbar.update(1)
+                    result = results_queue.get(timeout=10.0)
+                    
+                    completed += result
+                    
+                    if result > 0:
+                        pbar.update(1)
                 except:
-                    # Check if all processes are still alive.
-                    all_alive = all(p.is_alive() for p in processes)
-                    if not all_alive and completed < len(file_pairs):
+                    # Check if any process is still alive.
+                    any_alive = any(p.is_alive() for p in processes)
+                    
+                    if not any_alive or completed == len(file_pairs):
                         break
             
             pbar.close()
@@ -542,7 +550,6 @@ def fill_voxels_main():
         print('Killing the process...')
         
         time.sleep(3.0)
-
 
 def process_bbox_main():
     try:

@@ -1,4 +1,4 @@
-# Academic Software License: Copyright © 2025 Goodarz Mehr.
+# Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 '''
 Module that performs the core functions of CARLA, initializing the server and
@@ -46,7 +46,7 @@ class CarlaCore:
         self._setup_keyboard_listener()
 
     def __getstate__(self):
-        logger.warning('No pickles for CARLA! Copyright © 2025 Goodarz Mehr')
+        logger.warning('No pickles for CARLA! Copyright © 2026 Goodarz Mehr')
     
     def get_world_manager(self) -> WorldManager:
         '''Get the World Manager.'''
