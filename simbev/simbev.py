@@ -276,6 +276,10 @@ def _create_directory_structure(args, config: dict):
     if config['use_imu']:
         os.makedirs(f'{args.path}/simbev/sweeps/IMU', exist_ok=True)
     
+    # Voxel detector directory.
+    if config['use_voxel_detector']:
+        os.makedirs(f'{args.path}/simbev/sweeps/VOXEL-GRID', exist_ok=True)
+    
     # Ground truth directories.
     os.makedirs(f'{args.path}/simbev/ground-truth/seg', exist_ok=True)
     os.makedirs(f'{args.path}/simbev/ground-truth/det', exist_ok=True)
@@ -983,7 +987,7 @@ def main(logger: logging.Logger):
 
 def entry():
     try:
-        logger = setup_logger(log_level=logging.INFO, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
+        logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
         
         main(logger)
     

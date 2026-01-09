@@ -4,9 +4,12 @@ CUDA Extensions for SimBEV Tools
 Copyright © 2025 Goodarz Mehr
 
 High-performance CUDA kernels for geometric operations in post-processing.
+
+Available extensions (built by setup.py):
+- simbev_tools.bbox_cuda: bounding box operations
+- simbev_tools.fill_voxel_cuda: voxel grid filling operations
 '''
 
-# This module is built by setup.py and will be available after installation
-# The extension is named 'simbev_tools.bbox_cuda'
+# These modules are built by setup.py and will be available after installation
 
 __all__ = []

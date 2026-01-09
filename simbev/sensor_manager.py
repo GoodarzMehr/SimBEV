@@ -43,18 +43,26 @@ class SensorManager:
             'radar': [],
             'gnss': [],
             'imu': [],
-            'semantic_bev_camera': []
+            'semantic_bev_camera': [],
+            'voxel_detector': []
         }
         
         self._name_list = {
             'camera': ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
             'radar': ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK'],
-            'bev_camera': ['TOP_VIEW', 'BOTTOM_VIEW']
+            'bev_camera': ['TOP_VIEW', 'BOTTOM_VIEW'],
+            'voxel_detector': ['3D Ground Truth']
         }
 
         self._camera_type_abbrevs = {'rgb': 'RGB', 'semantic': 'SEG', 'instance': 'IST', 'depth': 'DPT', 'flow': 'FLW'}
         
-        self._other_sensor_abbrevs = {'lidar': 'LIDAR', 'semantic_lidar': 'SEG-LIDAR', 'gnss': 'GNSS', 'imu': 'IMU'}
+        self._other_sensor_abbrevs = {
+            'lidar': 'LIDAR',
+            'semantic_lidar': 'SEG-LIDAR',
+            'gnss': 'GNSS',
+            'imu': 'IMU',
+            'voxel_detector': 'VOXEL-GRID'
+        }
 
         self._timer = CustomTimer()
         
@@ -106,6 +114,9 @@ class SensorManager:
         for radar, window_name in zip(self.sensor_list['radar'], self._name_list['radar']):
             radar.render(window_name)
         
+        for voxel_detector, window_name in zip(self.sensor_list['voxel_detector'], self._name_list['voxel_detector']):
+            voxel_detector.render(window_name)
+        
         if self._config['render_bev_camera_images']:
             for semantic_bev_camera, window_name in zip(
                 self.sensor_list['semantic_bev_camera'],
@@ -130,7 +141,7 @@ class SensorManager:
             elif key in ['radar']:
                 for radar, radar_name in zip(self.sensor_list[key], self._name_list['radar']):
                     self._io_futures.append(self._io_executor.submit(radar.save, radar_name, path, scene, frame))
-            elif key in ['lidar', 'semantic_lidar', 'gnss', 'imu']:
+            elif key in ['lidar', 'semantic_lidar', 'gnss', 'imu', 'voxel_detector']:
                 for sensor in self.sensor_list[key]:
                     self._io_futures.append(self._io_executor.submit(sensor.save, path, scene, frame))
         
@@ -166,7 +177,7 @@ class SensorManager:
             if self._config[f'use_{type}']:
                 scene_data[f'{abbrev}'] = f'{path}/simbev/sweeps/{abbrev}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}.' + \
-                ('npz' if type in ['lidar', 'semantic_lidar'] else 'bin')
+                ('npz' if type in ['lidar', 'semantic_lidar', 'voxel_detector'] else 'bin')
         
         scene_data['GT_SEG'] = f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz'
         scene_data['GT_SEG_VIZ'] = f'{path}/simbev/ground-truth/seg_viz' \

@@ -39,7 +39,7 @@ test_scene_config:
   # Town10HD: 1
   # Town12: 1
   # Town13: 1
-  # Town15: 1
+  Town15: 1
 
 # When mode is 'replace' the following denotes the list of scenes that should
 # be overwritten.
@@ -59,7 +59,7 @@ vehicle_color: '0,0,0'
 simulate_physics: True
 show_debug_telemetry: False
 
-warmup_duration: 4
+warmup_duration: 1
 min_scene_duration: 8
 max_scene_duration: 40
 
@@ -231,6 +231,25 @@ imu_properties:
   noise_gyro_stddev_x: '0.0000056'
   noise_gyro_stddev_y: '0.0000056'
   noise_gyro_stddev_z: '0.0000056'
+
+use_voxel_detector: True
+
+voxel_detector_range: 20.0
+voxel_size: 0.1
+voxel_detector_upper_limit: 7.0
+voxel_detector_lower_limit: -1.0
+voxel_detector_properties:
+  ignore_self: 'False'
+  show_calculation_time: 'False'
+  use_complex_collision: 'True'
+  full_sweep: 'True'
+  z_fill_mode: 'None'
+  use_x_front: 'False'
+  use_x_back: 'False'
+  use_y_right: 'False'
+  use_y_left: 'False'
+  use_z_top: 'False'
+  use_z_bottom: 'False'
 
 ########## Optional Settings ##########
 

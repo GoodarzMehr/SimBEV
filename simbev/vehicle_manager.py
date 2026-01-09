@@ -215,7 +215,7 @@ class VehicleManager:
             GNSS(
                 self._world,
                 self._sensor_manager,
-                carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0)),
+                carla.Transform(),
                 self.vehicle,
                 self._config['gnss_properties']
             )
@@ -225,7 +225,7 @@ class VehicleManager:
             IMU(
                 self._world,
                 self._sensor_manager,
-                carla.Transform(carla.Location(x=0.0, y=0.0, z=0.0)),
+                carla.Transform(),
                 self.vehicle,
                 self._config['imu_properties']
             )
@@ -251,6 +251,22 @@ class VehicleManager:
                 self._config['bev_dim'],
                 self._config['bev_dim'],
                 self._config['bev_properties']
+            )
+        
+        # Create voxel detector for obtaining the 3D ground truth.
+        if self._config['use_voxel_detector']:
+            sensor_z = max(0.05, self._config['voxel_size'] / 4.0)
+            
+            VoxelDetector(
+                self._world,
+                self._sensor_manager,
+                carla.Transform(carla.Location(x=0.0, y=0.0, z=sensor_z)),
+                self.vehicle,
+                self._config['voxel_detector_range'],
+                self._config['voxel_size'],
+                self._config['voxel_detector_upper_limit'],
+                self._config['voxel_detector_lower_limit'],
+                self._config['voxel_detector_properties']
             )
         
         self._world.tick()

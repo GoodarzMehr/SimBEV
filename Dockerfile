@@ -66,7 +66,7 @@ libglib2.0-0 libgtk2.0-dev libnvidia-gl-580 libnvidia-common-580 libnvidia-compu
 python-is-python3 mesa-utils python3-dbg
 
 RUN pip install --no-cache-dir ninja numpy matplotlib opencv-python open3d scikit-image pyquaternion networkx psutil \
-tqdm pynput evdev==1.6.1
+tqdm pynput pyvista evdev==1.6.1
 
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu130
 

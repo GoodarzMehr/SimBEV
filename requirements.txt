@@ -6,6 +6,7 @@ evdev==1.6.1
 pynput
 psutil
 open3d
+pyvista
 networkx
 matplotlib
 scikit-image

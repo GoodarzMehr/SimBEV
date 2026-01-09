@@ -3,10 +3,12 @@
 import os
 import cv2
 import json
+import glob
 import time
 import torch
 import argparse
 import traceback
+import torch.multiprocessing as mp
 
 import numpy as np
 
@@ -19,12 +21,25 @@ from concurrent.futures import ThreadPoolExecutor
 try:
     from simbev_tools.bbox_cuda import num_inside_bbox_cuda as bbox_cuda_kernel
     
-    CUDA_AVAILABLE = True
+    BBOX_CUDA_AVAILABLE = True
 
 except ImportError:
-    print("Warning: CUDA extension not available. Performance will be degraded.")
+    print("Warning: CUDA bounding box extension not available. Performance will be degraded.")
     
-    CUDA_AVAILABLE = False
+    BBOX_CUDA_AVAILABLE = False
+
+try:
+    from simbev_tools.fill_voxel_cuda import (
+        fill_hollow_voxels_cuda,
+        morphological_close_3d_cuda
+    )
+    
+    FILL_VOXEL_CUDA_AVAILABLE = True
+
+except ImportError:
+    print("Warning: CUDA voxel filling extension not available. Voxel filling disabled.")
+    
+    FILL_VOXEL_CUDA_AVAILABLE = False
 
 OBJECT_CLASSES = {
     7:  'traffic_light',
@@ -81,17 +96,131 @@ RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
 
 DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
+# Semantic priority map for voxel filling (higher value = higher priority).
+# When filling voxels, higher priority classes won't be overwritten by lower
+# priority ones.
+SEMANTIC_PRIORITY = [
+    0,  # 0:  Unlabeled
+    7,  # 1:  Road
+    7,  # 2:  Sidewalk
+    1,  # 3:  Building
+    1,  # 4:  Wall
+    1,  # 5:  Fence
+    1,  # 6:  Pole
+    2,  # 7:  Traffic light
+    2,  # 8:  Traffic sign
+    1,  # 9:  Vegetation
+    1,  # 10: Terrain
+    1,  # 11: Sky
+    6,  # 12: Pedestrian
+    6,  # 13: Rider
+    4,  # 14: Car
+    3,  # 15: Truck
+    3,  # 16: Bus
+    1,  # 17: Train
+    5,  # 18: Motorcycle
+    5,  # 19: Bicycle
+    1,  # 20: Static
+    1,  # 21: Dynamic
+    1,  # 22: Other
+    1,  # 23: Water
+    8,  # 24: Road line
+    1,  # 25: Ground
+    1,  # 26: Bridge
+    1,  # 27: Rail track
+    1,  # 28: Guard rail
+    1,  # 29: Rock
+    2,  # 30: Traffic cone
+    2   # 31: Barrier
+]
+
+# Classes to fill, ordered by ascending priority (lower priority filled first,
+# so higher priority classes can overwrite).
+# Priority 1: Building(3), Pole(6), Static(20), Dynamic(21), Bridge(26),
+#   RailTrack(27), GuardRail(28), Rock(29)
+# Priority 2: TrafficLight(7), TrafficSign(8), TrafficCone(30), Barrier(31)
+# Priority 3: Truck(15), Bus(16)
+# Priority 4: Car(14)
+# Priority 5: Motorcycle(18), Bicycle(19)
+# Priority 6: Pedestrian(12), Rider(13)
+FILLABLE_CLASSES = [3, 6, 20, 21, 26, 27, 28, 29, 7, 8, 30, 31, 15, 16, 14, 18, 19, 12, 13]
+
+# Chunk sizes for different classes when filling hollow voxels. The voxel grid
+# is broken into chunks and those that are completely empty are skipped to
+# speed up the processing.
+CHUNK_SIZE = {
+    3:  (400, 400, 80),
+    6:  (10, 10, 10),
+    7:  (10, 10, 10),
+    8:  (10, 10, 10),
+    12: (10, 10, 10),
+    13: (10, 10, 10),
+    14: (20, 20, 20),
+    15: (40, 40, 40),
+    16: (40, 40, 40),
+    18: (10, 10, 10),
+    19: (10, 10, 10),
+    20: (20, 20, 20),
+    21: (20, 20, 20),
+    26: (80, 80, 80),
+    27: (80, 80, 80),
+    28: (20, 20, 20),
+    29: (10, 10, 10),
+    30: (10, 10, 10),
+    31: (10, 10, 10),
+}
+
+# Classes that use morphological closing instead of ray casting. This may be
+# useful for classes like Vegetation that have branches/gaps that shouldn't be
+# fully filled.
+MORPHOLOGICAL_CLASSES = {}
+
+# Ground element labels.
+GROUND_LABELS = [1, 2, 10, 24, 25]
+
 
 argparser = argparse.ArgumentParser(description='SimBEV post-processing tool.')
 
 argparser.add_argument(
     '--path',
     default='/dataset',
-    help='path to the dataset (default: /dataset)')
+    help='path to the dataset (default: /dataset)'
+)
+argparser.add_argument(
+    '--process-bbox',
+    action='store_true',
+    help='post-process bounding box annotations'
+)
+argparser.add_argument(
+    '--no-process-bbox',
+    dest='process_bbox',
+    action='store_false',
+    help='do not post-process bounding box annotations'
+)
 argparser.add_argument(
     '--use-seg',
     action='store_true',
-    help='use instance segmentation images for post-processing')
+    help='use instance segmentation images for post-processing bounding box annotations'
+)
+argparser.add_argument(
+    '--fill-voxels',
+    action='store_true',
+    help='fill the hollow interiors of objects in voxel grids'
+)
+argparser.add_argument(
+    '--morph-kernel-size',
+    type=int,
+    default=3,
+    help='kernel size for morphological closing of vegetation (default: 3, must be odd)'
+)
+argparser.add_argument(
+    '--num-gpus',
+    type=int,
+    default=-1,
+    help='number of GPUs to use for voxel filling (-1 = all available, default: -1)'
+)
+
+argparser.set_defaults(process_bbox=True)
 
 args = argparser.parse_args()
 
@@ -189,7 +318,7 @@ def num_inside_bbox(
     assert bbox.shape[0] == 24, f'Bounding box must have 24 elements (8 corners * 3 coordinates), got {bbox.shape[0]}'
 
     # Use CUDA kernel if available.
-    if CUDA_AVAILABLE and device.startswith('cuda'):
+    if BBOX_CUDA_AVAILABLE and device.startswith('cuda'):
         try:
             count_tensor = bbox_cuda_kernel(points, bbox)
             
@@ -215,7 +344,207 @@ def num_inside_bbox(
         
         return count.item()
 
-def main():
+
+def fill_voxel_interiors(voxel_grid: np.ndarray, device: str = 'cuda:0', morph_kernel_size: int = 3) -> np.ndarray:
+    '''
+    Fill the hollow interiors of objects in a 3D semantic voxel grid. Classes
+    are processed in ascending priority order so that higher-priority classes
+    can overwrite lower-priority ones. 6-direction raycasting is used for all
+    classes except those (e.g. Vegetation) that use morphological closing.
+
+    Args:
+        voxel_grid: 3D NumPy array containing class labels.
+        device: CUDA device to use for computation.
+        morph_kernel_size: kernel size for morphological closing.
+
+    Returns:
+        filled voxel grid.
+    '''
+    if not FILL_VOXEL_CUDA_AVAILABLE:
+        print('Error: fill_voxel_cuda extension is not available.')
+        
+        return voxel_grid
+    
+    voxel_tensor = torch.from_numpy(voxel_grid).to(device)
+    
+    priority_map = torch.tensor(SEMANTIC_PRIORITY, dtype=torch.int32, device=device)
+    ground_labels = torch.tensor(GROUND_LABELS, dtype=torch.int32, device=device)
+    
+    # Process each class in ascending priority order.
+    for target_class in FILLABLE_CLASSES:
+        if target_class in MORPHOLOGICAL_CLASSES:
+            voxel_tensor = morphological_close_3d_cuda(voxel_tensor, target_class, morph_kernel_size)
+        else:
+            chunk_size_x, chunk_size_y, chunk_size_z = CHUNK_SIZE[target_class]
+
+            voxel_tensor = fill_hollow_voxels_cuda(
+                voxel_tensor,
+                priority_map,
+                ground_labels,
+                target_class,
+                chunk_size_x,
+                chunk_size_y,
+                chunk_size_z
+            )
+    
+    return voxel_tensor.cpu().numpy()
+
+
+def _process_voxel_file(input_path: str, output_path: str, device: str, morph_kernel_size: int) -> bool:
+    '''
+    Worker function for processing a single voxel grid file.
+    
+    Args:
+        input_path: path to the input voxel grid file.
+        output_path: path to save the processed voxel grid file.
+        device: CUDA device to use.
+        morph_kernel_size: kernel size for morphological closing.
+    
+    Returns:
+        True if successful, False otherwise.
+    '''
+    try:
+        voxel_grid = np.load(input_path)['data']
+        
+        filled_grid = fill_voxel_interiors(voxel_grid, device, morph_kernel_size)
+
+        with open(output_path, 'wb') as f:
+            np.savez_compressed(f, data=filled_grid)
+        
+        return True
+    
+    except Exception as e:
+        print(f'Error processing {input_path}: {e}')
+        
+        return False
+
+
+def _gpu_worker(gpu_id, file_list, morph_kernel_size, results_queue):
+    '''
+    Worker process for a single GPU.
+    
+    Args:
+        gpu_id: GPU device ID.
+        file_list: list of (input_path, output_path) tuples to process.
+        morph_kernel_size: kernel size for morphological closing.
+        results_queue: multiprocessing queue for progress updates.
+    '''
+    device = f'cuda:{gpu_id}'
+
+    torch.cuda.set_device(gpu_id)
+    
+    for input_path, output_path in file_list:
+        success = _process_voxel_file(input_path, output_path, device, morph_kernel_size)
+        
+        results_queue.put(1 if success else 0)
+
+
+def fill_voxels_main():
+    try:
+        start = time.perf_counter()
+        
+        num_available_gpus = torch.cuda.device_count()
+        
+        if num_available_gpus == 0:
+            print('Error: No CUDA GPUs available.')
+            return
+        
+        if args.num_gpus == -1:
+            num_gpus = num_available_gpus
+        else:
+            num_gpus = min(args.num_gpus, num_available_gpus)
+        
+        print(f'Using {num_gpus} GPU(s) for voxel filling.')
+        
+        # Create output directory.
+        output_dir = f'{args.path}/simbev/sweeps/VOXEL-GRID-FILLED'
+        
+        os.makedirs(output_dir, exist_ok=True)
+
+        file_pairs = []
+
+        for split in ['train', 'val', 'test']:
+            info_path = f'{args.path}/simbev/infos/simbev_infos_{split}.json'
+
+            if not os.path.exists(info_path):
+                continue
+
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'r') as f:
+                infos = json.load(f)
+
+            for scene in infos['data']:
+                for info in infos['data'][scene]['scene_data']:
+                    input_path = info['VOXEL-GRID']
+
+                    filename = os.path.basename(input_path)
+
+                    output_path = os.path.join(output_dir, filename)
+
+                    file_pairs.append((input_path, output_path))
+        
+        print(f'Found {len(file_pairs)} voxel grid files to process.')
+        
+        if num_gpus == 1:
+            device = 'cuda:0'
+            
+            pbar = tqdm(file_pairs, desc='Filling voxels', ncols=120, colour='cyan')
+            
+            for input_path, output_path in pbar:
+                _process_voxel_file(input_path, output_path, device, args.morph_kernel_size)
+        else:
+            files_per_gpu = [[] for _ in range(num_gpus)]
+            
+            for i, file_pair in enumerate(file_pairs):
+                files_per_gpu[i % num_gpus].append(file_pair)
+            
+            # Create a queue for progress updates.
+            mp.set_start_method('spawn', force=True)
+            results_queue = mp.Queue()
+            
+            # Start worker processes.
+            processes = []
+            for gpu_id in range(num_gpus):
+                p = mp.Process(
+                    target=_gpu_worker,
+                    args=(gpu_id, files_per_gpu[gpu_id], args.morph_kernel_size, results_queue)
+                )
+                p.start()
+                processes.append(p)
+            
+            # Show progress bar.
+            pbar = tqdm(total=len(file_pairs), desc='Filling voxels', ncols=120, colour='cyan')
+            
+            completed = 0
+            while completed < len(file_pairs):
+                try:
+                    result = results_queue.get(timeout=1.0)
+                    completed += 1
+                    pbar.update(1)
+                except:
+                    # Check if all processes are still alive.
+                    all_alive = all(p.is_alive() for p in processes)
+                    if not all_alive and completed < len(file_pairs):
+                        break
+            
+            pbar.close()
+            
+            # Wait for all processes to finish.
+            for p in processes:
+                p.join()
+        
+        end = time.perf_counter()
+        
+        print(f'Voxel filling completed in {end - start:.3f} seconds.')
+
+    except Exception:
+        print(traceback.format_exc())
+        
+        print('Killing the process...')
+        
+        time.sleep(3.0)
+
+
+def process_bbox_main():
     try:
         start = time.perf_counter()
         
@@ -420,7 +749,11 @@ def main():
 
 def entry():
     try:
-        main()
+        if args.process_bbox:
+            process_bbox_main()
+
+        if args.fill_voxels:
+            fill_voxels_main()
     
     except KeyboardInterrupt:
         print('Killing the process...')

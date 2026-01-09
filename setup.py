@@ -18,11 +18,23 @@ with open('requirements.txt', 'r', encoding='utf-8') as fh:
     requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
 
 # CUDA extensions
-cuda_ext = CUDAExtension(
+bbox_cuda_ext = CUDAExtension(
     name='simbev_tools.bbox_cuda',
     sources=[
         'simbev_tools/cuda_extensions/bbox_cuda.cpp',
         'simbev_tools/cuda_extensions/bbox_cuda_kernel.cu',
+    ],
+    extra_compile_args={
+        'cxx': ['-O3'],
+        'nvcc': ['-O3', '--use_fast_math']
+    }
+)
+
+fill_voxel_cuda_ext = CUDAExtension(
+    name='simbev_tools.fill_voxel_cuda',
+    sources=[
+        'simbev_tools/cuda_extensions/fill_voxel_cuda.cpp',
+        'simbev_tools/cuda_extensions/fill_voxel_cuda_kernel.cu',
     ],
     extra_compile_args={
         'cxx': ['-O3'],
@@ -62,7 +74,7 @@ setup(
     ],
     python_requires='>=3.8',
     install_requires=requirements,
-    ext_modules=[cuda_ext],
+    ext_modules=[bbox_cuda_ext, fill_voxel_cuda_ext],
     cmdclass={
         'build_ext': BuildExtension
     },

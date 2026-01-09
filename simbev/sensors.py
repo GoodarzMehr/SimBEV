@@ -21,6 +21,7 @@ try:
 except ImportError:
     from utils import flow_to_color
 
+import pyvista as pv
 
 RANGE = np.linspace(0.0, 1.0, 256)
 
@@ -576,6 +577,7 @@ class BaseLidar(BaseSensor):
         self._visualizer = o3d.visualization.Visualizer()
 
         self._visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
+        
         self._visualizer.get_render_option().point_size = 1.0
         if self._channels == 27: print('Copyright © 2025 Goodarz Mehr')
         self._visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
@@ -917,6 +919,7 @@ class Radar(BaseSensor):
         self._visualizer = o3d.visualization.Visualizer()
 
         self._visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
+        
         self._visualizer.get_render_option().point_size = 4.0
         self._visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
         self._visualizer.get_render_option().show_coordinate_frame = True
@@ -1239,3 +1242,224 @@ class SemanticBEVCamera(SemanticCamera):
         '''
         cv2.imshow(window_name, self._render_queue.get(True, 10.0))
         cv2.waitKey(1)
+
+class VoxelDetector(BaseSensor):
+    '''
+    Voxel detector class that manages the creation and data acquisition of
+    voxel detectors.
+
+    Args:
+        world: CARLA simulation world.
+        sensor_manager: SensorManager instance that the voxel detector belongs
+            to.
+        transform: the voxel detector's transform relative to what it is
+            attached to.
+        attached: CARLA object the voxel detector is attached to.
+        range: maximum range of the detection area.
+        voxel_size: size of each voxel.
+        upper_limit: upper limit of the detection area.
+        lower_limit: lower limit of the detection area.
+        options: dictionary of voxel detector options.
+    '''
+    def __init__(
+        self,
+        world: carla.World,
+        sensor_manager,
+        transform: carla.Transform,
+        attached: carla.Actor,
+        range: float,
+        voxel_size: float,
+        upper_limit: float,
+        lower_limit: float,
+        options: dict
+    ):
+        self._world = world
+        self._sensor_manager = sensor_manager
+        self._range = range
+        self._voxel_size = voxel_size
+        self._upper_limit = upper_limit
+        self._lower_limit = lower_limit
+        self._options = options
+        self._frame = 0
+        self._voxel_grid = None
+
+        # Calculate voxel grid dimensions.
+        self._dim_x = int(round(2 * self._range / self._voxel_size))
+        self._dim_y = int(round(2 * self._range / self._voxel_size))
+        self._dim_z = int(round((self._upper_limit - self._lower_limit) / self._voxel_size))
+
+        # Create queues for rendering and saving voxel grids. Since queues are
+        # blocking, this ensures that at each time step voxel grids are fully
+        # acquired before the code continues.
+        self._render_queue = Queue()
+        self._save_queue = Queue()
+
+        self._get_sensor()
+        
+        self._voxel_detector_bp.set_attribute('range', str(self._range))
+        self._voxel_detector_bp.set_attribute('upper_limit', str(self._upper_limit))
+        self._voxel_detector_bp.set_attribute('lower_limit', str(self._lower_limit))
+        self._voxel_detector_bp.set_attribute('voxel_size', str(self._voxel_size))
+
+        for key in options:
+            self._voxel_detector_bp.set_attribute(key, options[key])
+
+        self._sensor = self._world.spawn_actor(self._voxel_detector_bp, transform, attach_to=attached)
+
+        self._sensor.listen(self._process_voxel_data)
+
+    def _get_sensor(self):
+        '''
+        Add voxel detector to the SensorManager and get the sensor blueprint.
+        '''
+        self._sensor_manager.add_sensor(self, 'voxel_detector')
+
+        self._voxel_detector_bp = self._world.get_blueprint_library().find('sensor.other.voxel_detection')
+    
+    def _process_voxel_data(self, voxel_data):
+        '''
+        Callback function for processing raw voxel data from the sensor.
+
+        Args:
+            voxel_data: raw voxel detection data.
+        '''
+        # Convert voxel data into a NumPy array and reshape into a 3D voxel
+        # grid.
+        voxel_array = np.frombuffer(voxel_data.raw_data, dtype=np.uint8)
+        
+        voxel_grid = voxel_array.reshape((self._dim_x, self._dim_y, self._dim_z))
+
+        voxel_grid = np.flip(voxel_grid, axis=1)
+
+        # Put the voxel grid in both queues.
+        self._render_queue.put(voxel_grid)
+        self._save_queue.put(voxel_grid)
+
+    def clear_queues(self):
+        '''
+        Clear the queues to ensure only the latest voxel grid is accessible.
+        '''
+        with self._render_queue.mutex:
+            self._render_queue.queue.clear()
+            self._render_queue.unfinished_tasks = 0
+            self._render_queue.all_tasks_done.notify_all()
+
+        with self._save_queue.mutex:
+            self._save_queue.queue.clear()
+            self._save_queue.unfinished_tasks = 0
+            self._save_queue.all_tasks_done.notify_all()
+    
+    def _create_visualizer(self, window_name: str, width: int = 1024, height: int = 1024):
+        '''
+        Create Open3D visualizer.
+
+        Args:
+            window_name: window name for the visualizer.
+            width: visualizer window width in pixels.
+            height: visualizer window height in pixels.
+        '''
+        self._visualizer = o3d.visualization.Visualizer()
+
+        self._visualizer.create_window(window_name=window_name, width=width, height=height, left=0, top=0)
+        
+        self._visualizer.get_render_option().background_color = [0.04, 0.04, 0.04]
+        self._visualizer.get_render_option().show_coordinate_frame = True
+    
+    def _create_voxel_grid(self, voxel_data):
+        '''
+        Create a PyVista ImageData (UniformGrid) from the voxel data.
+        
+        Args:
+            voxel_data: voxel array with class labels.
+        
+        Returns:
+            grid: voxel grid as a PyVista ImageData object.
+        '''
+        grid = pv.ImageData()
+        
+        # Set dimensions (nodes = cells + 1 for each axis).
+        grid.dimensions = np.array(voxel_data.shape) + 1
+        
+        grid.spacing = (self._voxel_size, self._voxel_size, self._voxel_size)
+        grid.origin = (-self._range, -self._range, self._lower_limit)
+        
+        # Add labels as cell data (flattened in Fortran order to match
+        # X-fastest indexing)
+        grid.cell_data['labels'] = voxel_data.flatten(order='F')
+        
+        return grid
+    
+    def render(self, window_name: str = 'Voxel Detector'):
+        '''
+        Render the voxel grid as colored cubes.
+        
+        Args:
+            window_name: window name for the voxel grid visualizer.
+        '''
+        if self._frame == 0:
+            self._plotter = pv.Plotter(window_size=[1024, 1024], title=window_name)
+            
+            self._plotter.set_background([0.04, 0.04, 0.04])
+            self._plotter.add_axes()
+            
+            camera_height = 2.0 * self._range
+            
+            self._plotter.camera_position = [(0, 0, camera_height), (0, 0, 0), (0, 1, 0)]
+            
+            self._plotter.show(interactive_update=True, auto_close=False)
+
+        voxel_data = self._render_queue.get(True, 10.0)
+        
+        grid = self._create_voxel_grid(voxel_data)
+
+        occupied = grid.threshold(0.5, scalars='labels')
+        
+        if occupied.n_cells > 0:
+            labels = occupied.cell_data['labels'].astype(int)
+            
+            colors = LABEL_COLORS[labels]
+            
+            occupied.cell_data['colors'] = colors
+                
+            self._plotter.add_mesh(
+                occupied, 
+                name='voxels',
+                scalars='colors', 
+                rgb=True, 
+                show_scalar_bar=False,
+                lighting=True,
+                ambient=0.7,
+                diffuse=0.6,
+                specular=0.0,
+                smooth_shading=False,
+                reset_camera=False,
+            )
+        else:
+            self._plotter.remove_actor('voxels')
+        
+        self._plotter.update()
+        
+        self._frame += 1
+        
+        time.sleep(0.001)
+    
+    def save(self, path: str, scene: int, frame: int):
+        '''
+        Save voxel grid to file.
+
+        Args:
+            path: root directory of the dataset.
+            scene: scene number.
+            frame: frame number.
+        '''
+        with open(f'{path}/simbev/sweeps/VOXEL-GRID/SimBEV-scene-{scene:04d}-frame-{frame:04d}-VOXEL-GRID.npz', 'wb') as f:
+            np.savez_compressed(f, data=self._save_queue.get(True, 10.0))
+    
+    def destroy(self):
+        '''Destroy the voxel detector.'''
+        self._sensor.destroy()
+        
+        try:
+            self._plotter.close()
+        except AttributeError:
+            pass
