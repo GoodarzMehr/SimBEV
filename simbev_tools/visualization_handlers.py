@@ -41,6 +41,7 @@ class VisualizationContext:
         metadata: dataset metadata.
         ignore_valid_flag: whether to ignore the valid_flag of object bounding
             boxes.
+        voxel_filled: whether to use filled voxel grids.
     '''
     def __init__(
             self,
@@ -49,7 +50,8 @@ class VisualizationContext:
             frame_number: int,
             frame_data: dict,
             metadata: dict,
-            ignore_valid_flag: bool = False
+            ignore_valid_flag: bool = False,
+            voxel_filled: bool = False
         ):
         self.path = path
         self.scene_number = scene_number
@@ -57,6 +59,7 @@ class VisualizationContext:
         self.frame_data = frame_data
         self.metadata = metadata
         self.ignore_valid_flag = ignore_valid_flag
+        self.voxel_filled = voxel_filled
         
         self.gt_det = np.load(self.frame_data['GT_DET'], allow_pickle=True) if self.frame_data is not None else None
     

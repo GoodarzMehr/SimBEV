@@ -237,16 +237,18 @@ __global__ void dilate_3d_kernel(
     }
 }
 
-// 3D erosion kernel for morphological closing.
-// Only erodes voxels that were added during dilation (marked in dilated grid
-// but not in original).
+// 3D erosion kernel for morphological closing. Only erodes voxels that were
+// added during dilation.
 __global__ void erode_3d_kernel(
     const uint8_t* __restrict__ original,
     const uint8_t* __restrict__ dilated,
     uint8_t* __restrict__ output,
-    int dim_x, int dim_y, int dim_z,
+    int dim_x,
+    int dim_y,
+    int dim_z,
     int target_class,
-    int radius)
+    int radius
+)
 {
     const int x = blockIdx.x * blockDim.x + threadIdx.x;
     const int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -255,21 +257,22 @@ __global__ void erode_3d_kernel(
     if (x >= dim_x || y >= dim_y || z >= dim_z) return;
     
     const int idx = idx3d(x, y, z, dim_y, dim_z);
+    
     const uint8_t dilated_val = dilated[idx];
     const uint8_t original_val = original[idx];
     
-    // Copy dilated to output first.
+    // Copy the dilated value to output first.
     output[idx] = dilated_val;
     
     // Only consider voxels that are the target class in the dilated grid.
     if (dilated_val != target_class) return;
     
-    // If it was already the target class in original, keep it.
+    // If it was already the target class in the original grid, keep it.
     if (original_val == target_class) return;
     
-    // This voxel was added by dilation. Check if it should be eroded.
-    // Erode if any neighbor in the radius is NOT the target class in the
-    // dilated grid.
+    // This voxel was added by dilation. Check if it should be eroded. Erode
+    // if any neighbor in the radius is not the target class in the dilated
+    // grid.
     for (int dx = -radius; dx <= radius; dx++) {
         for (int dy = -radius; dy <= radius; dy++) {
             for (int dz = -radius; dz <= radius; dz++) {
@@ -277,18 +280,18 @@ __global__ void erode_3d_kernel(
                 const int ny = y + dy;
                 const int nz = z + dz;
                 
-                // Boundary counts as not target class.
-                if (nx < 0 || nx >= dim_x ||
-                    ny < 0 || ny >= dim_y ||
-                    nz < 0 || nz >= dim_z)
+                // Boundary does not count as target class.
+                if (nx < 0 || nx >= dim_x || ny < 0 || ny >= dim_y || nz < 0 || nz >= dim_z)
                 {
                     output[idx] = 0;
+
                     return;
                 }
                 
                 const int nidx = idx3d(nx, ny, nz, dim_y, dim_z);
                 if (dilated[nidx] != target_class) {
                     output[idx] = 0;
+                    
                     return;
                 }
             }
@@ -316,28 +319,32 @@ torch::Tensor fill_hollow_voxels_cuda(
     int target_class,
     int chunk_size_x,
     int chunk_size_y,
-    int chunk_size_z)
+    int chunk_size_z
+)
 {
     const int dim_x = voxel_grid.size(0);
     const int dim_y = voxel_grid.size(1);
     const int dim_z = voxel_grid.size(2);
     
-    // Calculate number of chunks.
+    // Calculate the number of chunks.
     const int num_chunks_x = (dim_x + chunk_size_x - 1) / chunk_size_x;
     const int num_chunks_y = (dim_y + chunk_size_y - 1) / chunk_size_y;
     const int num_chunks_z = (dim_z + chunk_size_z - 1) / chunk_size_z;
+    
     const int num_chunks = num_chunks_x * num_chunks_y * num_chunks_z;
     
     // Get target priority.
     auto priority_cpu = priority_map.cpu();
+    
     const int target_priority = priority_cpu.data_ptr<int>()[target_class];
     
     // Allocate chunk activity array.
     auto options = torch::TensorOptions().dtype(torch::kBool).device(voxel_grid.device());
     auto active_chunks = torch::zeros({num_chunks}, options);
     
-    // Step 1: Identify active chunks (containing both target class and empty voxels).
-    dim3 chunk_block(4, 4, 4);
+    // Identify active chunks (containing both target class and empty voxels).
+    dim3 chunk_block(8, 8, 8);
+    
     dim3 chunk_grid(
         (num_chunks_x + chunk_block.x - 1) / chunk_block.x,
         (num_chunks_y + chunk_block.y - 1) / chunk_block.y,
@@ -347,18 +354,25 @@ torch::Tensor fill_hollow_voxels_cuda(
     check_chunks_kernel<<<chunk_grid, chunk_block>>>(
         voxel_grid.data_ptr<uint8_t>(),
         active_chunks.data_ptr<bool>(),
-        dim_x, dim_y, dim_z,
-        chunk_size_x, chunk_size_y, chunk_size_z,
-        num_chunks_x, num_chunks_y, num_chunks_z,
+        dim_x,
+        dim_y,
+        dim_z,
+        chunk_size_x,
+        chunk_size_y,
+        chunk_size_z,
+        num_chunks_x,
+        num_chunks_y,
+        num_chunks_z,
         target_class
     );
     
     cudaError_t err = cudaGetLastError();
+    
     if (err != cudaSuccess) {
         AT_ERROR("CUDA chunk check kernel failed: ", cudaGetErrorString(err));
     }
     
-    // Step 2: Process only active chunks with ray casting.
+    // Process active chunks with ray casting.
     auto output = torch::empty_like(voxel_grid);
     
     dim3 block = get_block_size();
@@ -370,9 +384,15 @@ torch::Tensor fill_hollow_voxels_cuda(
         priority_map.data_ptr<int>(),
         ground_labels.data_ptr<int>(),
         active_chunks.data_ptr<bool>(),
-        dim_x, dim_y, dim_z,
-        chunk_size_x, chunk_size_y, chunk_size_z,
-        num_chunks_x, num_chunks_y, num_chunks_z,
+        dim_x,
+        dim_y,
+        dim_z,
+        chunk_size_x,
+        chunk_size_y,
+        chunk_size_z,
+        num_chunks_x,
+        num_chunks_y,
+        num_chunks_z,
         target_class,
         target_priority
     );
@@ -390,11 +410,13 @@ torch::Tensor fill_hollow_voxels_cuda(
 torch::Tensor morphological_close_3d_cuda(
     torch::Tensor voxel_grid,
     int target_class,
-    int kernel_size)
+    int kernel_size
+)
 {
     const int dim_x = voxel_grid.size(0);
     const int dim_y = voxel_grid.size(1);
     const int dim_z = voxel_grid.size(2);
+    
     const int radius = kernel_size / 2;
     
     // Allocate intermediate and output tensors.
@@ -404,33 +426,39 @@ torch::Tensor morphological_close_3d_cuda(
     dim3 block = get_block_size();
     dim3 grid = get_grid_size(dim_x, dim_y, dim_z, block);
     
-    // Step 1: Dilation.
+    // Dilation.
     dilate_3d_kernel<<<grid, block>>>(
         voxel_grid.data_ptr<uint8_t>(),
         dilated.data_ptr<uint8_t>(),
-        dim_x, dim_y, dim_z,
+        dim_x,
+        dim_y,
+        dim_z,
         target_class,
         radius
     );
     
     cudaError_t err = cudaGetLastError();
+    
     if (err != cudaSuccess) {
         AT_ERROR("CUDA dilation kernel failed: ", cudaGetErrorString(err));
     }
     
     cudaDeviceSynchronize();
     
-    // Step 2: Erosion (only erodes newly added voxels).
+    // Erosion (only for newly added voxels).
     erode_3d_kernel<<<grid, block>>>(
         voxel_grid.data_ptr<uint8_t>(),
         dilated.data_ptr<uint8_t>(),
         output.data_ptr<uint8_t>(),
-        dim_x, dim_y, dim_z,
+        dim_x,
+        dim_y,
+        dim_z,
         target_class,
         radius
     );
     
     err = cudaGetLastError();
+    
     if (err != cudaSuccess) {
         AT_ERROR("CUDA erosion kernel failed: ", cudaGetErrorString(err));
     }

@@ -255,12 +255,10 @@ class VehicleManager:
         
         # Create voxel detector for obtaining the 3D ground truth.
         if self._config['use_voxel_detector']:
-            sensor_z = max(0.05, self._config['voxel_size'] / 4.0)
-            
             VoxelDetector(
                 self._world,
                 self._sensor_manager,
-                carla.Transform(carla.Location(x=0.0, y=0.0, z=sensor_z)),
+                carla.Transform(carla.Location(x=0.0, y=0.0, z=0.02)),
                 self.vehicle,
                 self._config['voxel_detector_range'],
                 self._config['voxel_size'],

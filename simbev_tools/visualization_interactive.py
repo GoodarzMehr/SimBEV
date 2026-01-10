@@ -47,6 +47,7 @@ class VizDataLoader:
             boxes.
         max_workers: number of workers for loading data in parallel.
         max_cache_size: maximum number of scenes to keep in cache.
+        voxel_filled: whether to use filled voxel grids.
     '''
     def __init__(
         self,
@@ -54,13 +55,15 @@ class VizDataLoader:
         metadata: dict,
         ignore_valid_flag: bool = False,
         max_workers: int = 8,
-        max_cached_scenes: int = 3
+        max_cached_scenes: int = 3,
+        voxel_filled: bool = False
     ):
         self._path = path
-        self._metadata = metadata
-        self._ignore_valid_flag = ignore_valid_flag
+        self.metadata = metadata
+        self.ignore_valid_flag = ignore_valid_flag
         self._max_workers = max_workers
         self.max_cached_scenes = max_cached_scenes
+        self._voxel_filled = voxel_filled
         
         # Scene cache: {scene: {sensor_type: [frame_data, ...]}}
         self._scene_cache = {}
@@ -134,6 +137,18 @@ class VizDataLoader:
             Scene number.
         '''
         return self._scene_info[scene]['scene_number']
+    
+    def get_scene_data(self, scene: int) -> dict:
+        '''
+        Get the scene data paths.
+        
+        Args:
+            scene: scene index (0-based).
+        
+        Returns:
+            Scene data dictionary.
+        '''
+        return self._scene_info[scene]['frame_paths']
     
     def is_scene_loaded(self, scene: int) -> bool:
         '''
@@ -268,9 +283,9 @@ class VizDataLoader:
         # Load bounding boxes.
         gt_det = np.load(frame_data['GT_DET'], allow_pickle=True)
         
-        global2lidar = get_global2sensor(frame_data, self._metadata, 'LIDAR')
+        global2lidar = get_global2sensor(frame_data, self.metadata, 'LIDAR')
         
-        corners, labels, difficulty = transform_bbox(gt_det, global2lidar, self._ignore_valid_flag)
+        corners, labels, difficulty = transform_bbox(gt_det, global2lidar, self.ignore_valid_flag)
         
         bboxes = [{'corners': c, 'label': l, 'difficulty': d} for c, l, d in zip(corners, labels, difficulty)]
         
@@ -366,8 +381,8 @@ class VizDataLoader:
         for radar in RAD_NAME:
             radar2lidar = np.eye(4, dtype=np.float32)
             
-            radar2lidar[:3, :3] = Q(self._metadata[radar]['sensor2lidar_rotation']).rotation_matrix
-            radar2lidar[:3, 3] = self._metadata[radar]['sensor2lidar_translation']
+            radar2lidar[:3, :3] = Q(self.metadata[radar]['sensor2lidar_rotation']).rotation_matrix
+            radar2lidar[:3, 3] = self.metadata[radar]['sensor2lidar_translation']
             
             radar_points = np.load(frame_data[radar])['data']
             
@@ -406,6 +421,51 @@ class VizDataLoader:
             'colors': colors,
             'bboxes': bboxes
         }
+    
+    def load_voxels(self, scene_data: dict, frame: int, bboxes: list) -> dict:
+        '''
+        Load voxel grids.
+        
+        Args:
+            scene_data: scene data.
+            frame: frame index.
+            bboxes: list of bounding boxes.
+        
+        Returns:
+            Dictionary with 'centers', 'colors', 'bboxes', 'voxel_size'.
+        '''
+        type = 'VOXEL-GRID-FILLED' if self._voxel_filled else 'VOXEL-GRID'
+
+        voxel_path = scene_data[frame][type]
+        
+        if not os.path.exists(voxel_path):
+            return {'centers': np.empty((0, 3)), 'colors': None, 'bboxes': bboxes, 'voxel_size': 0.0}
+        
+        voxel_grid = np.load(voxel_path)['data']
+        
+        indices = np.argwhere(voxel_grid > 0)
+        
+        if indices.shape[0] == 0:
+            return {'centers': np.empty((0, 3)), 'colors': None, 'bboxes': bboxes, 'voxel_size': 0.0}
+        
+        voxel_size = self.metadata['voxel_detector_properties']['voxel_size']
+
+        grid_origin = np.array(self.metadata['VOXEL-GRID']['sensor2lidar_translation']) - \
+            np.array(
+                [self.metadata['voxel_detector_properties']['range'],
+                 self.metadata['voxel_detector_properties']['range'],
+                 -self.metadata['voxel_detector_properties']['lower_limit']]
+            )
+        
+        # Voxel centers in world coordinates.
+        voxel_centers = (indices + 0.5) * voxel_size + grid_origin
+        
+        # Get semantic labels for coloring
+        labels = voxel_grid[indices[:, 0], indices[:, 1], indices[:, 2]]
+        
+        colors = LABEL_COLORS[labels]
+        
+        return {'centers': voxel_centers, 'colors': colors, 'bboxes': bboxes, 'voxel_size': voxel_size}
     
     def get_frame(self, scene: int, frame: int, sensor_type: str) -> dict:
         '''
@@ -782,7 +842,7 @@ class InteractiveVisualizer:
         self._panel.add_child(gui.Label('Sensor Type:'))
         
         self._sensor_radio = gui.RadioButton(gui.RadioButton.VERT)
-        self._sensor_radio.set_items(['Lidar', 'Semantic Lidar', 'Radar'])
+        self._sensor_radio.set_items(['Lidar', 'Semantic Lidar', 'Radar', 'Voxels'])
         self._sensor_radio.selected_index = 0
         self._sensor_radio.set_on_selection_changed(self._on_sensor_changed)
         
@@ -1003,7 +1063,7 @@ class InteractiveVisualizer:
         Args:
             index: selected index.
         '''
-        sensor_map = {0: 'lidar', 1: 'semantic-lidar', 2: 'radar'}
+        sensor_map = {0: 'lidar', 1: 'semantic-lidar', 2: 'radar', 3: 'voxels'}
         
         self._sensor_type = sensor_map[index]
         
@@ -1214,7 +1274,31 @@ class InteractiveVisualizer:
             return
         
         try:
-            sensor_data = self._data_loader.get_frame(self._current_scene, self._current_frame, self._sensor_type)
+            # Load voxels on-the-fly.
+            if self._sensor_type == 'voxels':
+                scene_data = self._data_loader.get_scene_data(self._current_scene)
+                
+                if self._current_frame >= len(scene_data):
+                    return
+                
+                frame_data = scene_data[self._current_frame]
+                
+                # Load bounding boxes
+                bboxes = []
+                
+                if 'GT_DET' in frame_data:
+                    gt_det = np.load(frame_data['GT_DET'], allow_pickle=True)
+                    
+                    global2lidar = get_global2sensor(frame_data, self._data_loader.metadata, 'LIDAR')
+                    
+                    corners, labels, difficulty = transform_bbox(gt_det, global2lidar, self._data_loader.ignore_valid_flag)
+        
+                    bboxes = [{'corners': c, 'label': l, 'difficulty': d} for c, l, d in zip(corners, labels, difficulty)]
+                
+                # Load voxels on-the-fly.
+                sensor_data = self._data_loader.load_voxels(scene_data, self._current_frame, bboxes)
+            else:
+                sensor_data = self._data_loader.get_frame(self._current_scene, self._current_frame, self._sensor_type)
         
         except Exception as e:
             print(f'Unexpected error: {e}')
@@ -1222,33 +1306,56 @@ class InteractiveVisualizer:
             return
         
         # Validate the data.
-        if sensor_data is None or 'points' not in sensor_data:
+        if sensor_data is None or all(vertices not in sensor_data for vertices in ['points', 'centers']):
             return
         
         try:
-            # Update the point cloud.
-            pcd = o3d.geometry.PointCloud()
-            
-            pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
-            
-            if 'colors' in sensor_data and sensor_data['colors'] is not None:
-                pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'])
-            else:
-                colors = np.tile([0.8, 0.8, 0.8], (len(sensor_data['points']), 1))
-                
-                pcd.colors = o3d.utility.Vector3dVector(colors)
-            
-            # Set point cloud material.
-            mat = o3d.visualization.rendering.MaterialRecord()
-            
-            mat.shader = 'defaultUnlit'
-            mat.point_size = self._point_size
-            
-            # Remove old point cloud.
+            # Remove old geometry.
             if self._scene_widget.scene.has_geometry('point_cloud'):
                 self._scene_widget.scene.remove_geometry('point_cloud')
             
-            self._scene_widget.scene.add_geometry('point_cloud', pcd, mat)
+            # For voxels, create cube meshes instead of point cloud.
+            if self._sensor_type == 'voxels' and 'centers' in sensor_data:
+                voxel_centers = sensor_data['centers']
+                voxel_colors = sensor_data['colors']
+                voxel_size = sensor_data['voxel_size']
+                
+                # Create a combined mesh for all voxels.
+                combined_mesh = o3d.geometry.TriangleMesh()
+                
+                for center, color in zip(voxel_centers, voxel_colors):
+                    # Create a small cube at each voxel position.
+                    cube = o3d.geometry.TriangleMesh.create_box(width=voxel_size, height=voxel_size, depth=voxel_size)
+                    
+                    # Translate to center the cube at the voxel position
+                    cube.translate(center - voxel_size / 2)
+                    
+                    cube.paint_uniform_color(color)
+                    
+                    combined_mesh += cube
+                
+                mat = o3d.visualization.rendering.MaterialRecord()
+                
+                mat.shader = 'defaultLit'
+                
+                self._scene_widget.scene.add_geometry('point_cloud', combined_mesh, mat)
+            else:
+                # Standard point cloud for lidar, semantic-lidar, radar
+                pcd = o3d.geometry.PointCloud()
+                
+                pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
+                
+                if 'colors' in sensor_data and sensor_data['colors'] is not None:
+                    pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'])
+                else:
+                    colors = np.tile([0.8, 0.8, 0.8], (len(sensor_data['points']), 1))
+                    pcd.colors = o3d.utility.Vector3dVector(colors)
+                
+                mat = o3d.visualization.rendering.MaterialRecord()
+                mat.shader = 'defaultUnlit'
+                mat.point_size = self._point_size
+                
+                self._scene_widget.scene.add_geometry('point_cloud', pcd, mat)
             
             # Update bounding boxes.
             self._update_bboxes(sensor_data.get('bboxes', []))
@@ -1263,10 +1370,17 @@ class InteractiveVisualizer:
         
         self._scene_label.text = f'Scene: {scene_number:04d} ({self._current_scene + 1}/{self._max_scene + 1})'
         self._frame_label.text = f'Frame: {self._current_frame + 1}/{self._max_frame + 1}'
-        self._info_label.text = (
-            f'Points: {len(sensor_data["points"])}\n'
-            f'Bounding Boxes: {len(sensor_data.get("bboxes", []))}'
-        )
+        
+        if 'points' in sensor_data:
+            self._info_label.text = (
+                f'Points: {len(sensor_data["points"])}\n'
+                f'Bounding Boxes: {len(sensor_data.get("bboxes", []))}'
+            )
+        else:
+            self._info_label.text = (
+                f'Voxels: {len(sensor_data["centers"])}\n'
+                f'Bounding Boxes: {len(sensor_data.get("bboxes", []))}'
+            )
         
         # Update cache status.
         self._update_cache_status()
@@ -1392,7 +1506,8 @@ def visualize_interactive(ctx):
         metadata, 
         ignore_valid_flag=ctx.ignore_valid_flag,
         max_workers=16,
-        max_cached_scenes=5
+        max_cached_scenes=5,
+        voxel_filled=ctx.voxel_filled
     )
     
     scene_count = data_loader.get_scene_count()

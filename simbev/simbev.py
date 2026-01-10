@@ -61,11 +61,17 @@ RAD2EGO_R = [
     [0.0, 0.0, 0.0, 1.0]
 ]
 
+VOX2EGO_T = [0.0, 0.0, 0.0]
+VOX2EGO_R = [1.0, 0.0, 0.0, 0.0]
+
 CAM2LI_T = CAM2EGO_T - LI2EGO_T * np.ones((6, 3))
 CAM2LI_R = CAM2EGO_R
 
 RAD2LI_T = RAD2EGO_T - LI2EGO_T * np.ones((4, 3))
 RAD2LI_R = RAD2EGO_R
+
+VOX2LI_T = VOX2EGO_T - LI2EGO_T * np.ones((3, ))
+VOX2LI_R = VOX2EGO_R
 
 CAM_I = [
     [953.4029, 0.0, 800.0],
@@ -236,6 +242,20 @@ def generate_metadata(config: dict) -> dict:
             'sensor2ego_rotation': RAD2EGO_R[i]
         }
         
+    metadata['VOXEL-GRID'] = {
+        'sensor2lidar_translation': VOX2LI_T.tolist(),
+        'sensor2lidar_rotation': VOX2LI_R,
+        'sensor2ego_translation': VOX2EGO_T,
+        'sensor2ego_rotation': VOX2EGO_R
+    }
+
+    metadata['voxel_detector_properties'] = {
+        'range': config['voxel_detector_range'],
+        'voxel_size': config['voxel_size'],
+        'upper_limit': config['voxel_detector_upper_limit'],
+        'lower_limit': config['voxel_detector_lower_limit']
+    }
+    
     return metadata
 
 def _create_directory_structure(args, config: dict):

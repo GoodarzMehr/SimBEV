@@ -92,7 +92,7 @@ argparser.add_argument(
     'mode',
     nargs='+',
     help='visualization mode (all, rgb, depth, flow, lidar, lidar3d, lidar-with-bbox, lidar3d-with-bbox, '
-        'semantic-lidar, semantic-lidar3d, radar, radar3d, radar-with-bbox, radar3d-with-bbox)'
+        'semantic-lidar, semantic-lidar3d, radar, radar3d, radar-with-bbox, radar3d-with-bbox, interactive)'
 )
 argparser.add_argument(
     '--path',
@@ -115,6 +115,11 @@ argparser.add_argument(
     '--ignore-valid-flag',
     action='store_true',
     help='ignore valid_flag when rendering bounding boxes'
+)
+argparser.add_argument(
+    '--voxel-filled',
+    action='store_true',
+    help='use filled voxel grids instead of standard voxel grids'
 )
 
 args = argparser.parse_args()
@@ -150,7 +155,8 @@ def main(mode, path: str):
                 frame_number=None,
                 frame_data=None,
                 metadata=None,
-                ignore_valid_flag=args.ignore_valid_flag
+                ignore_valid_flag=args.ignore_valid_flag,
+                voxel_filled=args.voxel_filled
             )
             
             handler(ctx)
@@ -223,7 +229,8 @@ def main(mode, path: str):
                         frame_number,
                         frame_data,
                         metadata,
-                        args.ignore_valid_flag
+                        args.ignore_valid_flag,
+                        args.voxel_filled
                     )
 
                     # Call the handler.
@@ -241,7 +248,8 @@ def entry():
     try:
         start = time.perf_counter()
 
-        os.makedirs(f'{args.path}/simbev/viz', exist_ok=True)
+        if args.mode != ['interactive']:
+            os.makedirs(f'{args.path}/simbev/viz', exist_ok=True)
 
         # Determine modes to process
         if 'all' in args.mode:

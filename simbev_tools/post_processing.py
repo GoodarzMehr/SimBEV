@@ -344,7 +344,12 @@ def num_inside_bbox(
         return count.item()
 
 
-def fill_voxel_interiors(voxel_grid: np.ndarray, device: str = 'cuda:0', morph_kernel_size: int = 3) -> np.ndarray:
+def fill_voxel_interiors(
+        voxel_grid: np.ndarray,
+        device: str = 'cuda:0',
+        morph_kernel_size: int = 3,
+        voxel_size: float = 0.1
+    ) -> np.ndarray:
     '''
     Fill the hollow interiors of objects in a 3D semantic voxel grid. Classes
     are processed in ascending priority order so that higher-priority classes
@@ -355,6 +360,7 @@ def fill_voxel_interiors(voxel_grid: np.ndarray, device: str = 'cuda:0', morph_k
         voxel_grid: 3D NumPy array containing class labels.
         device: CUDA device to use for computation.
         morph_kernel_size: kernel size for morphological closing.
+        voxel_size: size of each voxel.
 
     Returns:
         filled voxel grid.
@@ -376,6 +382,12 @@ def fill_voxel_interiors(voxel_grid: np.ndarray, device: str = 'cuda:0', morph_k
         else:
             chunk_size_x, chunk_size_y, chunk_size_z = CHUNK_SIZE[target_class]
 
+            multiplier = max(1, 0.1 / voxel_size)
+
+            chunk_size_x = int(min(chunk_size_x * multiplier, voxel_tensor.shape[0]))
+            chunk_size_y = int(min(chunk_size_y * multiplier, voxel_tensor.shape[1]))
+            chunk_size_z = int(min(chunk_size_z * multiplier, voxel_tensor.shape[2]))
+            
             voxel_tensor = fill_hollow_voxels_cuda(
                 voxel_tensor,
                 priority_map,
@@ -389,7 +401,7 @@ def fill_voxel_interiors(voxel_grid: np.ndarray, device: str = 'cuda:0', morph_k
     return voxel_tensor.cpu().numpy()
 
 
-def _process_voxel_file(input_path: str, output_path: str, device: str, morph_kernel_size: int) -> bool:
+def _process_voxel_file(input_path: str, output_path: str, device: str, morph_kernel_size: int, voxel_size: float) -> bool:
     '''
     Worker function for processing a single voxel grid file.
     
@@ -398,6 +410,7 @@ def _process_voxel_file(input_path: str, output_path: str, device: str, morph_ke
         output_path: path to save the processed voxel grid file.
         device: CUDA device to use.
         morph_kernel_size: kernel size for morphological closing.
+        voxel_size: size of each voxel.
     
     Returns:
         True if successful, False otherwise.
@@ -405,7 +418,7 @@ def _process_voxel_file(input_path: str, output_path: str, device: str, morph_ke
     try:
         voxel_grid = np.load(input_path)['data']
         
-        filled_grid = fill_voxel_interiors(voxel_grid, device, morph_kernel_size)
+        filled_grid = fill_voxel_interiors(voxel_grid, device, morph_kernel_size, voxel_size)
 
         with open(output_path, 'wb') as f:
             np.savez_compressed(f, data=filled_grid)
@@ -418,7 +431,7 @@ def _process_voxel_file(input_path: str, output_path: str, device: str, morph_ke
         return False
 
 
-def _gpu_worker(gpu_id, file_list, morph_kernel_size, results_queue):
+def _gpu_worker(gpu_id: int, file_list: tuple, morph_kernel_size: int, results_queue: mp.Queue, voxel_size: float):
     '''
     Worker process for a single GPU.
     
@@ -427,13 +440,14 @@ def _gpu_worker(gpu_id, file_list, morph_kernel_size, results_queue):
         file_list: list of (input_path, output_path) tuples to process.
         morph_kernel_size: kernel size for morphological closing.
         results_queue: multiprocessing queue for progress updates.
+        voxel_size: size of each voxel.
     '''
     device = f'cuda:{gpu_id}'
 
     torch.cuda.set_device(gpu_id)
     
     for input_path, output_path in file_list:
-        success = _process_voxel_file(input_path, output_path, device, morph_kernel_size)
+        success = _process_voxel_file(input_path, output_path, device, morph_kernel_size, voxel_size)
         
         results_queue.put(1 if success else 0)
 
@@ -473,15 +487,13 @@ def fill_voxels_main():
 
             for scene in infos['data']:
                 for info in infos['data'][scene]['scene_data']:
-                    input_path = info['VOXEL-GRID']
-
-                    filename = os.path.basename(input_path)
-
-                    output_path = os.path.join(output_dir, filename)
-
-                    file_pairs.append((input_path, output_path))
+                    file_pairs.append((info['VOXEL-GRID'], info['VOXEL-GRID-FILLED']))
         
         print(f'Found {len(file_pairs)} voxel grid files to process.')
+
+        metadata = infos['metadata']
+
+        voxel_size = metadata['voxel_detector_properties']['voxel_size']
         
         if num_gpus == 1:
             device = 'cuda:0'
@@ -489,7 +501,7 @@ def fill_voxels_main():
             pbar = tqdm(file_pairs, desc='Filling voxels', ncols=120, colour='cyan')
             
             for input_path, output_path in pbar:
-                _process_voxel_file(input_path, output_path, device, args.morph_kernel_size)
+                _process_voxel_file(input_path, output_path, device, args.morph_kernel_size, voxel_size)
         else:
             files_per_gpu = [[] for _ in range(num_gpus)]
             
@@ -507,7 +519,7 @@ def fill_voxels_main():
             for gpu_id in range(num_gpus):
                 p = mp.Process(
                     target=_gpu_worker,
-                    args=(gpu_id, files_per_gpu[gpu_id], args.morph_kernel_size, results_queue)
+                    args=(gpu_id, files_per_gpu[gpu_id], args.morph_kernel_size, results_queue, voxel_size)
                 )
                 
                 p.start()

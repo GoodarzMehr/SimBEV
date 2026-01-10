@@ -178,6 +178,10 @@ class SensorManager:
                 scene_data[f'{abbrev}'] = f'{path}/simbev/sweeps/{abbrev}' \
                 f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}.' + \
                 ('npz' if type in ['lidar', 'semantic_lidar', 'voxel_detector'] else 'bin')
+            
+            if type == 'voxel_detector':
+                scene_data['VOXEL-GRID-FILLED'] = f'{path}/simbev/sweeps/VOXEL-GRID-FILLED' \
+                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-VOXEL-GRID-FILLED.npz'             
         
         scene_data['GT_SEG'] = f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz'
         scene_data['GT_SEG_VIZ'] = f'{path}/simbev/ground-truth/seg_viz' \
