@@ -69,12 +69,11 @@ __global__ void check_chunks_kernel(
 
 // Ray casting kernel: for each empty voxel in an active chunk, cast rays in 6
 // directions. Fill the voxel if all 6 rays hit the same target class or the
-// top and/or bottom rays hit the ground or go out of bounds.
+// top and/or bottom rays go out of bounds.
 __global__ void fill_hollow_chunked_kernel(
     const uint8_t* __restrict__ input,
     uint8_t* __restrict__ output,
     const int* __restrict__ priority_map,
-    const int* __restrict__ ground_labels,
     const bool* __restrict__ active_chunks,
     int dim_x,
     int dim_y,
@@ -121,7 +120,6 @@ __global__ void fill_hollow_chunked_kernel(
     const int dz[6] = {0, 0, 0, 0, 1, -1};
     
     int hit_count = 0;
-    int ground_hit_count = 0;
     int out_of_bounds_count = 0;
     
     // Cast rays in all 6 directions.
@@ -131,11 +129,10 @@ __global__ void fill_hollow_chunked_kernel(
         int cz = z + dz[dir];
         
         bool found_target = false;
-        bool hit_ground = false;
         bool out_of_bounds = false;
         
-        // March until hitting a voxel of the same class, hitting the ground,
-        // or going out of bounds.
+        // March until hitting a voxel of the same class, or going out of
+        // bounds.
         while (cx >= 0 && cx < dim_x && cy >= 0 && cy < dim_y && cz >= 0 && cz < dim_z)
         {
             const int cidx = idx3d(cx, cy, cz, dim_y, dim_z);
@@ -144,14 +141,6 @@ __global__ void fill_hollow_chunked_kernel(
             if (cval != 0) {
                 if (cval == target_class) {
                     found_target = true;
-                } else {
-                    for (int i = 0; i < 5; i++) {
-                        if (cval == ground_labels[i]) {
-                            hit_ground = true;
-                            
-                            break;
-                        }
-                    }
                 }
                 
                 break;
@@ -169,19 +158,12 @@ __global__ void fill_hollow_chunked_kernel(
         if (found_target) {
             hit_count++;
         }
-        if (hit_ground) {
-            ground_hit_count++;
-        }
         if (out_of_bounds) {
             out_of_bounds_count++;
         }
     }
     
-    if (
-        (hit_count == 6) ||
-        (hit_count == 5 && (ground_hit_count + out_of_bounds_count) == 1) ||
-        (hit_count == 4 && (ground_hit_count + out_of_bounds_count) == 2)
-    )
+    if ((hit_count + out_of_bounds_count) == 6)
     {
         output[idx] = static_cast<uint8_t>(target_class);
     }
@@ -315,7 +297,6 @@ dim3 get_grid_size(int dim_x, int dim_y, int dim_z, dim3 block) {
 torch::Tensor fill_hollow_voxels_cuda(
     torch::Tensor voxel_grid,
     torch::Tensor priority_map,
-    torch::Tensor ground_labels,
     int target_class,
     int chunk_size_x,
     int chunk_size_y,
@@ -382,7 +363,6 @@ torch::Tensor fill_hollow_voxels_cuda(
         voxel_grid.data_ptr<uint8_t>(),
         output.data_ptr<uint8_t>(),
         priority_map.data_ptr<int>(),
-        ground_labels.data_ptr<int>(),
         active_chunks.data_ptr<bool>(),
         dim_x,
         dim_y,

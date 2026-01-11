@@ -61,7 +61,7 @@ RAD2EGO_R = [
     [0.0, 0.0, 0.0, 1.0]
 ]
 
-VOX2EGO_T = [0.0, 0.0, 0.0]
+VOX2EGO_T = [0.0, 0.0, 0.02]
 VOX2EGO_R = [1.0, 0.0, 0.0, 0.0]
 
 CAM2LI_T = CAM2EGO_T - LI2EGO_T * np.ones((6, 3))

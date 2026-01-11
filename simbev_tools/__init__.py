@@ -6,7 +6,7 @@ Copyright © 2026 Goodarz Mehr
 Post-processing and visualization utilities for SimBEV datasets.
 '''
 
-__version__ = '3.0.0'
+__version__ = '3.1.0'
 __author__ = 'Goodarz Mehr'
 __email__ = 'goodarzm@vt.edu'
 

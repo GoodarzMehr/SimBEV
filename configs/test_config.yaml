@@ -59,9 +59,9 @@ vehicle_color: '0,0,0'
 simulate_physics: True
 show_debug_telemetry: False
 
-warmup_duration: 4
-min_scene_duration: 8
-max_scene_duration: 40
+warmup_duration: 1
+min_scene_duration: 2
+max_scene_duration: 2
 
 early_scene_termination: True
 termination_timeout: 8
@@ -234,8 +234,8 @@ imu_properties:
 
 use_voxel_detector: True
 
-voxel_detector_range: 16.0
-voxel_size: 0.02
+voxel_detector_range: 80.0
+voxel_size: 0.1
 voxel_detector_upper_limit: 7.0
 voxel_detector_lower_limit: -1.0
 voxel_detector_properties:

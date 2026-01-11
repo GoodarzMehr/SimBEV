@@ -47,7 +47,7 @@ class VizDataLoader:
             boxes.
         max_workers: number of workers for loading data in parallel.
         max_cache_size: maximum number of scenes to keep in cache.
-        voxel_filled: whether to use filled voxel grids.
+        filled_voxels: whether to use filled voxel grids.
     '''
     def __init__(
         self,
@@ -56,14 +56,14 @@ class VizDataLoader:
         ignore_valid_flag: bool = False,
         max_workers: int = 8,
         max_cached_scenes: int = 3,
-        voxel_filled: bool = False
+        filled_voxels: bool = False
     ):
         self._path = path
         self.metadata = metadata
         self.ignore_valid_flag = ignore_valid_flag
         self._max_workers = max_workers
         self.max_cached_scenes = max_cached_scenes
-        self._voxel_filled = voxel_filled
+        self._filled_voxels = filled_voxels
         
         # Scene cache: {scene: {sensor_type: [frame_data, ...]}}
         self._scene_cache = {}
@@ -434,7 +434,7 @@ class VizDataLoader:
         Returns:
             Dictionary with 'centers', 'colors', 'bboxes', 'voxel_size'.
         '''
-        type = 'VOXEL-GRID-FILLED' if self._voxel_filled else 'VOXEL-GRID'
+        type = 'VOXEL-GRID-FILLED' if self._filled_voxels else 'VOXEL-GRID'
 
         voxel_path = scene_data[frame][type]
         
@@ -1507,7 +1507,7 @@ def visualize_interactive(ctx):
         ignore_valid_flag=ctx.ignore_valid_flag,
         max_workers=16,
         max_cached_scenes=5,
-        voxel_filled=ctx.voxel_filled
+        filled_voxels=ctx.filled_voxels
     )
     
     scene_count = data_loader.get_scene_count()

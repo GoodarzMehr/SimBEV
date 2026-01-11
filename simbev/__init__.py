@@ -6,7 +6,7 @@ Copyright © 2026 Goodarz Mehr
 Main package exports for SimBEV.
 '''
 
-__version__ = '3.0.0'
+__version__ = '3.1.0'
 __author__ = 'Goodarz Mehr'
 __email__ = 'goodarzm@vt.edu'
 

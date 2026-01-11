@@ -117,7 +117,7 @@ argparser.add_argument(
     help='ignore valid_flag when rendering bounding boxes'
 )
 argparser.add_argument(
-    '--voxel-filled',
+    '--filled-voxels',
     action='store_true',
     help='use filled voxel grids instead of standard voxel grids'
 )
@@ -156,7 +156,7 @@ def main(mode, path: str):
                 frame_data=None,
                 metadata=None,
                 ignore_valid_flag=args.ignore_valid_flag,
-                voxel_filled=args.voxel_filled
+                filled_voxels=args.filled_voxels
             )
             
             handler(ctx)
@@ -230,7 +230,7 @@ def main(mode, path: str):
                         frame_data,
                         metadata,
                         args.ignore_valid_flag,
-                        args.voxel_filled
+                        args.filled_voxels
                     )
 
                     # Call the handler.

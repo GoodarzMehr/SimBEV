@@ -82,19 +82,6 @@ POINT_THRESHOLDS = {
     'barrier':       [20, 10]
 }
 
-CAM_NAME = [
-    'CAM_FRONT_LEFT',
-    'CAM_FRONT',
-    'CAM_FRONT_RIGHT',
-    'CAM_BACK_LEFT',
-    'CAM_BACK',
-    'CAM_BACK_RIGHT'
-]
-
-RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
-
-DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-
 # Semantic priority map for voxel filling (higher value = higher priority).
 # When filling voxels, higher priority classes won't be overwritten by lower
 # priority ones.
@@ -174,8 +161,18 @@ CHUNK_SIZE = {
 # fully filled.
 MORPHOLOGICAL_CLASSES = {}
 
-# Ground element labels.
-GROUND_LABELS = [1, 2, 10, 24, 25]
+CAM_NAME = [
+    'CAM_FRONT_LEFT',
+    'CAM_FRONT',
+    'CAM_FRONT_RIGHT',
+    'CAM_BACK_LEFT',
+    'CAM_BACK',
+    'CAM_BACK_RIGHT'
+]
+
+RAD_NAME = ['RAD_LEFT', 'RAD_FRONT', 'RAD_RIGHT', 'RAD_BACK']
+
+DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
 
 argparser = argparse.ArgumentParser(description='SimBEV post-processing tool.')
@@ -373,7 +370,6 @@ def fill_voxel_interiors(
     voxel_tensor = torch.from_numpy(voxel_grid).to(device)
     
     priority_map = torch.tensor(SEMANTIC_PRIORITY, dtype=torch.int32, device=device)
-    ground_labels = torch.tensor(GROUND_LABELS, dtype=torch.int32, device=device)
     
     # Process each class in ascending priority order.
     for target_class in FILLABLE_CLASSES:
@@ -391,7 +387,6 @@ def fill_voxel_interiors(
             voxel_tensor = fill_hollow_voxels_cuda(
                 voxel_tensor,
                 priority_map,
-                ground_labels,
                 target_class,
                 chunk_size_x,
                 chunk_size_y,
