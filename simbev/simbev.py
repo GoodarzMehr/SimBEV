@@ -1007,7 +1007,7 @@ def main(logger: logging.Logger):
 
 def entry():
     try:
-        logger = setup_logger(log_level=logging.DEBUG, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
+        logger = setup_logger(log_level=logging.INFO, log_dir=f'{args.path}/simbev/console_logs', save=args.save)
         
         main(logger)
     
