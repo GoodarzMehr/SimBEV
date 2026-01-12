@@ -1070,10 +1070,18 @@ class InteractiveVisualizer:
         # Update point size based on sensor.
         if self._sensor_type == 'lidar':
             self._point_size = self._lidar_point_size
+            
+            self._scene_widget.scene.set_background([0.0, 0.0, 0.0, 1.0])
         elif self._sensor_type == 'semantic-lidar':
             self._point_size = self._semantic_lidar_point_size
+
+            self._scene_widget.scene.set_background([0.0, 0.0, 0.0, 1.0])
         elif self._sensor_type == 'radar':
             self._point_size = self._radar_point_size
+
+            self._scene_widget.scene.set_background([0.0, 0.0, 0.0, 1.0])
+        elif self._sensor_type == 'voxels':
+            self._scene_widget.scene.set_background([1.0, 1.0, 1.0, 1.0])
         
         self._point_size_slider.double_value = self._point_size
         
