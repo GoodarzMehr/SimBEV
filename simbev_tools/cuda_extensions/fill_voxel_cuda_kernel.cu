@@ -120,7 +120,6 @@ __global__ void fill_hollow_chunked_kernel(
     const int dz[6] = {0, 0, 0, 0, 1, -1};
     
     int hit_count = 0;
-    int out_of_bounds_count = 0;
     
     // Cast rays in all 6 directions.
     for (int dir = 0; dir < 6; dir++) {
@@ -129,7 +128,6 @@ __global__ void fill_hollow_chunked_kernel(
         int cz = z + dz[dir];
         
         bool found_target = false;
-        bool out_of_bounds = false;
         
         // March until hitting a voxel of the same class, or going out of
         // bounds.
@@ -144,10 +142,6 @@ __global__ void fill_hollow_chunked_kernel(
                 }
                 
                 break;
-            } else if ((dir == 4 || dir == 5) && (cz == 0 || cz == (dim_z - 1))) {
-                out_of_bounds = true;
-                    
-                break;
             }
             
             cx += dx[dir];
@@ -158,12 +152,9 @@ __global__ void fill_hollow_chunked_kernel(
         if (found_target) {
             hit_count++;
         }
-        if (out_of_bounds) {
-            out_of_bounds_count++;
-        }
     }
     
-    if ((hit_count + out_of_bounds_count) == 6)
+    if (hit_count == 6)
     {
         output[idx] = static_cast<uint8_t>(target_class);
     }

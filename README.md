@@ -108,7 +108,7 @@ To run SimBEV, your system must satisfy CARLA 0.9.16's [minimum system requireme
 
 ### CARLA
 
-To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here](https://drive.google.com/file/d/1YbajnYo52_OYoJFoCmXABxs7ILDzj_wi/view?usp=sharing).**
+To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here](https://drive.google.com/file/d/188Xc6pycuwu1doG0RM-8ogy7pANHEurE/view?usp=sharing).**
 
 **We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is incompatible with SimBEV and while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
 

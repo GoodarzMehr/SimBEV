@@ -393,6 +393,51 @@ imu_properties:
   noise_gyro_stddev_z: '0.0000056' # standard deviation of the gyroscope noise
                                    # model, in rad/s
 
+# The following settings control whether to use the voxel detection sensor,
+# and if so, its properties. The voxel detector provides semantic information
+# about a 3D voxel grid surrounding the ego vehicle. If 'full_sweep' is set to
+# 'True', the voxel detector checks each voxel individually to see if it
+# overlaps with the mesh of an object in the scene. If so, the class of that
+# object is assigned to said voxel. However, this can be computationally
+# expensive. If 'full_sweep' is set to 'False', the voxel detector instead
+# sweeps voxel-sized boxes in each column/row of the specified axis-aligned
+# directions and records the first hit of that box sweep with each object in
+# its path, in essence capturing the surface voxels of those objects in the
+# specified directions. 'z_fill_mode' can be set to 'BoxSweep', (requires
+# 'use_z_top' to be 'True'), which checks each voxel below the first hit in
+# each column (similar to when 'full_sweep' is 'True'). 'z_fill_mode' can also
+# be set to 'Scanline' (requires both 'use_z_top' and 'use_z_bottom' to be
+# 'True'), which fills in all voxels between the topmost and bottommost hits
+# of each object in each column.
+use_voxel_detector: True
+
+voxel_detector_range: 64.0 # extent of the voxel detection grid in each of the
+                           # four X and Y directions, in meters (the covered
+                           # area is a square with side length equal to
+                           # 2 * voxel_detector_range)
+voxel_size: 0.1 # size of each voxel, in meters
+voxel_detector_upper_limit: 7.0 # upper limit of the voxel detection grid, in
+                                # meters
+voxel_detector_lower_limit: -1.0 # lower limit of the voxel detection grid, in
+                                 # meters
+voxel_detector_properties:
+  ignore_self: 'False' # whether to ignore the ego vehicle when creating the
+                       # voxel grid
+  show_calculation_time: 'False' # Whether to print the time taken to
+                                 # calculate the voxel grid at each time step
+  use_complex_collision: 'True' # whether to use complex collisions for more
+                                # accurate results
+  full_sweep: 'True' # whether to use full sweep mode
+  z_fill_mode: 'None' # how to fill in voxels along the z axis; can be 'None',
+                      # 'BoxSweep', or 'Scanline'
+  use_x_front: 'False' # whether to sweep along the X axis from front to back
+  use_x_back: 'False' # whether to sweep along the X axis from back to front
+  use_y_right: 'False' # whether to sweep along the Y axis from right to left
+  use_y_left: 'False' # whether to sweep along the Y axis from left to right
+  use_z_top: 'False' # whether to sweep along the Z axis from top to bottom
+  use_z_bottom: 'False' # whether to sweep along the Z axis from bottom to top
+
+
 ########## Optional Settings ##########
 
 # The following setting controls the change in street light intensity. For it

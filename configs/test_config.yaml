@@ -29,17 +29,17 @@ val_scene_config:
   # Town15: 2
 
 test_scene_config:
-  # Town01: 1
-  # Town02: 1
-  # Town03: 1
-  # Town04: 1
-  # Town05: 1
-  # Town06: 1
-  # Town07: 1
+  Town01: 1
+  Town02: 1
+  Town03: 1
+  Town04: 1
+  Town05: 1
+  Town06: 1
+  Town07: 1
   Town10HD: 1
-  # Town12: 1
-  # Town13: 1
-  # Town15: 1
+  Town12: 1
+  Town13: 1
+  Town15: 1
 
 # When mode is 'replace' the following denotes the list of scenes that should
 # be overwritten.
@@ -59,9 +59,9 @@ vehicle_color: '0,0,0'
 simulate_physics: True
 show_debug_telemetry: False
 
-warmup_duration: 1
-min_scene_duration: 2
-max_scene_duration: 2
+warmup_duration: 4
+min_scene_duration: 8
+max_scene_duration: 40
 
 early_scene_termination: True
 termination_timeout: 8
@@ -234,7 +234,7 @@ imu_properties:
 
 use_voxel_detector: True
 
-voxel_detector_range: 80.0
+voxel_detector_range: 64.0
 voxel_size: 0.1
 voxel_detector_upper_limit: 7.0
 voxel_detector_lower_limit: -1.0
