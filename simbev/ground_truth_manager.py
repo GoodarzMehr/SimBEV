@@ -242,8 +242,6 @@ class GTManager:
         
         area_waypoints += adjacent_waypoints
 
-        self._world.tick()
-
         logger.debug(f'Compiled a list of {len(area_waypoints)} road waypoints.')
         logger.debug('Compiling a list of sidewalk points...')
 
@@ -260,8 +258,6 @@ class GTManager:
                     sidewalk_points.append(waypoint)
 
                     self._get_sidewalk_points(waypoint, sidewalk_points)
-        
-        self._world.tick()
 
         logger.debug(f'Compiled a list of {len(sidewalk_points)} sidewalk points.')
 

@@ -219,6 +219,13 @@ def generate_metadata(config: dict) -> dict:
     
     metadata['camera_intrinsics'] = CAM_I
 
+    metadata['voxel_detector_properties'] = {
+        'range': config['voxel_detector_range'],
+        'voxel_size': config['voxel_size'],
+        'upper_limit': config['voxel_detector_upper_limit'],
+        'lower_limit': config['voxel_detector_lower_limit']
+    }
+    
     metadata['LIDAR'] = {
         'sensor2lidar_translation': [0.0, 0.0, 0.0],
         'sensor2lidar_rotation': [1.0, 0.0, 0.0, 0.0],
@@ -247,13 +254,6 @@ def generate_metadata(config: dict) -> dict:
         'sensor2lidar_rotation': VOX2LI_R,
         'sensor2ego_translation': VOX2EGO_T,
         'sensor2ego_rotation': VOX2EGO_R
-    }
-
-    metadata['voxel_detector_properties'] = {
-        'range': config['voxel_detector_range'],
-        'voxel_size': config['voxel_size'],
-        'upper_limit': config['voxel_detector_upper_limit'],
-        'lower_limit': config['voxel_detector_lower_limit']
     }
     
     return metadata

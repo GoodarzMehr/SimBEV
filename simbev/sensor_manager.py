@@ -165,27 +165,27 @@ class SensorManager:
             for type, abbrev in self._camera_type_abbrevs.items():
                 if self._config[f'use_{type}_camera']:
                     scene_data[f'{abbrev}-{camera_name}'] = f'{path}/simbev/sweeps/{abbrev}-{camera_name}' \
-                    f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}-{camera_name}.' + \
-                    ('jpg' if type == 'rgb' else 'png' if type in ['semantic', 'instance', 'depth'] else 'npz')
+                        f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}-{camera_name}.' + \
+                            ('jpg' if type == 'rgb' else 'png' if type in ['semantic', 'instance', 'depth'] else 'npz')
 
         if self._config['use_radar']:
             for radar_name in self._name_list['radar']:
                 scene_data[f'{radar_name}'] = f'{path}/simbev/sweeps/{radar_name}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{radar_name}.npz'
+                    f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{radar_name}.npz'
         
         for type, abbrev in self._other_sensor_abbrevs.items():
             if self._config[f'use_{type}']:
                 scene_data[f'{abbrev}'] = f'{path}/simbev/sweeps/{abbrev}' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}.' + \
-                ('npz' if type in ['lidar', 'semantic_lidar', 'voxel_detector'] else 'bin')
+                    f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-{abbrev}.' + \
+                        ('npz' if type in ['lidar', 'semantic_lidar', 'voxel_detector'] else 'bin')
             
             if type == 'voxel_detector':
                 scene_data['VOXEL-GRID-FILLED'] = f'{path}/simbev/sweeps/VOXEL-GRID-FILLED' \
-                f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-VOXEL-GRID-FILLED.npz'             
+                    f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-VOXEL-GRID-FILLED.npz'             
         
         scene_data['GT_SEG'] = f'{path}/simbev/ground-truth/seg/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG.npz'
         scene_data['GT_SEG_VIZ'] = f'{path}/simbev/ground-truth/seg_viz' \
-        f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG_VIZ.jpg'
+            f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_SEG_VIZ.jpg'
         scene_data['GT_DET'] = f'{path}/simbev/ground-truth/det/SimBEV-scene-{scene:04d}-frame-{frame:04d}-GT_DET.bin'
         scene_data['HD_MAP'] = f'{path}/simbev/ground-truth/hd_map' \
             f'/SimBEV-scene-{scene:04d}-frame-{frame:04d}-HD_MAP.json'

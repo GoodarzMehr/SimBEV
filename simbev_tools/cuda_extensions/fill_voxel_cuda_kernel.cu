@@ -100,9 +100,6 @@ __global__ void fill_hollow_chunked_kernel(
     const int chunk_z = z / chunk_size_z;
     
     const int chunk_idx = chunk_x * num_chunks_y * num_chunks_z + chunk_y * num_chunks_z + chunk_z;
-
-    // Skip if chunk is not active.
-    if (!active_chunks[chunk_idx]) return;
     
     const int idx = idx3d(x, y, z, dim_y, dim_z);
     
@@ -110,6 +107,9 @@ __global__ void fill_hollow_chunked_kernel(
     
     // Copy input to output first.
     output[idx] = current_val;
+
+    // Skip if chunk is not active.
+    if (!active_chunks[chunk_idx]) return;
     
     // Only process empty voxels (class 0).
     if (current_val != 0) return;
@@ -134,6 +134,7 @@ __global__ void fill_hollow_chunked_kernel(
         while (cx >= 0 && cx < dim_x && cy >= 0 && cy < dim_y && cz >= 0 && cz < dim_z)
         {
             const int cidx = idx3d(cx, cy, cz, dim_y, dim_z);
+            
             const uint8_t cval = input[cidx];
             
             if (cval != 0) {

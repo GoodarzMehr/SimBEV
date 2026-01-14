@@ -135,7 +135,7 @@ FILLABLE_CLASSES = [3, 6, 20, 21, 26, 27, 28, 29, 7, 8, 30, 31, 15, 16, 14, 18, 
 # is broken into chunks and those that are completely empty are skipped to
 # speed up the processing.
 CHUNK_SIZE = {
-    3:  (400, 400, 80),
+    3:  (320, 320, 80),
     6:  (8, 8, 8),
     7:  (8, 8, 8),
     8:  (8, 8, 8),
