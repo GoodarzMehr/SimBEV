@@ -142,6 +142,9 @@ https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
 </p>
 
 * Addition of a custom voxel detection sensor that assigns a semantic class to every occupied voxel within a specified grid around the ego vehicle.
+
+[VoxelDetector.webm](https://github.com/user-attachments/assets/ca15ba1b-47d5-4228-bd20-cc4c5984427d)
+
 * Several bug fixes and improvements, some of which have been contributed to the main CARLA repository as well (see e.g. PR [#9381](https://github.com/carla-simulator/carla/pull/9381), [#9421](https://github.com/carla-simulator/carla/pull/9421), [#9422](https://github.com/carla-simulator/carla/pull/9422), [#9423](https://github.com/carla-simulator/carla/pull/9423), [#9427](https://github.com/carla-simulator/carla/pull/9427), and [#9471](https://github.com/carla-simulator/carla/pull/9471)).
 
 ### SimBEV
