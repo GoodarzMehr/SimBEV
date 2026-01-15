@@ -48,7 +48,13 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 - [Citation](#citation)
 
 ## News
-**[2025/12/12]** SimBEV2X coming soon...
+**[2026/1/14]** SimBEV2X coming soon...
+
+**[2026/1/15]** SimBEV 3.1 is released, adding support for 3D semantic occupancy ground truth.
+<p align="middle">
+  <img src="assets/Voxel4.png" width="48%" />
+  <img src="assets/Voxel2.png" width="48%" />
+</p>
 
 **[2025/12/12]** SimBEV 3.0 is released, with support for new 3D and BEV classes, randomly-generated hazard areas, an interactive visualizer, and more. SimBEV Dataset v2 coming soon...
 <p align="middle">
@@ -218,13 +224,22 @@ If you would like to replay/augment a number of existing scenes, set `mode` in t
 
 ### Post-processing
 
-An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if that data is not collected) alongside a _valid_ flag indicating whether the object is fully occluded (False) or visible to the data collection vehicle (True). By default, an object is _valid_ if the number of points inside its bounding box is non-zero and _invalid_ otherwise. However, if you have collected instance segmentation images you can use the `--use-seg` argument to use those images to assist in determining the validity of objects (if the number of points inside the object's bounding box is zero but the object is visible in the image, then it is _valid_). The post-processing step also determines the detection difficulty of an object (either _easy_, _medium_, or _hard_) based on the object's class, distance to the data collection vehicle, and the number of points inside its bounding box. This information will be appended to bounding box data.
+An optional post-processing step will calculate the number of lidar and radar points inside each 3D object bounding box (0 for all objects if that data is not collected) alongside a _valid_ flag indicating whether the object is fully occluded (False) or visible to the data collection vehicle (True). By default, an object is _valid_ if the number of points inside its bounding box is non-zero and _invalid_ otherwise. However, if you have collected instance segmentation images you can use the `--use-seg` argument to use those images to assist in determining the validity of objects (if the number of points inside the object's bounding box is zero but the object is visible in the image, then it is _valid_). The post-processing step also determines the detection difficulty of an object (either _easy_, _medium_, or _hard_) based on the object's class, distance to the data collection vehicle, and the number of points inside its bounding box. This information will be appended to bounding box data. Finally, if you have collected 3D semantic occupancy data, since in many cases those voxels represent only the surface shell of objects, the post-processing step will fill in the semantic label of voxels inside those objects.
 
 To post-process the data, in the [simbev](simbev) directory run
 ```Bash
 simbev-postprocess [options]
 ```
-where, alongside the optional `--use-seg` argument, an optional `--path` argument can be used to provid the path to the SimBEV dataset (`--path` is `/dataset` by default). The post-processing step will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
+`options` can be any of the following:
+* `--path`: path for saving the dataset (`/dataset` by default).
+* `--process-bbox`: post-process 3D object bounding boxes (used by default).
+* `--no-process-bbox`: do not post-process 3D object bounding boxes.
+* `--use-seg`: use instance segmentation images to help with post-processing 3D object bounding boxes.
+* `--fill-voxels`: post-process 3D semantic occupancy data.
+* `--morph-kernel-size`: kernel size used for morphological closing (3 by default).
+* `--num-gpus`: number of GPUs used for post-processing 3D semantic occupancy data (-1, i.e. all available GPUs, by default).
+
+The post-processing step will create a new `det` folder under `ground-truth` (see [Data Format](#data-format) for more information) and move the files of the original `det` folder to a new `old_det` folder.
 
 ### Data Visualization
 
@@ -233,7 +248,7 @@ To visualize certain types of collected data (those that are not readily visuali
 simbev-visualize [mode] [options]
 ```
 
-Setting mode to `interactive` launches SimBEV's interactive visualizer for point cloud (lidar, semantic lidar, and radar) data, allowing the user to evaluate and inspect each scene and frame, as shown below:
+Setting mode to `interactive` launches SimBEV's interactive visualizer for point cloud (lidar, semantic lidar, radar) and voxel data, allowing the user to evaluate and inspect each scene and frame, as shown below:
 
 https://github.com/user-attachments/assets/93186ea8-6617-4650-967b-0b5af7b3c4e2
 
@@ -352,7 +367,7 @@ Consult our implementations of [BEVFusion](https://github.com/GoodarzMehr/bevfus
 
 ###### <p align="center"> Properties of sensors used to collect the SimBEV dataset (top) and their FoV (bottom). </p>
 
-Sensors in SimBEV are referenced using the `{subtype}-{position}` format (which turns into `{position}` when subtype is not available). For cameras, subtype can be one of `RGB` (RGB camera), `SEG` (semantic segmentation camera), `IST` (instance segmentation camera), `DPT` (depth camera), or `FLW` (optical flow camera), while position can be one of `CAM_FRONT_LEFT`, `CAM_FRONT`, `CAM_FRONT_RIGHT`, `CAM_BACK_RIGHT`, `CAM_BACK`, `CAM_BACK_LEFT`. For instance, `DPT-CAM_BACK_LEFT` denotes the back left depth camera. For lidar, since there is only one position, regular lidar is denoted by `LIDAR` while semantic lidar is denoted by `SEG-LIDAR`. For radar, subtype is not available and position can be one of `RAD_LEFT`, `RAD_FRONT`, `RAD_RIGHT`, `RAD_BACK`. GNSS and IMU are simply denoted as `GNSS` and `IMU`, respectively.
+Sensors in SimBEV are referenced using the `{subtype}-{position}` format (which turns into `{position}` when subtype is not available). For cameras, subtype can be one of `RGB` (RGB camera), `SEG` (semantic segmentation camera), `IST` (instance segmentation camera), `DPT` (depth camera), or `FLW` (optical flow camera), while position can be one of `CAM_FRONT_LEFT`, `CAM_FRONT`, `CAM_FRONT_RIGHT`, `CAM_BACK_RIGHT`, `CAM_BACK`, `CAM_BACK_LEFT`. For instance, `DPT-CAM_BACK_LEFT` denotes the back left depth camera. For lidar, since there is only one position, regular lidar is denoted by `LIDAR` while semantic lidar is denoted by `SEG-LIDAR`. For radar, subtype is not available and position can be one of `RAD_LEFT`, `RAD_FRONT`, `RAD_RIGHT`, `RAD_BACK`. GNSS and IMU are simply denoted as `GNSS` and `IMU`, respectively. The voxel detector is denoted as `VOXEL-GRID`, and the post-processed 3D semantic occupancy data is denoted as `VOXEL-GRID-FILLED`.
 
 ### Folder Structure
 
@@ -362,8 +377,11 @@ simbev/
 |
 ├── configs/
 |
+├── console_logs/
+|
 ├── ground-truth/
 |   ├── det/
+|   ├── old_det/ (if 3D object bounding boxes are post-processed)
 |   ├── seg/
 |   ├── seg_viz/
 |   ├── hd_map/
@@ -414,6 +432,8 @@ simbev/
 |   ├── RAD_BACK/
 |   ├── GNSS/
 |   ├── IMU/
+|   ├── VOXEL-GRID/
+|   ├── VOXEL-GRID-FILLED/ (if semantic occupancy data is post-processed)
 |
 ├── viz/ (if data is visualized)
 ```
@@ -422,6 +442,10 @@ simbev/
 #### configs
 
 Contains the config file for each scene, with the files using the `SimBEV-scene-{scene number}.yaml` naming scheme. The files are usually identical, unless the dataset was expanded or some scenes were replaced or augmented using a different configuration. If an existing scene is augmented, the new config file will use the `SimBEV-scene-{scene number}-augment-{i}.yaml` naming scheme, where `i` is the index of the attempt at augmentation (i.e. `i` is 0 for the first augmentation attempt, 1 for the second attempt, etc.).
+
+#### console_logs
+
+Contains the logging output to the console/terminal.
 
 #### ground-truth
 
@@ -499,6 +523,7 @@ Contains collected sensor data for each frame, with the files using the `{sensor
 * Radar: point clouds are saved as a $(n, 4)$ NumPy array where the columns represent the depth, altitude angle, azimuth angle, and velocity, respectively.
 * GNSS: data is saved as a \[latitude, longitude, altitude\] Numpy array.
 * IMU: data is saved as a \[ $\dot{x}$, $\dot{y}$, $\dot{z}$, $\dot{\phi}$, $\dot{\theta}$, $\dot{\psi}$, $\psi$\] NumPy array.
+* Voxel detector: data is saved as a $(d, w, h)$ NumPy array where the dimensions represent the $x$, $y$, and $z$ directions of the vehicle's FLU coordinate system, respectivelly. Each cell contains the semantic (class) label of the object that overlaps with that cell, unless the cell is unoccupied in which case its value is 0.
 
 ## SimBEV Dataset Benchmarks
 
@@ -526,7 +551,7 @@ Models are trained on the SimBEV dataset's _train_ set and evaluated on its _tes
 
 ## Acknowledgement
 
-SimBEV is based on [CARLA](https://carla.org/) and we are grateful to the team that maintains it. SimBEV has also taken inspiration from the [nuScenes](https://www.nuscenes.org/), [SHIFT](https://www.vis.xyz/shift/), [OPV2V](https://mobility-lab.seas.ucla.edu/opv2v/), and [V2X-Sim](https://ai4ce.github.io/V2X-Sim/index.html) datasets.
+SimBEV is based on [CARLA](https://carla.org/) and we are grateful to the team that maintains it. SimBEV has also taken inspiration from the [nuScenes](https://www.nuscenes.org/), [SHIFT](https://www.vis.xyz/shift/), [OPV2V](https://mobility-lab.seas.ucla.edu/opv2v/), and [V2X-Sim](https://ai4ce.github.io/V2X-Sim/index.html) datasets, as well as [Co3SOP](https://github.com/tlab-wide/Co3SOP).
 
 The sixth generation Ford Mustang model is based on [this](https://www.blenderkit.com/asset-gallery-detail/342206ad-9e8e-4cfc-add0-8007dc86fdbb/) BlenderKit model by Kentik Khudosovtsev.
 
