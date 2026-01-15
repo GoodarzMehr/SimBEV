@@ -80,7 +80,7 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 
 ## About
 
-SimBEV is a configurable and scalable synthetic driving data generation tool based on the CARLA Simulator. It supports a comprehensive array of sensors and incorporates information from various sources to capture accurate bird's-eye view (BEV) ground truth alongside 3D object bounding boxes to enable a variety of perception tasks, including BEV segmentation and 3D object detection. SimBEV is used to create the SimBEV dataset, a large collection of annotated perception data from diverse driving scenarios.
+SimBEV is a configurable and scalable synthetic driving data generation tool based on the CARLA Simulator. It supports a comprehensive array of sensors and incorporates information from various sources to capture accurate bird's-eye view (BEV) and 3D semantic occupancy ground truth alongside 3D object bounding boxes to enable a variety of perception tasks, including BEV segmentation, 3D semantic occupancy prediction, and 3D object detection. SimBEV is used to create the SimBEV dataset, a large collection of annotated perception data from diverse driving scenarios.
 
 ![collage](assets/CollageV2.png)
 
@@ -88,7 +88,7 @@ SimBEV is a configurable and scalable synthetic driving data generation tool bas
 
 SimBEV randomizes a variety of simulation parameters to create a diverse set of scenarios. To create a new dataset, SimBEV generates and collects data from consecutive episodes, or scenes. The user configures the desired number of scenes for each map (can be an existing CARLA map or a custom one) for the training, validation, and test sets, a variety of simulation parameters, and the sensors that should be used. The user can add more scenes to an existing SimBEV dataset, replace individual scenes, or replay individual scenes to collect additional data. SimBEV works with any CARLA map, even custom maps created by the user.
 
-SimBEV currently supports five camera types (RGB, semantic segmentation, instance segmentation, depth, and optical flow), lidar, semantic lidar, radar, GNSS, and IMU. The user has full control over each sensor's characteristics (e.g. camera resolution or number of lidar channels), but the placement of the sensors is fixed for now. In addition to sensor data that can be used as ground truth (e.g. semantic segmentation and depth images, semantic lidar point cloud, etc.), SimBEV currently offers three annotation types: 3D object bounding boxes, BEV ground truth, and HD map information.
+SimBEV currently supports five camera types (RGB, semantic segmentation, instance segmentation, depth, and optical flow), lidar, semantic lidar, radar, GNSS, IMU, and a custom voxel detection sensor inspired by [Co3SOP](https://github.com/tlab-wide/Co3SOP). The user has full control over each sensor's characteristics (e.g. camera resolution or number of lidar channels), but the placement of the sensors is fixed for now. In addition to sensor data that can be used as ground truth (e.g. semantic segmentation and depth images, semantic lidar point cloud, etc.), SimBEV currently offers three annotation types: 3D object bounding boxes, BEV ground truth, and HD map information.
 
 SimBEV currently produces 3D object bounding boxes for the following 10 classes: _car_, _truck_, _bus_, _motorcycle_, _bicycle_, _pedestrian_, _traffic light_, _traffic sign_, _traffic cone_, and _barrier_. For each class, the bounding boxes are categorized as _easy_, _medium_, or _hard_ based on detection difficulty. Moreover, SimBEV currently supports the following 14 BEV ground truth classes: _road_, _hazard area_, _road line_, _sidewalk_, _crosswalk_, _traffic cone_, _barrier_, _car_, _truck_, _bus_, _motorcycle_, _bicycle_, _rider_, _pedestrian_.
 
@@ -108,9 +108,9 @@ To run SimBEV, your system must satisfy CARLA 0.9.16's [minimum system requireme
 
 ### CARLA
 
-To run SimBEV, you must use our custom version of CARLA (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here](https://drive.google.com/file/d/188Xc6pycuwu1doG0RM-8ogy7pANHEurE/view?usp=sharing).**
+**To run SimBEV, you must use our custom version of CARLA** (built from source from [this fork](https://github.com/GoodarzMehr/carla/tree/ue4-dev-local) of the `ue4-dev` branch). **Please download it from [here](https://drive.google.com/file/d/188Xc6pycuwu1doG0RM-8ogy7pANHEurE/view?usp=sharing).**
 
-**We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is incompatible with SimBEV and while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
+**We have not tested SimBEV with the standard version of CARLA 0.9.16 or CARLA 0.10.0 and advise against using them with SimBEV. CARLA 0.9.16 is incompatible with SimBEV, and, while CARLA 0.10.0 offers superior graphics, it lacks some features from the UE4-based CARLA that SimBEV relies on (e.g. customizable weather, large maps, etc.) We will make SimBEV available for CARLA 0.10.\* when it reaches feature parity with the UE4-based CARLA.**
 
 Some of the enhancements in our version are:
 
@@ -141,6 +141,7 @@ https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
   <img src="assets/YamahaNew.png" width="48%" />
 </p>
 
+* Addition of a custom voxel detection sensor that assigns a semantic class to every occupied voxel within a specified grid around the ego vehicle.
 * Several bug fixes and improvements, some of which have been contributed to the main CARLA repository as well (see e.g. PR [#9381](https://github.com/carla-simulator/carla/pull/9381), [#9421](https://github.com/carla-simulator/carla/pull/9421), [#9422](https://github.com/carla-simulator/carla/pull/9422), [#9423](https://github.com/carla-simulator/carla/pull/9423), [#9427](https://github.com/carla-simulator/carla/pull/9427), and [#9471](https://github.com/carla-simulator/carla/pull/9471)).
 
 ### SimBEV
