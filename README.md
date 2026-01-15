@@ -48,7 +48,7 @@ https://github.com/user-attachments/assets/af074eff-b30c-43e0-b544-1b38b77d3345
 - [Citation](#citation)
 
 ## News
-**[2026/1/14]** SimBEV2X coming soon...
+**[2026/1/15]** SimBEV2X coming soon...
 
 **[2026/1/15]** SimBEV 3.1 is released, adding support for 3D semantic occupancy ground truth.
 <p align="middle">
