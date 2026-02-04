@@ -234,6 +234,7 @@ simbev-postprocess [options]
 * `--path`: path for saving the dataset (`/dataset` by default).
 * `--process-bbox`: post-process 3D object bounding boxes (used by default).
 * `--no-process-bbox`: do not post-process 3D object bounding boxes.
+* `--numpy-backwards-compatible`: make 3D object detection ground truth backward compatible with NumPy 1.x by saving it as a `.json` file (if data is collected using NumPy 2.x).
 * `--use-seg`: use instance segmentation images to help with post-processing 3D object bounding boxes.
 * `--fill-voxels`: post-process 3D semantic occupancy data.
 * `--morph-kernel-size`: kernel size used for morphological closing (3 by default).

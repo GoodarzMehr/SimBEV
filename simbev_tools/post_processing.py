@@ -122,14 +122,14 @@ SEMANTIC_PRIORITY = [
 
 # Classes to fill, ordered by ascending priority (lower priority filled first,
 # so higher priority classes can overwrite).
-# Priority 1: Building(3), Pole(6), Static(20), Dynamic(21), Bridge(26),
-#   RailTrack(27), GuardRail(28), Rock(29)
+# Priority 1: Building(3), Pole(6), Vegetation(9), Static(20), Dynamic(21),
+#   Bridge(26), RailTrack(27), GuardRail(28), Rock(29)
 # Priority 2: TrafficLight(7), TrafficSign(8), TrafficCone(30), Barrier(31)
 # Priority 3: Truck(15), Bus(16)
 # Priority 4: Car(14)
 # Priority 5: Motorcycle(18), Bicycle(19)
 # Priority 6: Pedestrian(12), Rider(13)
-FILLABLE_CLASSES = [3, 6, 20, 21, 26, 27, 28, 29, 7, 8, 30, 31, 15, 16, 14, 18, 19, 12, 13]
+FILLABLE_CLASSES = [3, 6, 9, 20, 21, 26, 27, 28, 29, 7, 8, 30, 31, 15, 16, 14, 18, 19, 12, 13]
 
 # Chunk sizes for different classes when filling hollow voxels. The voxel grid
 # is broken into chunks and those that are completely empty are skipped to
@@ -192,6 +192,11 @@ argparser.add_argument(
     dest='process_bbox',
     action='store_false',
     help='do not post-process bounding box annotations'
+)
+argparser.add_argument(
+    '--numpy-backwards-compatible',
+    action='store_true',
+    help='make 3D object detection ground truth backward compatible with NumPy 1.x'
 )
 argparser.add_argument(
     '--use-seg',
@@ -741,12 +746,43 @@ def process_bbox_main():
 
                         new_det_objects.append(obj)
                     
-                    with open(
-                        f'{args.path}/simbev/ground-truth/new_det/SimBEV-scene-{scene_number:04d}-frame-{i:04d}-GT_DET.bin',
-                        'wb'
-                    ) as f:
-                        np.save(f, np.array(new_det_objects), allow_pickle=True)
+                    if args.numpy_backwards_compatible:
+                        converted = []
 
+                        for obj in new_det_objects:
+                            converted_obj = {}
+
+                            for key, value in obj.items():
+                                if isinstance(value, np.ndarray):
+                                    converted_obj[key] = value.tolist()
+                                else:
+                                    converted_obj[key] = value
+                            
+                            converted.append(converted_obj)
+                        
+                        with open(
+                            f'{args.path}/simbev/ground-truth/new_det/SimBEV-scene-{scene_number:04d}-frame-{i:04d}-GT_DET.json',
+                            'w'
+                        ) as f:
+                            json.dump(converted, f, indent=4)
+                        
+                        info['GT_DET'] = f'simbev/ground-truth/det/SimBEV-scene-{scene_number:04d}-frame-{i:04d}-GT_DET.json'
+                    else:
+                        with open(
+                            f'{args.path}/simbev/ground-truth/new_det/SimBEV-scene-{scene_number:04d}-frame-{i:04d}-GT_DET.bin',
+                            'wb'
+                        ) as f:
+                            np.save(f, np.array(new_det_objects), allow_pickle=True)
+
+        if args.numpy_backwards_compatible:
+            os.rename(
+                f'{args.path}/simbev/infos/simbev_infos_{split}.json',
+                f'{args.path}/simbev/infos/simbev_infos_{split}_unprocessed.json'
+            )
+            
+            with open(f'{args.path}/simbev/infos/simbev_infos_{split}.json', 'w') as f:
+                json.dump(infos, f, indent=4)
+        
         os.rename(f'{args.path}/simbev/ground-truth/det', f'{args.path}/simbev/ground-truth/old_det')
         os.rename(f'{args.path}/simbev/ground-truth/new_det', f'{args.path}/simbev/ground-truth/det')
 
