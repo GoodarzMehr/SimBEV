@@ -1235,6 +1235,15 @@ class ScenarioManager:
 
         self._world.tick()
 
+        if self._map_name in ['Town12', 'Town13']:
+            tile_active_radius = 35.0 * (self.scene_duration + self._config['warmup_duration'])
+            
+            go_to_distance = min(1.6 * self._npc_spawn_radius, tile_active_radius)
+        else:
+            go_to_distance = 1.6 * self._npc_spawn_radius
+
+        logger.debug(f'Changed walker go-to distance to {go_to_distance:.2f} m.')
+
         # Start walker controllers and set their speed and destination.
         for controller in self._world.get_actors(self._controllers_id_list):
             controller.start()
@@ -1248,7 +1257,7 @@ class ScenarioManager:
                 go_to_location = self._world.get_random_location_from_navigation()
 
                 if go_to_location is not None:
-                    if vehicle_location.distance(go_to_location) >= 1.6 * self._npc_spawn_radius:
+                    if vehicle_location.distance(go_to_location) >= go_to_distance:
                         go_to_location = None
 
                 counter += 1
