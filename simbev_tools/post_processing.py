@@ -139,6 +139,7 @@ CHUNK_SIZE = {
     6:  (8, 8, 8),
     7:  (8, 8, 8),
     8:  (8, 8, 8),
+    9:  (8, 8, 8),
     12: (8, 8, 8),
     13: (8, 8, 8),
     14: (16, 16, 16),
@@ -427,6 +428,7 @@ def _process_voxel_file(input_path: str, output_path: str, device: str, morph_ke
     
     except Exception as e:
         print(f'Error processing {input_path}: {e}')
+        print(traceback.format_exc())
         
         return False
 

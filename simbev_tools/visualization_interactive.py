@@ -190,7 +190,8 @@ class VizDataLoader:
         
         Args:
             scene: scene index (0-based).
-            progress_callback: optional callback(current, total, message) for progress updates.
+            progress_callback: optional callback(current, total, message) for
+                progress updates while loading.
         
         Returns:
             True if loaded successfully, False otherwise.
@@ -220,7 +221,7 @@ class VizDataLoader:
         # Initialize the cache for this scene.
         scene_data = {sensor_type: [None] * frame_count for sensor_type in sensor_types}
         
-        # Create tasks for parallel loading
+        # Create tasks for parallel loading.
         tasks = []
         
         total_tasks = frame_count * len(sensor_types)

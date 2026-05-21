@@ -352,8 +352,8 @@ class WorldManager:
         '''Adjust world settings dynamically for large maps.'''
         settings = self._world.get_settings()
 
-        settings.tile_stream_distance = 35.0 * (scene_duration + self._config['warmup_duration'])
-        settings.actor_active_distance = 35.0 * (scene_duration + self._config['warmup_duration'])
+        settings.tile_stream_distance = 40.0 * (scene_duration + self._config['warmup_duration'])
+        settings.actor_active_distance = 40.0 * (scene_duration + self._config['warmup_duration'])
 
         self._world.apply_settings(settings)
         
