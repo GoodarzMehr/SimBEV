@@ -9,37 +9,37 @@ train_scene_config:
   Town03: 48
   Town04: 48
   Town05: 64
-  Town06: 32
-  Town07: 32
+  Town06: 40
+  Town07: 40
   Town10HD: 48
   Town12: 160
-  Town15: 96
+  Town15: 100
 
 val_scene_config:
-  Town01: 4
-  Town02: 4
-  Town03: 12
-  Town04: 12
+  Town01: 2
+  Town02: 2
+  Town03: 8
+  Town04: 8
   Town05: 16
   Town06: 8
   Town07: 8
-  Town10HD: 12
-  Town12: 40
-  Town13: 80
-  Town15: 24
+  Town10HD: 8
+  Town12: 24
+  Town13: 40
+  Town15: 16
 
 test_scene_config:
   Town01: 4
   Town02: 4
-  Town03: 12
-  Town04: 12
-  Town05: 16
-  Town06: 8
-  Town07: 8
-  Town10HD: 12
-  Town12: 40
+  Town03: 16
+  Town04: 16
+  Town05: 32
+  Town06: 16
+  Town07: 16
+  Town10HD: 16
+  Town12: 48
   Town13: 80
-  Town15: 24
+  Town15: 32
 
 # When mode is 'replace' the following list denotes the list of scenes that
 # should be overwritten.
@@ -67,11 +67,11 @@ timeout: 80.0
 timestep: 0.05
 resolution_x: 1920
 resolution_y: 1080
-show_display: True
+show_display: False
 quality_level: 'Epic'
 retries_on_error: 10
 
-render_gpu: 0
+render_gpu: 1
 
 max_io_workers: 32
 
@@ -156,7 +156,7 @@ use_rgb_camera: True
 rgb_camera_properties:
   fstop: '1.8'
 
-use_semantic_camera: True
+use_semantic_camera: False
 
 semantic_camera_properties:
   {}
@@ -188,7 +188,7 @@ lidar_properties:
   dropoff_general_rate: '0.14'
   noise_stddev: '0.03'
 
-use_semantic_lidar: True
+use_semantic_lidar: False
 
 semantic_lidar_channels: 128
 semantic_lidar_range: 120.0
@@ -204,7 +204,7 @@ radar_range: 120.0
 radar_horizontal_fov: 100.0
 radar_vertical_fov: 20.0
 radar_properties:
-  points_per_second: '40000'
+  points_per_second: '48000'
 
 use_gnss: True
 
