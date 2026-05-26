@@ -764,14 +764,14 @@ class InteractiveVisualizer:
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.UP:
-                self._sensor_radio.selected_index = (self._sensor_radio.selected_index - 1) % 3
+                self._sensor_radio.selected_index = (self._sensor_radio.selected_index - 1) % 4
                 
                 self._on_sensor_changed(self._sensor_radio.selected_index)
                 
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.DOWN:
-                self._sensor_radio.selected_index = (self._sensor_radio.selected_index + 1) % 3
+                self._sensor_radio.selected_index = (self._sensor_radio.selected_index + 1) % 4
                 
                 self._on_sensor_changed(self._sensor_radio.selected_index)
                 
