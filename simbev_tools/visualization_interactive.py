@@ -232,7 +232,7 @@ class VizDataLoader:
                 
                 tasks.append((task, frame, sensor_type))
 
-        # Wait for all tasks to complete and update cache.
+        # Wait for all tasks to complete and update the cache.
         completed = 0
         
         for task, frame, sensor_type in tasks:
@@ -405,7 +405,7 @@ class VizDataLoader:
         point_cloud = np.concatenate(point_cloud_list, axis=0)
         velocity = np.concatenate(velocity_list, axis=0)
         
-        # Velocity-based colors
+        # Velocity-based colors.
         log_velocity = np.log(1.0 + np.abs(velocity))
         
         log_velocity_normalized = (log_velocity - log_velocity.min()) / \
@@ -417,11 +417,7 @@ class VizDataLoader:
             np.interp(log_velocity_normalized, RANGE, RAINBOW[:, 2])
         ]
         
-        return {
-            'points': point_cloud,
-            'colors': colors,
-            'bboxes': bboxes
-        }
+        return {'points': point_cloud, 'colors': colors, 'bboxes': bboxes}
     
     def load_voxels(self, scene_data: dict, frame: int, bboxes: list) -> dict:
         '''
@@ -461,7 +457,7 @@ class VizDataLoader:
         # Voxel centers in world coordinates.
         voxel_centers = (indices + 0.5) * voxel_size + grid_origin
         
-        # Get semantic labels for coloring
+        # Get semantic labels for coloring.
         labels = voxel_grid[indices[:, 0], indices[:, 1], indices[:, 2]]
         
         colors = LABEL_COLORS[labels]

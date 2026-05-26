@@ -532,6 +532,18 @@ Models are trained on the SimBEV dataset's _train_ set and evaluated on its _tes
 
 ### 3D Object Detection
 
+3D object detection benchmarks were revised after becoming aware of a flaw ([SimBEV#14](https://github.com/GoodarzMehr/SimBEV/issues/14)) in our evaluation method thanks to [@qinlong2133](https://github.com/qinlong2133). The original benchmarks are provided at the end for reference.
+
+| Model       |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) | SDS (%) |     |
+| :---------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-----: | :-: |
+| BEVFusion-C |          C |    44.4 |    0.720 |       1.04 | 0.135 |       4.64 |    36.5 | [Checkpoint](https://drive.google.com/file/d/1pV8-peIEbnhRogjyXD4skVt-ZoCo_4yq) |
+| BEVFusion-L |          L |    94.5 |    0.134 |      0.128 | 0.131 |       1.56 |    79.8 | [Checkpoint](https://drive.google.com/file/d/1-xvt3JfoSsZqu0BMmg90MnF8sxKWVvx-) |
+| BEVFusion   |        C+L |    94.4 |    0.137 |      0.117 | 0.125 |       1.53 |    79.9 | [Checkpoint](https://drive.google.com/file/d/1vZrYQ5tCAlo67jYGQ_4plNYBvctfi5Au) |
+| UniTR       |        C+L |    94.7 |    0.104 |      0.220 | 0.088 |       0.54 |    85.5 | [Checkpoint](https://drive.google.com/file/d/1Dsx3JYTNwfgIgkH-XF-tOHNpFhTC_AFv) |
+| UniTR+LSS   |        C+L |    94.8 |    0.106 |      0.204 | 0.083 |       0.52 |    86.0 | [Checkpoint](https://drive.google.com/file/d/1-yu5D_VuIGNm5mxnGyf8ubUgP4AQ3TSA) |
+
+_Original benchmarks._
+
 | Model       |   Modality | mAP (%) | mATE (m) | mAOE (rad) |  mASE | mAVE (m/s) | SDS (%) |     |
 | :---------: | :--------: | :-----: | :------: | :--------: | :---: | :--------: | :-----: | :-: |
 | BEVFusion-C |          C |    22.1 |    0.744 |       1.04 | 0.137 |       4.65 |    25.1 | [Checkpoint](https://drive.google.com/file/d/1pV8-peIEbnhRogjyXD4skVt-ZoCo_4yq) |
