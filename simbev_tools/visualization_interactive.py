@@ -846,34 +846,16 @@ class InteractiveVisualizer:
         self._panel.add_child(self._sensor_radio)
         self._panel.add_fixed(2 * em)
         
-        # Scene slider.
+        # Scene number field.
         self._scene_label = gui.Label(f'Scene: {self._data_loader.get_scene_number(0):04d} (1/{self._max_scene + 1})')
         
         self._panel.add_child(self._scene_label)
         
-        self._scene_slider = gui.Slider(gui.Slider.INT)
-        self._scene_slider.set_limits(0, self._max_scene)
-        self._scene_slider.set_on_value_changed(self._on_scene_slider_changed)
+        self._scene_number_field = gui.NumberEdit(gui.NumberEdit.INT)
+        self._scene_number_field.set_limits(0, self._max_scene)
+        self._scene_number_field.set_on_value_changed(self._on_scene_number_field_changed)
         
-        self._panel.add_child(self._scene_slider)
-        self._panel.add_fixed(0.2 * em)
-        
-        # Scene navigation buttons.
-        scene_button_layout = gui.Horiz()
-        scene_button_layout.add_stretch()
-        
-        self._prev_scene_button = gui.Button('<')
-        self._prev_scene_button.set_on_clicked(self._on_prev_scene_clicked)
-        
-        scene_button_layout.add_child(self._prev_scene_button)
-        
-        self._next_scene_button = gui.Button('>')
-        self._next_scene_button.set_on_clicked(self._on_next_scene_clicked)
-        
-        scene_button_layout.add_child(self._next_scene_button)
-        scene_button_layout.add_stretch()
-        
-        self._panel.add_child(scene_button_layout)
+        self._panel.add_child(self._scene_number_field)
         self._panel.add_fixed(em)
         
         # Frame slider.
@@ -1141,32 +1123,36 @@ class InteractiveVisualizer:
         
         self._frame_slider.int_value = 0
     
-    def _on_scene_slider_changed(self, value: int):
+    def _on_scene_number_field_changed(self, value: int):
         '''
-        Handle scene slider value change.
+        Handle scene number field value change.
         
         Args:
-            value: scene index value.
+            value: scene index (0-based).
         '''
         new_scene = int(value)
-        
+
+        if new_scene > self._max_scene or new_scene < 0:
+            print(f'Invalid scene: {new_scene}')
+
+            self._scene_number_field.int_value = self._current_scene
+            
+            return
+
         if new_scene != self._current_scene:
             # Stop playback before changing scenes.
             if self._is_playing:
-                self._is_playing = False
-                
-                self._play_button.text = 'Play'
-                self._play_button.background_color = gui.Color(0.1, 0.8, 0.1)
-            
+                self._stop_playback()
+
             self._current_scene = new_scene
             self._current_frame = 0
-            
+
             # Update frame slider limits.
             self._max_frame = self._data_loader.get_frame_count(self._current_scene) - 1
-            
+
             self._frame_slider.set_limits(0, self._max_frame)
             self._frame_slider.int_value = 0
-            
+
             # Load and display the new scene.
             self._load_and_display_scene(self._current_scene)
     
@@ -1175,7 +1161,7 @@ class InteractiveVisualizer:
         Handle frame slider value change.
         
         Args:
-            value: frame index value.
+            value: frame index (0-based).
         '''
         # Stop playback when manually scrubbing.
         if self._is_playing:
@@ -1207,20 +1193,6 @@ class InteractiveVisualizer:
             checked: whether loop playback is enabled.
         '''
         self._playback_loop = checked
-    
-    def _on_prev_scene_clicked(self):
-        '''Navigate to the previous scene.'''
-        if self._current_scene > 0:
-            self._on_scene_slider_changed(self._current_scene - 1)
-            
-            self._scene_slider.int_value = self._current_scene
-            
-    def _on_next_scene_clicked(self):
-        '''Navigate to the next scene.'''
-        if self._current_scene < self._max_scene:
-            self._on_scene_slider_changed(self._current_scene + 1)
-            
-            self._scene_slider.int_value = self._current_scene
             
     def _on_prev_frame_clicked(self):
         '''Navigate to the previous frame.'''
