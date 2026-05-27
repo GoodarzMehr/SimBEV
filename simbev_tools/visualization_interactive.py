@@ -671,12 +671,13 @@ class InteractiveVisualizer:
             
             threading.Thread(target=load_worker, daemon=True).start()
     
-    def _on_scene_loaded(self, success: bool):
+    def _on_scene_loaded(self, success: bool, reset_camera: bool = True):
         '''
         Called when scene loading completes.
         
         Args:
             success: whether the scene was loaded successfully.
+            reset_camera: whether to reset the camera view after loading.
         '''
         self._is_loading = False
         
@@ -685,10 +686,11 @@ class InteractiveVisualizer:
             self._update_cache_status()
             self._update_frame()
             
-            # Setup the camera for the new scene.
-            bounds = self._scene_widget.scene.bounding_box
-            
-            self._scene_widget.setup_camera(60, bounds, bounds.get_center())
+            if reset_camera:
+                # Setup the camera for the new scene.
+                bounds = self._scene_widget.scene.bounding_box
+                
+                self._scene_widget.setup_camera(60, bounds, bounds.get_center())
         else:
             self._update_loading_label('Failed to load scene.')
     
@@ -856,7 +858,7 @@ class InteractiveVisualizer:
         self._scene_number_field.set_on_value_changed(self._on_scene_number_field_changed)
         
         self._panel.add_child(self._scene_number_field)
-        self._panel.add_fixed(em)
+        self._panel.add_fixed(2 * em)
         
         # Frame slider.
         self._frame_label = gui.Label(f'Frame: 1/{self._max_frame + 1}')
