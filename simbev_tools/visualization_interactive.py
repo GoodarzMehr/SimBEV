@@ -1219,12 +1219,11 @@ class InteractiveVisualizer:
         '''Set camera to bird's-eye view.'''
         bounds = self._scene_widget.scene.bounding_box
         
-        center = bounds.get_center()
         extent = bounds.get_extent()
         
         max_extent = max(extent[0], extent[1])
         
-        self._scene_widget.look_at(center, [center[0], center[1], max_extent / 1.2], [1, 0, 0])
+        self._scene_widget.look_at([0, 0, 0], [0, 0, max_extent], [1, 0, 0])
 
     def _on_tracker_view(self):
         '''Set camera to ego tracker view.'''
