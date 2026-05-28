@@ -565,6 +565,7 @@ class InteractiveVisualizer:
         self._is_playing = False
 
         self._sensor_type = 'lidar'
+        self._num_sensor_types = 4
         
         self._show_bbox = True
 
@@ -766,14 +767,14 @@ class InteractiveVisualizer:
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.UP:
-                self._sensor_radio.selected_index = (self._sensor_radio.selected_index - 1) % 4
+                self._sensor_radio.selected_index = (self._sensor_radio.selected_index - 1) % self._num_sensor_types
                 
                 self._on_sensor_changed(self._sensor_radio.selected_index)
                 
                 return gui.Widget.EventCallbackResult.HANDLED
             
             elif event.key == gui.KeyName.DOWN:
-                self._sensor_radio.selected_index = (self._sensor_radio.selected_index + 1) % 4
+                self._sensor_radio.selected_index = (self._sensor_radio.selected_index + 1) % self._num_sensor_types
                 
                 self._on_sensor_changed(self._sensor_radio.selected_index)
                 
@@ -1319,7 +1320,7 @@ class InteractiveVisualizer:
                 
                 self._scene_widget.scene.add_geometry('point_cloud', combined_mesh, mat)
             else:
-                # Standard point cloud for lidar, semantic-lidar, radar
+                # Standard point cloud for lidar, semantic-lidar, radar.
                 pcd = o3d.geometry.PointCloud()
                 
                 pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
