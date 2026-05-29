@@ -697,7 +697,7 @@ class InteractiveVisualizer:
 
                 self._scene_widget.setup_camera(60, bounds, bounds.get_center())
 
-                self._scene_widget.look_at([0, 0, 0], [0, 0, max_extent], [1, 0, 0])
+                self._scene_widget.look_at(bounds.get_center(), [bounds[0], bounds[1], max_extent], [1, 0, 0])
         else:
             self._update_loading_label('Failed to load scene.')
     
