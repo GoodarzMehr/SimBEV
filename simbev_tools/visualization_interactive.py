@@ -1333,10 +1333,10 @@ class InteractiveVisualizer:
                 pcd.points = o3d.utility.Vector3dVector(sensor_data['points'])
                 
                 if 'colors' in sensor_data and sensor_data['colors'] is not None:
-                    pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'] ** 1.8)
+                    pcd.colors = o3d.utility.Vector3dVector(sensor_data['colors'] ** 2.2)
                 else:
                     colors = np.tile([0.8, 0.8, 0.8], (len(sensor_data['points']), 1))
-                    pcd.colors = o3d.utility.Vector3dVector(colors ** 1.8)
+                    pcd.colors = o3d.utility.Vector3dVector(colors ** 2.2)
                 
                 mat = o3d.visualization.rendering.MaterialRecord()
                 mat.shader = 'defaultUnlit'
