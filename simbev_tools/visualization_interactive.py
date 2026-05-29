@@ -691,13 +691,15 @@ class InteractiveVisualizer:
                 # Setup the camera for the new scene.
                 bounds = self._scene_widget.scene.bounding_box
 
+                center = bounds.get_center()
+
                 extent = bounds.get_extent()
         
                 max_extent = max(extent[0], extent[1])
 
                 self._scene_widget.setup_camera(60, bounds, bounds.get_center())
 
-                self._scene_widget.look_at(bounds.get_center(), [bounds[0], bounds[1], max_extent], [1, 0, 0])
+                self._scene_widget.look_at(center, [center[0], center[1], max_extent], [1, 0, 0])
         else:
             self._update_loading_label('Failed to load scene.')
     
