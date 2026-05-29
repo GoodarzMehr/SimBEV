@@ -1462,7 +1462,8 @@ class InteractiveVisualizer:
 
 def visualize_interactive(ctx):
     '''
-    Unified interactive visualizer for all sensors with point cloud data.
+    Unified interactive visualizer for all sensors with point cloud or voxel
+    data.
     
     Args:
         ctx: visualization context.
