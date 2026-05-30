@@ -82,6 +82,11 @@ VISUALIZATION_MODES = {
         'handler': visualize_interactive,
         'output_dirs': [],
         'color': '#00AAFF'
+    },
+    'voxel3d': {
+        'handler': visualize_voxel3d,
+        'output_dirs': [f'VOXEL3D-{distance}' for distance in VIEWS.keys()],
+        'color': '#FF6600'
     }
 }
 
@@ -92,7 +97,7 @@ argparser.add_argument(
     'mode',
     nargs='+',
     help='visualization mode (all, rgb, depth, flow, lidar, lidar3d, lidar-with-bbox, lidar3d-with-bbox, '
-        'semantic-lidar, semantic-lidar3d, radar, radar3d, radar-with-bbox, radar3d-with-bbox, interactive)'
+        'semantic-lidar, semantic-lidar3d, radar, radar3d, radar-with-bbox, radar3d-with-bbox, voxel3d, interactive)'
 )
 argparser.add_argument(
     '--path',

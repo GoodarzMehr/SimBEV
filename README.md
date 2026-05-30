@@ -332,13 +332,20 @@ For all other modes, a new `viz` folder in the dataset's path is created where t
   <img src="assets/RADAR3DwBBOX-NEAR.jpg" width="48%" />
 </p>
 
-Visualization modes involving point clouds have two default views, `NEAR` and `FAR`, as defined in the [visualization_handlers](simbev_tools/visualization_handlers.py) file, where you can also define your custom view if needed.
+* `voxel3d`: 3D view of semantic occupancy voxels.
+<p align="middle">
+  <img src="assets/VOXEL3D-FAR.jpg" width="48%" />
+  <img src="assets/VOXEL3D-NEAR.jpg" width="48%" />
+</p>
+
+Visualization modes involving point clouds or voxels have two default views, `NEAR` and `FAR`, as defined in the [visualization_handlers](simbev_tools/visualization_handlers.py) file, where you can also define your custom view if needed.
 
 `options` can be any of the following:
 * `--path`: path to the dataset (`/dataset` by default).
 * `-s`, `--scene`: list of scene numbers to visualize, can be individual numbers or a range (-1, i.e. all scenes, by default).
 * `-f`, `--frame`: list of frame numbers to visualize, can be individual numbers or a range (-1, i.e. all frames, by default).
 * `--ignore-valid-flag`: display all 3D bounding boxes regardless of the value of their _valid_ flag.
+* `--filled-voxels`: display post-processed semantic occupancy voxel grids.
 
 For instance, using
 ```Bash

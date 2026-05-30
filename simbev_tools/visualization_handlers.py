@@ -1,8 +1,10 @@
 # Academic Software License: Copyright © 2026 Goodarz Mehr.
 
 import cv2
+import atexit
 
 import numpy as np
+import open3d as o3d
 
 from .visualization_utils import *
 
@@ -27,6 +29,9 @@ VIEWS = {
         'view2lidar_rotation': [0.415627, -0.572061, 0.572061, -0.415627]
     }
 }
+
+
+atexit.register(cleanup_voxel_renderers)
 
 
 class VisualizationContext:
@@ -138,7 +143,7 @@ def visualize_depth(ctx: VisualizationContext):
 
         log_distance = 255.0 * np.log(256.0 * normalized_distance + 1) / np.log(257.0)
 
-        cv2.imwrite(ctx.get_output_path('DPT', camera), log_distance.astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 80])
+        cv2.imwrite(ctx.get_output_path('DPT', camera), log_distance.astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, 90])
     
     # Process all 6 cameras in parallel.
     with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
@@ -156,7 +161,7 @@ def visualize_flow(ctx: VisualizationContext):
         
         image = flow_to_color(flow)
         
-        cv2.imwrite(ctx.get_output_path('FLW', camera), image, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        cv2.imwrite(ctx.get_output_path('FLW', camera), image, [cv2.IMWRITE_JPEG_QUALITY, 90])
 
     # Process all 6 cameras in parallel.
     with ThreadPoolExecutor(max_workers=len(CAM_NAME)) as executor:
@@ -487,6 +492,84 @@ def visualize_radar3d_with_bbox(ctx: VisualizationContext):
     # Process both near and far views in parallel.
     with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
         executor.map(process_radar3d_with_bbox, VIEWS.keys())
+
+def visualize_voxel3d(ctx: VisualizationContext):
+    '''
+    Visualize a 3D view of semantic occupancy voxels.
+
+    Args:
+        ctx: visualization context.
+    '''
+    voxel_key = 'VOXEL-GRID-FILLED' if ctx.filled_voxels else 'VOXEL-GRID'
+
+    if voxel_key not in ctx.frame_data:
+        return
+
+    voxel_grid = np.load(ctx.frame_data[voxel_key])['data']
+
+    if not np.any(voxel_grid > 0):
+        return
+
+    voxel_size = ctx.metadata['voxel_detector_properties']['voxel_size']
+
+    grid_origin = np.array(ctx.metadata['VOXEL-GRID']['sensor2lidar_translation']) - np.array([
+        ctx.metadata['voxel_detector_properties']['range'],
+        ctx.metadata['voxel_detector_properties']['range'],
+        -ctx.metadata['voxel_detector_properties']['lower_limit']
+    ])
+
+    # Build the mesh once; shared across all view renders.
+    combined_mesh = build_voxel_mesh(voxel_grid, voxel_size, grid_origin, LABEL_COLORS)
+
+    K = ctx.metadata['camera_intrinsics']
+
+    fx = K[0][0]
+    fy = K[1][1]
+    cx = K[0][2]
+    cy = K[1][2]
+    
+    width = int(cx * 2)
+    height = int(cy * 2)
+
+    intrinsic = o3d.camera.PinholeCameraIntrinsic(width, height, fx, fy, cx, cy)
+
+    mat = o3d.visualization.rendering.MaterialRecord()
+    
+    mat.shader = 'defaultLit'
+
+    # A single OffscreenRenderer is reused across all views and frames.
+    renderer_key = f'{width}x{height}'
+
+    if renderer_key not in voxel_renderers:
+        with suppress_stderr():
+            renderer = o3d.visualization.rendering.OffscreenRenderer(width, height)
+
+        renderer.scene.set_background([1.0, 1.0, 1.0, 1.0])
+
+        voxel_renderers[renderer_key] = renderer
+    else:
+        renderer = voxel_renderers[renderer_key]
+        
+        renderer.scene.remove_geometry('voxels')
+
+    renderer.scene.add_geometry('voxels', combined_mesh, mat)
+
+    for view in VIEWS.keys():
+        view2lidar = np.eye(4, dtype=np.float32)
+
+        view2lidar[:3, :3] = Q(VIEWS[view]['view2lidar_rotation']).rotation_matrix
+        view2lidar[:3, 3] = VIEWS[view]['view2lidar_translation']
+
+        extrinsic = np.linalg.inv(view2lidar).astype(np.float64)
+
+        renderer.setup_camera(intrinsic, extrinsic)
+
+        img = np.asarray(renderer.render_to_image())
+
+        img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+        cv2.imwrite(ctx.get_output_path('VOXEL3D', view), img_bgr, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
 
 def load_radar_data(ctx: VisualizationContext):
     '''

@@ -1,8 +1,12 @@
 # Academic Software License: Copyright © 2026 Goodarz Mehr.
 
+import os
 import cv2
+import torch
+import contextlib
 
 import numpy as np
+import open3d as o3d
 
 from matplotlib import colormaps as cm
 from pyquaternion import Quaternion as Q
@@ -88,6 +92,37 @@ LABEL_COLORS = np.array([
 ]) / 255.0
 
 
+# Module-level OffscreenRenderer instances. Initialised once on first use to
+# avoid re-creating the Filament engine every frame.
+voxel_renderers: dict = {}
+
+
+@contextlib.contextmanager
+def suppress_stderr():
+    '''Suppress C-level stderr to silence Filament engine startup messages.'''
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    
+    saved = os.dup(2)
+    
+    os.dup2(devnull, 2)
+    
+    try:
+        yield
+    
+    finally:
+        os.dup2(saved, 2)
+        os.close(saved)
+        os.close(devnull)
+
+
+def cleanup_voxel_renderers():
+    '''
+    Explicitly destroy OffscreenRenderer instances while Filament's resource
+    manager is still valid.
+    '''
+    voxel_renderers.clear()
+
+
 def parse_range_argument(arg_list: list) -> list:
     '''
     Parse range arguments like [1, 2, '4-6', 9, '10-12'] into a list of
@@ -132,6 +167,7 @@ def parse_range_argument(arg_list: list) -> list:
     
     return sorted(result)
 
+
 def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR') -> np.ndarray:
     '''
     Get the global2sensor transformation matrix.
@@ -157,6 +193,7 @@ def get_global2sensor(frame_data: dict, metadata: dict, sensor_name='LIDAR') -> 
     global2sensor = np.linalg.inv(ego2global @ sensor2ego)
 
     return global2sensor
+
 
 def get_3d_view_transforms(
         metadata: dict,
@@ -189,6 +226,7 @@ def get_3d_view_transforms(
     lidar2image = camera_intrinsics @ lidar2view
 
     return lidar2image, camera_intrinsics
+
 
 def project_to_3d_view(
         point_cloud: np.ndarray,
@@ -254,6 +292,7 @@ def project_to_3d_view(
 
     return point_cloud_3d, distance, label_color, canvas
 
+
 def transform_bbox(
         gt_det: list,
         transform: np.ndarray,
@@ -294,6 +333,7 @@ def transform_bbox(
     difficulty = np.array(difficulty)
 
     return corners, labels, difficulty
+
 
 def draw_bbox(
         canvas: np.ndarray,
@@ -375,6 +415,7 @@ def draw_bbox(
     
     return canvas
 
+
 def flow_to_color(flow: np.ndarray) -> np.ndarray:
     '''
     Optical flow visualization.
@@ -397,6 +438,7 @@ def flow_to_color(flow: np.ndarray) -> np.ndarray:
     
     return cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
+
 def compute_rainbow_colors(values):
     '''
     Compute rainbow colors for the given values.
@@ -418,6 +460,7 @@ def compute_rainbow_colors(values):
     ]
     
     return color
+
 
 def visualize_image(
         fpath: str,
@@ -449,7 +492,8 @@ def visualize_image(
         
         canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
 
-    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
 
 def visualize_point_cloud(
         fpath: str,
@@ -575,7 +619,8 @@ def visualize_point_cloud(
                 lineType=cv2.LINE_AA
             )
     
-    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
 
 def visualize_point_cloud_3d(
         fpath: str,
@@ -610,4 +655,119 @@ def visualize_point_cloud_3d(
     
     canvas = cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR)
     
-    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    cv2.imwrite(fpath, canvas, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
+
+def build_voxel_mesh(
+        voxel_grid: np.ndarray,
+        voxel_size: float,
+        grid_origin: np.ndarray,
+        label_colors: np.ndarray
+    ) -> o3d.geometry.TriangleMesh:
+    '''
+    Build a TriangleMesh from voxel data containing only the exposed
+    (exterior) faces. A face is exposed when the neighbouring voxel in that
+    direction is unoccupied or out of bounds.
+
+    Args:
+        voxel_grid: 3D array of semantic labels (0 = unoccupied).
+        voxel_size: side length of each voxel.
+        grid_origin: position of the (0, 0, 0) voxel corner in the global
+            coordinate system.
+        label_colors: (N, 3) RGB color array indexed by semantic label.
+
+    Returns:
+        Open3D TriangleMesh with per-vertex colours and vertex normals.
+    '''
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    voxel_grid_torch = torch.from_numpy(voxel_grid).to(device)
+    
+    occupied = voxel_grid_torch > 0
+    
+    label_colors_torch = torch.from_numpy(label_colors).to(device=device, dtype=torch.float64)
+    
+    grid_origin_torch = torch.tensor(grid_origin, dtype=torch.float64, device=device)
+
+    half = voxel_size / 2.0
+    
+    shape = voxel_grid.shape
+
+    # For each of the 6 axis-aligned face directions:
+    #  axis    – 0/1/2 for x/y/z
+    #  delta   – +1 or -1 (positive/negative direction)
+    #  corners – 4 vertex offsets in units of `half`, wound so that the cross
+    #               product gives an outward-facing normal.
+    face_defs = [
+        (0, +1, [( 1, -1, -1), ( 1,  1, -1), ( 1,  1,  1), ( 1, -1,  1)]), # +x
+        (0, -1, [(-1,  1, -1), (-1, -1, -1), (-1, -1,  1), (-1,  1,  1)]), # -x
+        (1, +1, [( 1,  1, -1), (-1,  1, -1), (-1,  1,  1), ( 1,  1,  1)]), # +y
+        (1, -1, [(-1, -1, -1), ( 1, -1, -1), ( 1, -1,  1), (-1, -1,  1)]), # -y
+        (2, +1, [(-1, -1,  1), ( 1, -1,  1), ( 1,  1,  1), (-1,  1,  1)]), # +z
+        (2, -1, [(-1,  1, -1), ( 1,  1, -1), ( 1, -1, -1), (-1, -1, -1)]), # -z
+    ]
+
+    all_vertices = []
+    all_triangles = []
+    all_colors = []
+    
+    vertex_count = 0
+
+    for axis, delta, corners in face_defs:
+        # Determine which voxels have an exposed face in this direction. A
+        # face is exposed when the adjacent voxel is unoccupied.
+        neighbor_occupied = torch.zeros_like(occupied)
+        
+        src = [slice(None)] * 3
+        dst = [slice(None)] * 3
+
+        if delta == +1:
+            src[axis] = slice(1, shape[axis])
+            dst[axis] = slice(0, shape[axis] - 1)
+        else:
+            src[axis] = slice(0, shape[axis] - 1)
+            dst[axis] = slice(1, shape[axis])
+
+        neighbor_occupied[tuple(dst)] = occupied[tuple(src)]
+
+        # Find the exposed faces and their corresponding voxel centers,
+        # labels, and colors.
+        exposed_idx = torch.nonzero(occupied & ~neighbor_occupied, as_tuple=False)
+
+        if exposed_idx.shape[0] == 0:
+            continue
+
+        centers = (exposed_idx.to(torch.float64) + 0.5) * voxel_size + grid_origin_torch
+
+        labels = voxel_grid_torch[exposed_idx[:, 0], exposed_idx[:, 1], exposed_idx[:, 2]].long()
+        colors = label_colors_torch[labels] ** 1.8
+
+        corner_offsets = torch.tensor(corners, dtype=torch.float64, device=device) * half
+
+        vertices_flat = (centers[:, None, :] + corner_offsets[None, :, :]).reshape(-1, 3)
+
+        base = torch.arange(exposed_idx.shape[0], device=device) * 4 + vertex_count
+        
+        triangles = torch.cat(
+            [torch.stack([base, base + 1, base + 2], dim=1), torch.stack([base, base + 2, base + 3], dim=1)],
+            dim=0
+        )
+
+        all_vertices.append(vertices_flat.cpu().numpy())
+        all_triangles.append(triangles.cpu().numpy())
+        
+        # Each of the 4 vertices of a face gets the same voxel colour.
+        all_colors.append(colors.repeat_interleave(4, dim=0).cpu().numpy())
+
+        vertex_count += vertices_flat.shape[0]
+
+    mesh = o3d.geometry.TriangleMesh()
+
+    if all_vertices:
+        mesh.vertices  = o3d.utility.Vector3dVector(np.vstack(all_vertices))
+        mesh.triangles = o3d.utility.Vector3iVector(np.vstack(all_triangles))
+        mesh.vertex_colors = o3d.utility.Vector3dVector(np.vstack(all_colors))
+        
+        mesh.compute_vertex_normals()
+
+    return mesh
