@@ -78,15 +78,15 @@ VISUALIZATION_MODES = {
         'output_dirs': [f'RADAR3DwBBOX-{distance}' for distance in VIEWS.keys()],
         'color': '#FF0055'
     },
-    'interactive': {
-        'handler': visualize_interactive,
-        'output_dirs': [],
-        'color': '#00AAFF'
-    },
     'voxel3d': {
         'handler': visualize_voxel3d,
         'output_dirs': [f'VOXEL3D-{distance}' for distance in VIEWS.keys()],
         'color': '#FF6600'
+    },
+    'interactive': {
+        'handler': visualize_interactive,
+        'output_dirs': [],
+        'color': '#00AAFF'
     }
 }
 

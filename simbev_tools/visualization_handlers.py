@@ -493,6 +493,7 @@ def visualize_radar3d_with_bbox(ctx: VisualizationContext):
     with ThreadPoolExecutor(max_workers=len(VIEWS)) as executor:
         executor.map(process_radar3d_with_bbox, VIEWS.keys())
 
+
 def visualize_voxel3d(ctx: VisualizationContext):
     '''
     Visualize a 3D view of semantic occupancy voxels.
