@@ -1,46 +1,111 @@
-Academic Software License: Copyright © 2026 Goodarz Mehr (the “Developer”).
-Academic non-profit users are permitted to use this Software (as defined
-below) subject to the Paragraphs below:
+========== SimBEV ==========
 
-Developer hereby grants to you free of charge, so long as you are an
-academic non-profit user, a non-exclusive license under Developer’s copyright
-ownership interest in this software and any derivative works made by you
-thereof (collectively, the “Software”) to use, copy, and make derivative works
-of the Software solely for non-commercial, educational, or academic research
-purposes, in all cases subject to the terms of this Academic Software License.
-Except as granted herein, all rights are reserved by the Developer, including
-the right to pursue patent protection of the Software.
+Academic Software License (Version 1.1, 2026)
+Copyright © 2026 Goodarz Mehr (the "Developer").
 
-You may modify this Software and distribute your modifications, provided that
-you license the entire modified work under the terms of this Academic Software
-License, ensuring that all recipients receive the same rights to use, modify,
-and distribute the Software, including access to the source code. Failure
-by you to adhere to the requirements in this Academic Software License will
-result in the immediate termination of the license granted to you pursuant to
-this Academic Software License and may result in further legal action.
+1. Definitions
 
-This Academic Software License is effective as of the date you first used the
-Software. By using the Software you accept and agree to be bound by the terms
-and conditions of this Academic Software License. This Academic Software
-License shall be included in all copies or substantial portions of the
-Software.
+"Software" means the SimBEV source code, object code, and associated
+documentation made available in this repository, together with any derivative
+works thereof made by a Licensee under this Academic Software License.
 
-IN NO EVENT SHALL THE DEVELOPER BE LIABLE TO ANY ENTITY OR PERSON FOR DIRECT,
-INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST
-PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE, EVEN IF THE DEVELOPER HAS
-BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. THE DEVELOPER SPECIFICALLY
-DISCLAIMS ANY AND ALL WARRANTIES, EXPRESS AND IMPLIED, INCLUDING, BUT NOT
-LIMITED TO, ANY IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE. THE SOFTWARE IS PROVIDED “AS IS.” THE DEVELOPER HAS NO
+"Academic or Non-Profit User" means an individual or organization using the
+Software solely for teaching, academic research, or other non-commercial
+research purposes, including individuals affiliated with a degree-granting
+educational institution, a government research laboratory, or a registered
+non-profit organization. Use by or on behalf of a for-profit entity, including
+industry-sponsored research intended to develop or evaluate a commercial
+product or service, is not "non-commercial" use for the purposes of this
+license.
+
+2. License Grant
+
+Subject to the terms of this Academic Software License, and so long as you are
+an Academic or Non-Profit User, the Developer grants you, free of charge, a
+worldwide, non-exclusive, royalty-free license under the Developer's copyright
+interest in the Software to use, reproduce, publicly display, publicly
+perform, and make, use, and distribute (in source or object form, whether
+modified or unmodified) copies and derivative works of the Software, solely
+for non-commercial, educational, or academic research purposes.
+
+To the extent the Developer holds any patent claims that are necessarily
+infringed by use of the Software as distributed by the Developer, the
+Developer grants Academic or Non-Profit Users the same non-exclusive,
+royalty-free license under such patent claims, limited to the scope of Section
+2 above. Except as expressly granted in this Section 2, all rights, including
+patent rights, are reserved by the Developer.
+
+3. Redistribution and Modifications
+
+You may reproduce and distribute copies of the Software, and may create and
+distribute modifications or derivative works, provided that:
+
+  (a) you retain, in all copies, the copyright notice and this Academic
+      Software License;
+  (b) you license the entire modified work, as a whole, under the terms of
+      this Academic Software License, so that all recipients receive the same
+      rights to use, modify, and distribute the Software, including access to
+      the corresponding source code; and
+  (c) you do not use the Developer's name, logo, or trademarks to endorse or
+      promote derivative works without prior written permission.
+
+4. Attribution
+
+If you use the Software in published research, you agree to cite the
+associated publication(s) as indicated in the repository's README or
+CITATION file.
+
+5. Term and Termination
+
+This Academic Software License takes effect on the date you first use the
+Software and continues until terminated. Your rights under this license
+terminate automatically if you fail to comply with any of its terms. Sections
+6 and 7 survive any termination. Termination of this license does not limit
+any other rights or remedies available to the Developer.
+
+6. Disclaimer of Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. THE DEVELOPER HAS NO
 OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR
-MODIFICATIONS OF THIS SOFTWARE.
+MODIFICATIONS OF THE SOFTWARE.
 
-Commercial licenses are available upon request. Please contact the Developer
-at goodarzm@vt.edu for more information.
+7. Limitation of Liability
 
-Unless specifically labeled otherwise, the SimBEV Dataset is provided to
-you under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0
-International Public License (“CC BY-NC-SA 4.0”). The CC BY-NC-SA 4.0 may
-be accessed at https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
-When you download or use the SimBEV Dataset from our websites or elsewhere,
-you are agreeing to comply with the terms of CC BY-NC-SA 4.0 as applicable.
+IN NO EVENT SHALL THE DEVELOPER BE LIABLE TO ANY ENTITY OR PERSON FOR ANY
+DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING
+LOST PROFITS, ARISING OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THIS
+LICENSE, EVEN IF THE DEVELOPER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+8. Commercial Use
+
+Use of the Software by or for the benefit of a commercial or for-profit
+entity, or for any commercial purpose, requires a separate commercial license.
+Commercial licenses are available upon request; please contact the Developer
+at goodarzm@vt.edu.
+
+9. General
+
+This Academic Software License is governed by the laws of the Commonwealth of
+Virginia, USA, without regard to its conflict-of-laws principles. If any
+provision of this license is held unenforceable, the remaining provisions will
+remain in full effect. This license constitutes the entire agreement between
+you and the Developer regarding the Software, superseding any prior
+agreements.
+
+========== SimBEV Dataset ==========
+
+"SimBEV Dataset" means the collection of simulated sensor data, ground truth
+annotations, and associated metadata generated using the Software and
+distributed by the Developer (e.g., via the project website or other official
+distribution channels), as distinct from the Software itself.
+
+Unless specifically labeled otherwise, the SimBEV Dataset is provided to you
+under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+International Public License ("CC BY-NC-SA 4.0"). The CC BY-NC-SA 4.0 may be
+accessed at https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.
+By downloading or using the SimBEV Dataset from the Developer's website or
+elsewhere, you agree to comply with the terms of CC BY-NC-SA 4.0 as
+applicable.
