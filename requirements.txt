@@ -1,4 +1,5 @@
 tqdm
+torch
 ninja
 numpy
 torch
