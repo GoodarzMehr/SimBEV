@@ -56,7 +56,8 @@ class VisualizationContext:
             frame_data: dict,
             metadata: dict,
             ignore_valid_flag: bool = False,
-            filled_voxels: bool = False
+            filled_voxels: bool = False,
+            black_background: bool = False
         ):
         self.path = path
         self.scene_number = scene_number
@@ -65,6 +66,7 @@ class VisualizationContext:
         self.metadata = metadata
         self.ignore_valid_flag = ignore_valid_flag
         self.filled_voxels = filled_voxels
+        self.black_background = black_background
         
         self.gt_det = np.load(self.frame_data['GT_DET'], allow_pickle=True) if self.frame_data is not None else None
     
@@ -182,7 +184,8 @@ def visualize_lidar(ctx: VisualizationContext):
             point_cloud,
             xlim=VIEWS[view]['xlim'],
             ylim=VIEWS[view]['ylim'],
-            pixels_per_meter=VIEWS[view]['pixels_per_meter']
+            pixels_per_meter=VIEWS[view]['pixels_per_meter'],
+            black_background=ctx.black_background
         )
     
     # Process both near and far views in parallel.
@@ -213,7 +216,8 @@ def visualize_lidar_with_bbox(ctx: VisualizationContext):
             difficulty=difficulty,
             xlim=VIEWS[view]['xlim'],
             ylim=VIEWS[view]['ylim'],
-            pixels_per_meter=VIEWS[view]['pixels_per_meter']
+            pixels_per_meter=VIEWS[view]['pixels_per_meter'],
+            black_background=ctx.black_background
         )
     
     # Process both near and far views in parallel.
@@ -236,7 +240,12 @@ def visualize_lidar3d(ctx: VisualizationContext):
             VIEWS[view]['view2lidar_rotation']
         )
 
-        point_cloud_3d, point_distance, _, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
+        point_cloud_3d, point_distance, _, canvas = project_to_3d_view(
+            point_cloud,
+            lidar2image,
+            camera_intrinsics,
+            ctx.black_background
+        )
 
         color = compute_rainbow_colors(point_distance) * 255.0
 
@@ -266,7 +275,12 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
             VIEWS[view]['view2lidar_rotation']
         )
 
-        point_cloud_3d, point_distance, _, canvas = project_to_3d_view(point_cloud, lidar2image, camera_intrinsics)
+        point_cloud_3d, point_distance, _, canvas = project_to_3d_view(
+            point_cloud,
+            lidar2image,
+            camera_intrinsics,
+            ctx.black_background
+        )
 
         color = compute_rainbow_colors(point_distance) * 255.0
 
@@ -310,7 +324,8 @@ def visualize_semantic_lidar(ctx: VisualizationContext):
             xlim=VIEWS[view]['xlim'],
             ylim=VIEWS[view]['ylim'],
             pixels_per_meter=VIEWS[view]['pixels_per_meter'],
-            color=label_color
+            color=label_color,
+            black_background=ctx.black_background
         )
     
     # Process both near and far views in parallel.
@@ -343,7 +358,8 @@ def visualize_semantic_lidar3d(ctx: VisualizationContext):
             point_cloud,
             lidar2image,
             camera_intrinsics,
-            label_color=label_color
+            label_color=label_color,
+            black_background=ctx.black_background
         )
 
         visualize_point_cloud_3d(
@@ -374,7 +390,8 @@ def visualize_radar(ctx: VisualizationContext):
             xlim = VIEWS[view]['xlim'],
             ylim = VIEWS[view]['ylim'],
             pixels_per_meter = VIEWS[view]['pixels_per_meter'],
-            radius=2
+            radius=2,
+            black_background=ctx.black_background
         )
     
     # Process both near and far views in parallel.
@@ -407,7 +424,8 @@ def visualize_radar_with_bbox(ctx: VisualizationContext):
             xlim = VIEWS[view]['xlim'],
             ylim = VIEWS[view]['ylim'],
             pixels_per_meter = VIEWS[view]['pixels_per_meter'],
-            radius=2
+            radius=2,
+            black_background=ctx.black_background
         )
     
     # Process both near and far views in parallel.
@@ -434,7 +452,8 @@ def visualize_radar3d(ctx: VisualizationContext):
             point_cloud,
             lidar2image,
             camera_intrinsics,
-            label_color=point_color
+            label_color=point_color,
+            black_background=ctx.black_background
         )
 
         visualize_point_cloud_3d(
@@ -472,7 +491,8 @@ def visualize_radar3d_with_bbox(ctx: VisualizationContext):
             point_cloud,
             lidar2image,
             camera_intrinsics,
-            label_color=point_color
+            label_color=point_color,
+            black_background=ctx.black_background
         )
 
         global2image = lidar2image @ global2lidar
@@ -545,7 +565,7 @@ def visualize_voxel3d(ctx: VisualizationContext):
         with suppress_stderr():
             renderer = o3d.visualization.rendering.OffscreenRenderer(width, height)
 
-        renderer.scene.set_background([1.0, 1.0, 1.0, 1.0])
+        renderer.scene.set_background([1.0, 1.0, 1.0, 1.0]) if not ctx.black_background else [0.0, 0.0, 0.0, 1.0]
 
         voxel_renderers[renderer_key] = renderer
     else:

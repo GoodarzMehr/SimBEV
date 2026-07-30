@@ -126,6 +126,11 @@ argparser.add_argument(
     action='store_true',
     help='use filled voxel grids instead of standard voxel grids'
 )
+argparser.add_argument(
+    '--black-background',
+    action='store_true',
+    help='use a black background instead of the default white background'
+)
 
 args = argparser.parse_args()
 
@@ -161,7 +166,8 @@ def main(mode, path: str):
                 frame_data=None,
                 metadata=None,
                 ignore_valid_flag=args.ignore_valid_flag,
-                filled_voxels=args.filled_voxels
+                filled_voxels=args.filled_voxels,
+                black_background=args.black_background
             )
             
             handler(ctx)

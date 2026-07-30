@@ -232,7 +232,8 @@ def project_to_3d_view(
         point_cloud: np.ndarray,
         lidar2image: np.ndarray,
         camera_intrinsics: np.ndarray,
-        label_color: np.ndarray = None
+        label_color: np.ndarray = None,
+        black_background: bool = False
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     '''
     Project point cloud to a 3D view and remove the points that are outside
@@ -274,7 +275,7 @@ def project_to_3d_view(
 
     # Create canvas.
     canvas = np.zeros((int(height), int(width), 3), dtype=np.uint8)
-    canvas[:] = (255, 255, 255)
+    canvas[:] = (255, 255, 255) if not black_background else (0, 0, 0)
 
     # Filter out the points that are outside the canvas.
     mask = np.logical_and.reduce([
@@ -506,7 +507,8 @@ def visualize_point_cloud(
         ylim: tuple = (-80, 80),
         pixels_per_meter: int = 16,
         radius: int = 1,
-        thickness: int = 1
+        thickness: int = 1,
+        black_background: bool = False
     ):
     '''
     Visualize point cloud with bounding boxes from above.
@@ -527,7 +529,8 @@ def visualize_point_cloud(
     width = int((xlim[1] - xlim[0]) * pixels_per_meter)
     height = int((ylim[1] - ylim[0]) * pixels_per_meter)
     
-    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255
+    canvas = np.ones((height, width, 3), dtype=np.uint8) * 255 if not black_background \
+        else np.zeros((height, width, 3), dtype=np.uint8)
     
     # Remove the points outside image bounds.
     mask = (
