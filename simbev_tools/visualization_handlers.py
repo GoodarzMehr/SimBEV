@@ -47,6 +47,8 @@ class VisualizationContext:
         ignore_valid_flag: whether to ignore the valid_flag of object bounding
             boxes.
         filled_voxels: whether to use filled voxel grids.
+        black_background: whether to use a black background instead of the
+            default white background.
     '''
     def __init__(
             self,

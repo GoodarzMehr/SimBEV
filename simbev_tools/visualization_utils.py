@@ -244,6 +244,8 @@ def project_to_3d_view(
         lidar2image: transformation from lidar to image coordinates.
         camera_intrinsics: camera intrinsics matrix.
         label_color: array of point colors.
+        black_background: whether to use a black background instead of the
+            default white background.
 
     Returns:
         point_cloud_3d: projected 3D points.
@@ -525,6 +527,8 @@ def visualize_point_cloud(
         pixels_per_meter: number of pixels per meter.
         radius: display point radius.
         thickness: bounding box line thickness.
+        black_background: whether to use a black background instead of the
+            default white background.
     '''
     width = int((xlim[1] - xlim[0]) * pixels_per_meter)
     height = int((ylim[1] - ylim[0]) * pixels_per_meter)
