@@ -44,7 +44,7 @@ fill_voxel_cuda_ext = CUDAExtension(
 
 setup(
     name='simbev',
-    version='3.1.1',
+    version='3.1.2',
     author='Goodarz Mehr',
     author_email='goodarzm@vt.edu',
     description='Synthetic Multi-Task Multi-Sensor Driving Data Generation Tool',
