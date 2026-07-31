@@ -246,7 +246,7 @@ def visualize_lidar3d(ctx: VisualizationContext):
             point_cloud,
             lidar2image,
             camera_intrinsics,
-            ctx.black_background
+            black_background=ctx.black_background
         )
 
         color = compute_rainbow_colors(point_distance) * 255.0
@@ -281,7 +281,7 @@ def visualize_lidar3d_with_bbox(ctx: VisualizationContext):
             point_cloud,
             lidar2image,
             camera_intrinsics,
-            ctx.black_background
+            black_background=ctx.black_background
         )
 
         color = compute_rainbow_colors(point_distance) * 255.0
