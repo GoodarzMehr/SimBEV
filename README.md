@@ -346,6 +346,7 @@ Visualization modes involving point clouds or voxels have two default views, `NE
 * `-f`, `--frame`: list of frame numbers to visualize, can be individual numbers or a range (-1, i.e. all frames, by default).
 * `--ignore-valid-flag`: display all 3D bounding boxes regardless of the value of their _valid_ flag.
 * `--filled-voxels`: display post-processed semantic occupancy voxel grids.
+* `--black-background`: use a black background instead of the default white background.
 
 For instance, using
 ```Bash
