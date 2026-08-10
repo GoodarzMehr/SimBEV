@@ -155,7 +155,7 @@ https://github.com/user-attachments/assets/71fa7403-7e5f-4365-b385-5f5fd3801049
 
 ### SimBEV
 
-We recommend using SimBEV with Docker. The base Docker image is Ubuntu 22.04 with CUDA 13.0.2 and Vulkan SDK 1.3.204. If you want to use a different base image, you may have to modify `ubuntu2204/x86_64` when fetching keys on line 61 of the [Dockerfile](Dockerfile), based on your Ubuntu release and system architecture. **Ensure that `libnvidia-gl` and `libnvidia-common` version numbers on line 65 of the [Dockerfile](Dockerfile) match your Nvidia driver version number.**
+We recommend using SimBEV with Docker. The base Docker image is Ubuntu 22.04 with CUDA 13.2.1 and Vulkan SDK 1.3.204. If you want to use a different base image, you may have to modify `ubuntu2204/x86_64` when fetching keys on line 61 of the [Dockerfile](Dockerfile), based on your Ubuntu release and system architecture.
 
 1. Install [Docker](https://docs.docker.com/engine/install/) on your system.
 2. Install the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#installation-guide).
@@ -164,7 +164,11 @@ It exposes your Nvidia graphics card to Docker containers.
    ```Bash
    git clone https://github.com/GoodarzMehr/SimBEV.git && cd SimBEV
    ```
-4. Build the SimBEV Docker image (this will take several minutes):
+4. Download the SimBEV Docker image:
+   ```Bash
+   docker pull goodarzm/simbev:cuda-13.2.1-devel-ubuntu-22.04
+   ```
+   Alternatively, build the SimBEV Docker image (this will take several minutes):
    ```Bash
    docker build --no-cache --rm --build-arg ARG -t simbev:develop .
    ```
@@ -177,12 +181,12 @@ It exposes your Nvidia graphics card to Docker containers.
    -v [path/to/CARLA]:/home/carla \
    -v [path/to/SimBEV]:/home/simbev \
    -v [path/to/dataset]:/dataset \
-   --shm-size 32g -it simbev:develop /bin/bash
+   --shm-size 32g -it simbev:[tag] /bin/bash
    ```
    Use `nvidia-smi` to ensure your graphics card(s) is (are) visible inside the container. Use `vulkaninfo --summary` to ensure Vulkan has access to your graphics card(s).
 6. Install CARLA inside the container by running:
     ```Bash
-    pip carla/PythonAPI/carla/dist/carla-0.9.16-cp310-cp310-linux_x86_64.whl
+    pip install carla/PythonAPI/carla/dist/carla-0.9.16-cp310-cp310-linux_x86_64.whl
     ```
 7. In a separate terminal window, enter the container as the root user by running `docker exec -it -u 0 [container name] /bin/bash`. Then, run:
     ```Bash
