@@ -578,7 +578,7 @@ _Original benchmarks._
 
 SimBEV is based on [CARLA](https://carla.org/) and we are grateful to the team that maintains it. SimBEV has also taken inspiration from the [nuScenes](https://www.nuscenes.org/), [SHIFT](https://www.vis.xyz/shift/), [OPV2V](https://mobility-lab.seas.ucla.edu/opv2v/), and [V2X-Sim](https://ai4ce.github.io/V2X-Sim/index.html) datasets, as well as [Co3SOP](https://github.com/tlab-wide/Co3SOP).
 
-The sixth generation Ford Mustang model is based on [this](https://www.blenderkit.com/asset-gallery-detail/342206ad-9e8e-4cfc-add0-8007dc86fdbb/) BlenderKit model by Kentik Khudosovtsev.
+The sixth generation Ford Mustang model is based on [this](https://www.blendkit.com/asset-gallery-detail/342206ad-9e8e-4cfc-add0-8007dc86fdbb/) BlenderKit model by Kentik Khudosovtsev.
 
 Hazard area static props are based on [this](https://www.fab.com/listings/6426cc8a-2410-45be-b3ce-edfea87d09cc) Roadside Construction asset by Quixel Megascans.
 
